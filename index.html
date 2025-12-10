@@ -31,7 +31,6 @@
     .sticky{position:sticky;top:0;background:var(--card);z-index:2}
     .footer{opacity:.7;margin:22px 0 40px}
     .code{background:#0a0f25;border:1px solid #1c2b69;padding:10px;border-radius:10px;overflow:auto}
-
     /* === Auth Gate === */
     #gate { position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
       background:linear-gradient(180deg,#0b1020,#111936); z-index:50; }
@@ -41,8 +40,7 @@
 
   <!-- XLSX -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
-  <!-- Supabase JS -->
+  <!-- Supabase JS v2 -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <!-- Variables publiques Supabase -->
@@ -53,7 +51,7 @@
 </head>
 <body>
 
-  <!-- ===== AUTH GATE: visible tant que l’utilisateur n’est pas connecté ===== -->
+  <!-- ===== AUTH GATE ===== -->
   <div id="gate">
     <div class="card">
       <div style="font-weight:700; font-size:20px; margin-bottom:6px;">Connexion requise</div>
@@ -200,12 +198,17 @@
   </div>
 
 <script>
-/* === JS principal === */
-
-/* ===== Supabase Auth + Gate ===== */
+/* ===================== Supabase Auth + Gate ===================== */
 const supabase = window.supabase.createClient(
   window.SUPABASE_URL,
-  window.SUPABASE_PUBLISHABLE_KEY
+  window.SUPABASE_PUBLISHABLE_KEY,
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true
+    }
+  }
 );
 
 function setGateMsg(msg) {
@@ -213,7 +216,6 @@ function setGateMsg(msg) {
   if (el) el.textContent = msg || '';
 }
 
-// Désactive/active les boutons pendant les requêtes
 function busy(on) {
   const btnL = document.getElementById('btnLogin');
   const btnS = document.getElementById('btnSignup');
@@ -221,7 +223,7 @@ function busy(on) {
   if (btnS) btnS.disabled = !!on;
 }
 
-// Si on revient depuis l’email (#access_token / #refresh_token) → crée la session et nettoie l’URL
+// Bootstrap session depuis #access_token/#refresh_token (retour email)
 (async function bootstrapFromHash() {
   const hash = new URLSearchParams(location.hash.slice(1));
   const access_token = hash.get('access_token');
@@ -229,19 +231,33 @@ function busy(on) {
   if (access_token && refresh_token) {
     try {
       await supabase.auth.setSession({ access_token, refresh_token });
-      history.replaceState(null, '', location.pathname + location.search);
     } catch (e) {
       console.error('setSession from hash failed:', e);
+    } finally {
+      history.replaceState(null, '', location.pathname + location.search);
     }
   }
 })();
 
 async function refreshGate() {
   const { data: { session } } = await supabase.auth.getSession();
-  const authed = !!session;
-  document.getElementById('gate')?.classList.toggle('hidden', authed);
-  document.querySelector('.wrap')?.classList.toggle('hidden', !authed);
+  console.log('REFRESH_GATE session?', !!session);
+  document.getElementById('gate')?.classList.toggle('hidden', !!session);
+  document.querySelector('.wrap')?.classList.toggle('hidden', !session);
 }
+
+// Bascule UI immédiatement sur évènements d’auth
+supabase.auth.onAuthStateChange((event, session) => {
+  console.log('AUTH_EVT', event, !!session);
+  if (event === 'SIGNED_IN' && session) {
+    document.getElementById('gate')?.classList.add('hidden');
+    document.querySelector('.wrap')?.classList.remove('hidden');
+  }
+  if (event === 'SIGNED_OUT') {
+    document.getElementById('gate')?.classList.remove('hidden');
+    document.querySelector('.wrap')?.classList.add('hidden');
+  }
+});
 
 document.getElementById('btnLogin')?.addEventListener('click', async () => {
   const email = document.getElementById('authEmail').value.trim();
@@ -250,13 +266,20 @@ document.getElementById('btnLogin')?.addEventListener('click', async () => {
   setGateMsg('Connexion en cours…');
   busy(true);
   try {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       setGateMsg('Erreur: ' + error.message);
       console.error('login error', error);
       return;
     }
-    setGateMsg('Connecté ✔');
+    // Fallback si la session n'est pas lisible immédiatement
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      console.warn('Session encore null juste après login → reload de garde');
+      location.reload();
+      return;
+    }
+    setGateMsg('Authentification réussie, ouverture de l’outil…');
     await refreshGate();
   } catch (e) {
     console.error(e);
@@ -276,7 +299,6 @@ document.getElementById('btnSignup')?.addEventListener('click', async () => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      // Redirection après clic sur l’email de confirmation
       options: { emailRedirectTo: `${location.origin}/` }
     });
     if (error) {
@@ -294,10 +316,11 @@ document.getElementById('btnSignup')?.addEventListener('click', async () => {
   }
 });
 
-supabase.auth.onAuthStateChange((_event, _session) => refreshGate());
 refreshGate();
-/* ===== Fin Supabase Auth + Gate ===== */
+/* =================== Fin Supabase Auth + Gate =================== */
 
+
+/* =================== App / UI restant =================== */
 const state={dicos:{},dicoWeights:{},translations:{},parents:[],cfg:{stop:new Set(),exc:new Set(),multi:[],ref:'(?i)ref[:\\- ]?([a-z0-9\\-]+)',min:0.5}};
 function saveLocal(){localStorage.setItem('matcherFront',JSON.stringify({dicoWeights:state.dicoWeights,cfg:{stop:[...state.cfg.stop],exc:[...state.cfg.exc],multi:state.cfg.multi,ref:state.cfg.ref,min:state.cfg.min},translations:state.translations,parents:state.parents}))}
 function loadLocal(){const raw=localStorage.getItem('matcherFront');if(!raw)return;try{const obj=JSON.parse(raw);state.dicoWeights=obj.dicoWeights||{};state.cfg.stop=new Set(obj?.cfg?.stop||[]);state.cfg.exc=new Set(obj?.cfg?.exc||[]);state.cfg.multi=obj?.cfg?.multi||[];state.cfg.ref=obj?.cfg?.ref||state.cfg.ref;state.cfg.min=obj?.cfg?.min??0.5;state.translations=obj.translations||{};state.parents=obj.parents||[]}catch(e){}}
@@ -375,7 +398,6 @@ async function tryProbe(probe, timeoutMs=4000){
   const controller=new AbortController();
   const t=setTimeout(()=>controller.abort(),timeoutMs);
   const init={method:probe.method,signal:controller.signal,headers:probe.headers||{},redirect:'manual'};
-  // Pas de body par défaut (permet POST /match vide)
   if (Object.prototype.hasOwnProperty.call(probe, 'body')) {
     init.body = probe.body;
   }
@@ -398,7 +420,6 @@ const HEALTH_PROBES=[
   {name:'HEAD /',            path:'/',             method:'HEAD',    okStatuses:[200,204]},
   {name:'GET /openapi.json', path:'/openapi.json', method:'GET',     okStatuses:[200]},
   {name:'OPTIONS /match',    path:'/match',        method:'OPTIONS', okStatuses:[200,204]},
-  // POST /match sans body = health OK même avec auth proxy
   {name:'POST /match (empty)', path:'/match',      method:'POST',    okStatuses:[200,204,400,415,422]}
 ];
 
@@ -418,19 +439,140 @@ btnHealth.addEventListener('click', async ()=>{
 });
 /* ====== Fin health check ====== */
 
-btnApply.addEventListener('click',()=>{state.cfg.stop=new Set(inpStop.value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean));state.cfg.exc=new Set(inpExc.value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean));state.cfg.multi=inpMulti.value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);state.cfg.ref=inpRegex.value.trim()||state.cfg.ref;state.cfg.min=Number(inpMin.value)||0.5;saveLocal();logCfg('[CONFIG] Paramètres appliqués.')});
+btnApply.addEventListener('click',()=>{
+  state.cfg.stop=new Set(inpStop.value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean));
+  state.cfg.exc=new Set(inpExc.value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean));
+  state.cfg.multi=inpMulti.value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
+  state.cfg.ref=inpRegex.value.trim()||state.cfg.ref;
+  state.cfg.min=Number(inpMin.value)||0.5;
+  saveLocal();
+  logCfg('[CONFIG] Paramètres appliqués.');
+});
 
 async function readExcel(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=e=>{try{const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});resolve(wb)}catch(err){reject(err)}};reader.onerror=reject;reader.readAsArrayBuffer(file)})}
 
-fileDico.addEventListener('change',async()=>{logsCfg.value='';if(!fileDico.files[0])return;try{const wb=await readExcel(fileDico.files[0]);state.dicos={};wb.SheetNames.forEach(name=>{const sh=wb.Sheets[name];const df=XLSX.utils.sheet_to_json(sh,{header:1,blankrows:false});if(df.length===0)return;const cols=df[0].map((_,i)=>df.map(row=>row[i]));cols.forEach((col,idx)=>{const dicoName=String(df[0][idx]||`Dico_${idx+1}`);if(!state.dicos[dicoName])state.dicos[dicoName]={};for(let r=1;r<col.length;r++){const cell=col[r];if(cell==null)continue;const items=String(cell).split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);if(items.length===0)continue;const key=items[0];state.dicos[dicoName][key]=(state.dicos[dicoName][key]||new Set());items.forEach(x=>state.dicos[dicoName][key].add(x))}})});renderDicoTable();saveLocal();logCfg(`[DICO] ${Object.keys(state.dicos).length} dictionnaire(s) chargé(s).`)}catch(e){logCfg('[DICO][ERREUR] '+e.message)}});
+fileDico.addEventListener('change',async()=>{
+  logsCfg.value='';
+  if(!fileDico.files[0])return;
+  try{
+    const wb=await readExcel(fileDico.files[0]);
+    state.dicos={};
+    wb.SheetNames.forEach(name=>{
+      const sh=wb.Sheets[name];
+      const df=XLSX.utils.sheet_to_json(sh,{header:1,blankrows:false});
+      if(df.length===0)return;
+      const cols=df[0].map((_,i)=>df.map(row=>row[i]));
+      cols.forEach((col,idx)=>{
+        const dicoName=String(df[0][idx]||`Dico_${idx+1}`);
+        if(!state.dicos[dicoName])state.dicos[dicoName]={};
+        for(let r=1;r<col.length;r++){
+          const cell=col[r];
+          if(cell==null)continue;
+          const items=String(cell).split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
+          if(items.length===0)continue;
+          const key=items[0];
+          state.dicos[dicoName][key]=(state.dicos[dicoName][key]||new Set());
+          items.forEach(x=>state.dicos[dicoName][key].add(x))
+        }
+      })
+    });
+    renderDicoTable();
+    saveLocal();
+    logCfg(`[DICO] ${Object.keys(state.dicos).length} dictionnaire(s) chargé(s).`)
+  }catch(e){
+    logCfg('[DICO][ERREUR] '+e.message)
+  }
+});
 
-fileTrad.addEventListener('change',async()=>{if(!fileTrad.files[0])return;try{const wb=await readExcel(fileTrad.files[0]);state.translations={};wb.SheetNames.forEach(name=>{const sh=wb.Sheets[name];const arr=XLSX.utils.sheet_to_json(sh);arr.forEach(row=>{const s=String(row['SOURCE']||'').trim().toLowerCase();const t=String(row['TRANSLATION']||'').trim().toLowerCase();if(s)state.translations[s]=t})});saveLocal();logCfg(`[TRAD] ${Object.keys(state.translations).length} entrées.`)}catch(e){logCfg('[TRAD][ERREUR] '+e.message)}});
+fileTrad.addEventListener('change',async()=>{
+  if(!fileTrad.files[0])return;
+  try{
+    const wb=await readExcel(fileTrad.files[0]);
+    state.translations={};
+    wb.SheetNames.forEach(name=>{
+      const sh=wb.Sheets[name];
+      const arr=XLSX.utils.sheet_to_json(sh);
+      arr.forEach(row=>{
+        const s=String(row['SOURCE']||'').trim().toLowerCase();
+        const t=String(row['TRANSLATION']||'').trim().toLowerCase();
+        if(s)state.translations[s]=t
+      })
+    });
+    saveLocal();
+    logCfg(`[TRAD] ${Object.keys(state.translations).length} entrées.`)
+  }catch(e){
+    logCfg('[TRAD][ERREUR] '+e.message)
+  }
+});
 
-fileParents.addEventListener('change',async()=>{if(!fileParents.files[0])return;try{const wb=await readExcel(fileParents.files[0]);state.parents=[];wb.SheetNames.forEach(name=>{const sh=wb.Sheets[name];const arr=XLSX.utils.sheet_to_json(sh);arr.forEach(row=>{if(row.URL)state.parents.push(String(row.URL))})});saveLocal();logCfg(`[PARENTS] ${state.parents.length} URLs.`)}catch(e){logCfg('[PARENTS][ERREUR] '+e.message)}});
+fileParents.addEventListener('change',async()=>{
+  if(!fileParents.files[0])return;
+  try{
+    const wb=await readExcel(fileParents.files[0]);
+    state.parents=[];
+    wb.SheetNames.forEach(name=>{
+      const sh=wb.Sheets[name];
+      const arr=XLSX.utils.sheet_to_json(sh);
+      arr.forEach(row=>{if(row.URL)state.parents.push(String(row.URL))})
+    });
+    saveLocal();
+    logCfg(`[PARENTS] ${state.parents.length} URLs.`)
+  }catch(e){
+    logCfg('[PARENTS][ERREUR] '+e.message)
+  }
+});
 
-btnTest.addEventListener('click',()=>{const url=testUrl.value.trim();const logs=[];if(!url){testOut.value='Veuillez saisir une URL.';return}logs.push(`URL brute : ${url}`);const cleaned=url.replace(/^https?:\/\//i,'').replace(/^www\./i,'');logs.push('URL nettoyée (clean) :');logs.push(' → '+cleaned);const tokens=tokenize(cleaned);logs.push('URL après synonymes (apply_synonym_substitution) :');logs.push(' → '+tokens.join(' '));logs.push('Tokens (get_tokens) :');logs.push(tokens.length?(' → '+tokens.join(', ')):' → Aucun token');const ref=extractRef(url);logs.push(ref?`Référence détectée : ${ref}`:'Aucune référence détectée via la regex.');logs.push('Caractéristiques détectées :');const active=Object.keys(state.dicos).filter(n=>(state.dicoWeights[n]||{active:true}).active);if(active.length===0){logs.push(' → Aucun dictionnaire dynamique chargé.')}else{active.forEach(name=>{const dict=state.dicos[name];const hits=new Set();tokens.forEach(tok=>{for(const key in dict){if(dict[key].has(tok))hits.add(key)}});logs.push(hits.size?` [${name}] → ${[...hits].join(', ')}`:` [${name}] → aucune caractéristique trouvée`)})}testOut.value=logs.join('\n')});
+btnTest.addEventListener('click',()=>{
+  const url=testUrl.value.trim();
+  const logs=[];
+  if(!url){testOut.value='Veuillez saisir une URL.';return}
+  logs.push(`URL brute : ${url}`);
+  const cleaned=url.replace(/^https?:\/\//i,'').replace(/^www\./i,'');
+  logs.push('URL nettoyée (clean) :');
+  logs.push(' → '+cleaned);
+  const tokens=tokenize(cleaned);
+  logs.push('URL après synonymes (apply_synonym_substitution) :');
+  logs.push(' → '+tokens.join(' '));
+  logs.push('Tokens (get_tokens) :');
+  logs.push(tokens.length?(' → '+tokens.join(', ')):' → Aucun token');
+  const ref=extractRef(url);
+  logs.push(ref?`Référence détectée : ${ref}`:'Aucune référence détectée via la regex.');
+  logs.push('Caractéristiques détectées :');
+  const active=Object.keys(state.dicos).filter(n=>(state.dicoWeights[n]||{active:true}).active);
+  if(active.length===0){
+    logs.push(' → Aucun dictionnaire dynamique chargé.');
+  }else{
+    active.forEach(name=>{
+      const dict=state.dicos[name];
+      const hits=new Set();
+      tokens.forEach(tok=>{
+        for(const key in dict){ if(dict[key].has(tok))hits.add(key) }
+      });
+      logs.push(hits.size?` [${name}] → ${[...hits].join(', ')}`:` [${name}] → aucune caractéristique trouvée`)
+    })
+  }
+  testOut.value=logs.join('\n')
+});
 
-btnEstimate.addEventListener('click',async()=>{logsMatch.value='';if(!file404.files[0]||!file200.files[0]){logMatch('Charge les deux fichiers d\'abord.');return}try{const wb404=await readExcel(file404.files[0]);const sh404=wb404.Sheets['404']||wb404.Sheets[wb404.SheetNames[0]];const arr404=XLSX.utils.sheet_to_json(sh404);const wb200=await readExcel(file200.files[0]);const sh200=wb200.Sheets['200']||wb200.Sheets[wb200.SheetNames[0]];const arr200=XLSX.utils.sheet_to_json(sh200);if(arr404.length===0||arr200.length===0){logMatch('[ESTIMATION] Impossible : fichiers vides.');return}const total=arr404.length;const est=(0.035+0.025)*total;const min=(est/60).toFixed(1);logMatch(`[ESTIMATION] ~ ${min} minutes (approximation navigateur).`)}catch(e){logMatch('[ESTIMATION][ERREUR] '+e.message)}});
+btnEstimate.addEventListener('click',async()=>{
+  logsMatch.value='';
+  if(!file404.files[0]||!file200.files[0]){logMatch('Charge les deux fichiers d\'abord.');return}
+  try{
+    const wb404=await readExcel(file404.files[0]);
+    const sh404=wb404.Sheets['404']||wb404.Sheets[wb404.SheetNames[0]];
+    const arr404=XLSX.utils.sheet_to_json(sh404);
+    const wb200=await readExcel(file200.files[0]);
+    const sh200=wb200.Sheets['200']||wb200.Sheets[wb200.SheetNames[0]];
+    const arr200=XLSX.utils.sheet_to_json(sh200);
+    if(arr404.length===0||arr200.length===0){logMatch('[ESTIMATION] Impossible : fichiers vides.');return}
+    const total=arr404.length;
+    const est=(0.035+0.025)*total;
+    const min=(est/60).toFixed(1);
+    logMatch(`[ESTIMATION] ~ ${min} minutes (approximation navigateur).`)
+  }catch(e){
+    logMatch('[ESTIMATION][ERREUR] '+e.message)
+  }
+});
 
 btnClear.addEventListener('click',()=>{logsMatch.value='';file404.value='';file200.value=''});
 
