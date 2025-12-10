@@ -3,216 +3,207 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Matching 404/200 – Frontend</title>
+  <title>URL Matcher</title>
   <style>
     :root{
-      --bg:#f6f8fb; --card:#ffffff; --muted:#5f6b7a; --text:#0f172a; --accent:#3b82f6;
-      --ok:#16a34a; --err:#dc2626; --border:#e5e7eb; --input:#f9fafb
+      --bg:#f6f7fb; --card:#ffffff; --text:#0f172a; --muted:#5f6b7a; --border:#e5e7eb;
+      --accent:#2563eb; --accent-600:#1d4ed8; --ok:#16a34a; --err:#dc2626; --chip:#eef2ff
     }
     *{box-sizing:border-box}
     body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text)}
-    .wrap{max-width:1000px;margin:24px auto;padding:0 16px}
-    .title{font-weight:700;font-size:28px;letter-spacing:.2px}
-    .sub{opacity:.85;margin-top:4px}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:0 6px 24px #0000000d}
-    .row{display:flex;gap:12px;flex-wrap:wrap}
-    .grow{flex:1 1 260px}
-    input[type=text],input[type=url],input[type=number],input[type=email],input[type=password],textarea{
-      width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);
-      background:var(--input);color:var(--text)
-    }
-    textarea{min-height:120px;white-space:pre-wrap}
-    .btn{cursor:pointer;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 14px;font-weight:600}
-    .btn.secondary{background:#64748b}
-    .btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
-    .tabs{display:flex;gap:10px;margin:18px 0}
-    .tab{padding:10px 12px;border-radius:10px;background:#eef2ff;cursor:pointer;border:1px solid var(--border);color:#1e3a8a}
-    .tab.active{background:var(--accent);color:#fff}
-    .hide{display:none}
-    .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px}
-    .ok{background:#dcfce7;color:#065f46;border:1px solid #bbf7d0}
-    .err{background:#fee2e2;color:#991b1b;border:1px solid #fecaca}
-    .muted{color:var(--muted);font-size:14px}
-    .footer{opacity:.7;margin:22px 0 40px}
-    .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+    a{color:var(--accent);text-decoration:none}
+    .container{max-width:1100px;margin:0 auto;padding:0 20px}
+
+    /* Topbar */
+    .topbar{position:sticky;top:0;z-index:40;background:rgba(255,255,255,.8);backdrop-filter:saturate(180%) blur(8px);
+      border-bottom:1px solid var(--border)}
+    .nav{display:flex;align-items:center;justify-content:space-between;height:60px}
+    .brand{display:flex;align-items:center;gap:10px;font-weight:700}
+    .brand .logo{width:10px;height:24px;background:var(--accent);border-radius:4px}
+    .actions{display:flex;align-items:center;gap:10px}
+    .user{font-size:14px;color:var(--muted)}
+    .btn{cursor:pointer;border:none;border-radius:10px;font-weight:600;padding:10px 14px}
+    .btn.primary{background:var(--accent);color:#fff}
+    .btn.primary:hover{background:var(--accent-600)}
+    .btn.ghost{background:#fff;border:1px solid var(--border);color:var(--text)}
+    .btn.ghost:hover{background:#fafafa}
     .hidden{display:none !important}
 
-    /* === Auth Gate (light) === */
-    #gate { position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
-      background:#eef2f7; z-index:50; }
-    #gate .card { width:520px }
+    /* Layout */
+    .hero{padding:28px 0 10px}
+    .h1{font-size:26px;font-weight:800;margin:0}
+    .sub{margin-top:6px;color:var(--muted)}
+    .grid{display:grid;grid-template-columns:1fr;gap:16px;margin:18px 0}
+    @media(min-width:900px){ .grid{grid-template-columns:1.2fr .8fr} }
+
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:0 8px 24px #0000000a}
+    .section-title{font-weight:700;margin:0 0 8px 0}
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    .grow{flex:1 1 260px}
+
+    input[type=text],input[type=url],input[type=number],input[type=email],input[type=password],textarea{
+      width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:#fafafa;color:var(--text)
+    }
+    input[type=file]{width:100%}
+    textarea{min-height:110px;white-space:pre-wrap}
+    label{font-size:14px;color:var(--muted);display:block;margin-bottom:6px}
+
+    .tabs{display:flex;gap:8px;border-bottom:1px solid var(--border);padding-bottom:8px;margin:18px 0}
+    .tab{padding:8px 12px;border-radius:10px;background:var(--chip);color:#1e3a8a;cursor:pointer;border:1px solid var(--border)}
+    .tab.active{background:var(--accent);color:#fff}
+
+    .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;border:1px solid var(--border)}
+    .badge.ok{background:#dcfce7;color:#065f46;border-color:#bbf7d0}
+    .badge.err{background:#fee2e2;color:#991b1b;border-color:#fecaca}
+
+    /* Auth gate (clair) */
+    #gate{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#eef2f7;z-index:50}
+    #gate .card{width:520px}
+
+    /* Two-columns upload panel (clean) */
+    .two-cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media(max-width:700px){.two-cols{grid-template-columns:1fr}}
   </style>
 
-  <!-- XLSX -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <!-- Supabase JS v2 -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <!-- Variables publiques Supabase -->
   <script>
-    window.SUPABASE_URL = "https://srvvdrhiaygklqjijdtq.supabase.co";
-    window.SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Tm5K5o-Fq_UBHP9Qp6JBog_rtKQjpDi";
+    window.SUPABASE_URL="https://srvvdrhiaygklqjijdtq.supabase.co";
+    window.SUPABASE_PUBLISHABLE_KEY="sb_publishable_Tm5K5o-Fq_UBHP9Qp6JBog_rtKQjpDi";
   </script>
 </head>
 <body>
 
-  <!-- ===== AUTH GATE ===== -->
-  <div id="gate">
-    <div class="card">
-      <div class="title" style="font-size:22px">Connexion requise</div>
-      <div class="muted" style="margin:6px 0 12px">Connectez-vous pour accéder à l’outil.</div>
-
-      <div class="row">
-        <div class="grow">
-          <input id="authEmail" type="email" placeholder="Email">
-        </div>
-        <div class="grow">
-          <input id="authPassword" type="password" placeholder="Mot de passe">
-        </div>
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="container nav">
+      <div class="brand">
+        <div class="logo"></div><span>URL&nbsp;Matcher</span>
       </div>
-
-      <div style="margin-top:10px; display:flex; gap:8px; align-items:center;">
-        <button class="btn" id="btnLogin">Se connecter</button>
-        <button class="btn secondary" id="btnSignup">Créer un compte</button>
+      <div class="actions">
+        <span id="currentUser" class="user"></span>
+        <button id="btnLoginOpen" class="btn primary">Se connecter</button>
+        <button id="btnLogout" class="btn ghost hidden">Se déconnecter</button>
       </div>
-      <div id="authStatus" class="muted" style="margin-top:10px;"></div>
     </div>
   </div>
-  <!-- ===== FIN AUTH GATE ===== -->
 
-  <div class="wrap hidden"><!-- masquée tant que non connecté -->
-
-    <div class="topbar">
-      <div>
-        <div class="title">Matching 404 → 200 – Interface Web</div>
-        <div class="sub">Frontend statique. Upload → <code>/match</code> Cloud Run → téléchargement du résultat.</div>
-      </div>
-      <div>
-        <span id="currentUser" class="muted" style="margin-right:8px"></span>
-        <button class="btn ghost" id="btnLogout">Se déconnecter</button>
-      </div>
-    </div>
-
+  <!-- Auth Gate -->
+  <div id="gate" class="hidden">
     <div class="card">
-      <div class="row">
-        <div class="grow">
-          <label>URL de l'API (Cloud Run)</label>
-          <input id="apiBase" type="url" value="https://url-matcher-70649262164.europe-west1.run.app" />
-          <div class="muted">Expose <code>POST /match</code>. Le health check teste <code>/</code>, <code>/openapi.json</code>, <code>OPTIONS /match</code> et un <code>POST /match</code> “à vide”.</div>
+      <div class="section-title" style="font-size:18px">Connexion requise</div>
+      <div class="row" style="margin-top:6px">
+        <div class="grow"><label>Email</label><input id="authEmail" type="email" placeholder="you@domain.tld"></div>
+        <div class="grow"><label>Mot de passe</label><input id="authPassword" type="password" placeholder="••••••••"></div>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px">
+        <button class="btn primary" id="btnLogin">Se connecter</button>
+        <button class="btn ghost" id="btnSignup">Créer un compte</button>
+      </div>
+      <div id="authStatus" class="sub" style="margin-top:10px"></div>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="hero">
+      <h1 class="h1">Matching 404 → 200</h1>
+      <div class="sub">Chargez vos fichiers 404/200 et récupérez un <i>result.xlsx</i>. En production, les appels transitent via <code>/api/proxy</code>.</div>
+    </div>
+
+    <div class="grid">
+      <!-- Colonne gauche -->
+      <div class="col-left">
+        <div class="card">
+          <div class="section-title">Matching</div>
+          <div class="two-cols">
+            <div>
+              <label>Fichier 404 (onglet <code>404</code>, col <code>URL_404</code>)</label>
+              <input id="file404" type="file" accept=".xlsx,.xls" />
+            </div>
+            <div>
+              <label>Fichier 200 (onglet <code>200</code>, col <code>URL_200</code>)</label>
+              <input id="file200" type="file" accept=".xlsx,.xls" />
+            </div>
+          </div>
+          <div class="row" style="margin-top:12px">
+            <button class="btn ghost" id="btnEstimate">Estimation</button>
+            <div style="flex:1"></div>
+            <button class="btn ghost" id="btnClear">Vider</button>
+            <button class="btn primary" id="btnRun">Lancer le matching</button>
+          </div>
+          <div style="margin-top:12px">
+            <label>Logs matching</label>
+            <textarea id="logsMatch" readonly></textarea>
+          </div>
         </div>
-        <div class="grow" style="align-self:flex-end">
-          <label><input id="useProxy" type="checkbox" /> Utiliser proxy relatif <code>/api/proxy</code> (Vercel)</label>
-          <div class="muted">Par défaut forcé en production Vercel.</div>
-        </div>
-        <div style="display:flex;align-items:flex-end;gap:8px">
-          <button class="btn" id="btnHealth">Test de fonctionnement</button>
-          <span id="healthBadge" class="badge muted">en attente…</span>
+
+        <div class="card" style="margin-top:16px">
+          <div class="section-title">Configuration (optionnelle)</div>
+          <div class="two-cols">
+            <div>
+              <label>Dictionnaire Excel (colonnes = noms de dicos, lignes = "clé, syn1, syn2…")</label>
+              <input id="fileDico" type="file" accept=".xlsx,.xls" />
+            </div>
+            <div>
+              <label>Traductions Excel (colonnes <code>SOURCE</code>, <code>TRANSLATION</code>)</label>
+              <input id="fileTrad" type="file" accept=".xlsx,.xls" />
+            </div>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <div class="grow"><label>Parents (optionnel) – Excel avec colonne URL</label><input id="fileParents" type="file" accept=".xlsx,.xls" /></div>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <div class="grow"><label>Stopwords (virgules)</label><input id="inpStop" type="text" /></div>
+            <div class="grow"><label>Exceptions normalisation (virgules)</label><input id="inpExc" type="text" /></div>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <div class="grow"><label>Expressions multi-mots (virgules)</label><input id="inpMulti" type="text" /></div>
+            <div class="grow"><label>Regex référence</label><input id="inpRegex" type="text" value="(?i)ref[:\- ]?([a-z0-9\-]+)" /></div>
+            <div class="grow"><label>Score minimum (UI)</label><input id="inpMin" type="number" step="0.1" value="0.5" /></div>
+          </div>
+          <div style="margin-top:12px"><button class="btn ghost" id="btnApply">Appliquer</button></div>
+          <div style="margin-top:12px"><label>Logs configuration</label><textarea id="logsCfg" readonly></textarea></div>
         </div>
       </div>
-      <div style="margin-top:10px">
-        <label>Logs health</label>
-        <textarea id="logsHealth" readonly></textarea>
+
+      <!-- Colonne droite -->
+      <div class="col-right">
+        <div class="card">
+          <div class="section-title">Santé API / Proxy</div>
+          <div class="row">
+            <div class="grow">
+              <label>URL Cloud Run (dev)</label>
+              <input id="apiBase" type="url" value="https://url-matcher-70649262164.europe-west1.run.app" />
+              <div class="sub">En production Vercel, le proxy <code>/api/proxy</code> est utilisé automatiquement.</div>
+            </div>
+          </div>
+          <div class="row" style="margin-top:10px;align-items:center">
+            <label style="display:flex;align-items:center;gap:8px">
+              <input id="useProxy" type="checkbox" />
+              Utiliser <code>/api/proxy</code> (dev uniquement)
+            </label>
+            <div style="flex:1"></div>
+            <button class="btn primary" id="btnHealth">Test de fonctionnement</button>
+            <span id="healthBadge" class="badge">en attente…</span>
+          </div>
+          <div style="margin-top:10px">
+            <label>Logs health</label>
+            <textarea id="logsHealth" readonly></textarea>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px">
+          <div class="section-title">Test URL rapide</div>
+          <div class="row">
+            <div class="grow"><label>URL</label><input id="testUrl" type="text" placeholder="https://www.exemple.com/produit/ref-AB1234?color=red"></div>
+            <button class="btn primary" id="btnTest" style="align-self:flex-end">Analyser</button>
+          </div>
+          <div style="margin-top:10px"><label>Résultat</label><textarea id="testOut" readonly></textarea></div>
+        </div>
       </div>
     </div>
 
-    <div class="tabs">
-      <div class="tab active" data-tab="config">Configuration</div>
-      <div class="tab" data-tab="test">Tester une URL</div>
-      <div class="tab" data-tab="matching">Matching 404/200</div>
-      <div class="tab" data-tab="docs">Documentation</div>
-    </div>
-
-    <!-- CONFIGURATION -->
-    <section id="tab-config" class="card">
-      <div class="row">
-        <div class="grow">
-          <label>Dictionnaire Excel (colonnes = noms de dicos, lignes = "clé, syn1, syn2…")</label>
-          <input id="fileDico" type="file" accept=".xlsx,.xls" />
-        </div>
-        <div class="grow">
-          <label>Traductions Excel (colonnes SOURCE, TRANSLATION)</label>
-          <input id="fileTrad" type="file" accept=".xlsx,.xls" />
-        </div>
-        <div class="grow">
-          <label>Parents (optionnel) – Excel avec colonne URL</label>
-          <input id="fileParents" type="file" accept=".xlsx,.xls" />
-        </div>
-      </div>
-
-      <div class="row" style="margin-top:10px">
-        <div class="grow"><label>Stopwords (virgules)</label><input id="inpStop" type="text" /></div>
-        <div class="grow"><label>Exceptions normalisation (virgules)</label><input id="inpExc" type="text" /></div>
-        <div class="grow"><label>Expressions multi-mots (virgules)</label><input id="inpMulti" type="text" /></div>
-      </div>
-
-      <div class="row" style="margin-top:10px">
-        <div class="grow"><label>Regex référence</label><input id="inpRegex" type="text" value="(?i)ref[:\- ]?([a-z0-9\-]+)" /></div>
-        <div class="grow"><label>Score minimum (UI)</label><input id="inpMin" type="number" step="0.1" value="0.5" /></div>
-      </div>
-
-      <div style="margin-top:12px">
-        <button class="btn" id="btnApply">Mettre à jour la configuration</button>
-      </div>
-
-      <div style="margin-top:12px">
-        <label>Logs configuration</label>
-        <textarea id="logsCfg" readonly></textarea>
-      </div>
-    </section>
-
-    <!-- TEST URL -->
-    <section id="tab-test" class="card hide">
-      <div class="row">
-        <div class="grow">
-          <label>URL</label>
-          <input id="testUrl" type="text" placeholder="https://www.exemple.com/produit/ref-AB1234?color=red" />
-        </div>
-        <div style="display:flex;align-items:flex-end"><button class="btn" id="btnTest">Tester</button></div>
-      </div>
-      <div style="margin-top:12px">
-        <label>Résultat</label>
-        <textarea id="testOut" readonly></textarea>
-      </div>
-    </section>
-
-    <!-- MATCHING -->
-    <section id="tab-matching" class="card hide">
-      <div class="row">
-        <div class="grow">
-          <label>Fichier 404 (sheet "404", col "URL_404")</label>
-          <input id="file404" type="file" accept=".xlsx,.xls" />
-        </div>
-        <div class="grow">
-          <label>Fichier 200 (sheet "200", col "URL_200")</label>
-          <input id="file200" type="file" accept=".xlsx,.xls" />
-        </div>
-      </div>
-
-      <div class="row" style="margin-top:10px">
-        <div class="grow"><button class="btn secondary" id="btnEstimate">Estimation (approx.)</button></div>
-        <div class="grow" style="display:flex;gap:8px;justify-content:flex-end">
-          <button class="btn ghost" id="btnClear">Vider</button>
-          <button class="btn" id="btnRun">Lancer le matching</button>
-        </div>
-      </div>
-
-      <div style="margin-top:12px">
-        <label>Logs matching</label>
-        <textarea id="logsMatch" readonly></textarea>
-      </div>
-    </section>
-
-    <!-- DOCS -->
-    <section id="tab-docs" class="card hide">
-      <p><b>Format attendu :</b></p>
-      <ul>
-        <li>Excel "404" avec onglet <code>404</code> + colonne <code>URL_404</code>.</li>
-        <li>Excel "200" avec onglet <code>200</code> + colonne <code>URL_200</code>.</li>
-      </ul>
-      <p>En production, le proxy <code>/api/proxy</code> est utilisé automatiquement.</p>
-    </section>
-
-    <div class="footer">© Interface statique – Vercel Ready (thème clair)</div>
+    <div class="sub" style="margin:24px 0 40px">© URL Matcher – Vercel + Cloud Run</div>
   </div>
 
 <script>
@@ -223,36 +214,32 @@ const supabase = window.supabase.createClient(
   { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
 );
 
+const elGate = document.getElementById('gate');
+const elLoginOpen = document.getElementById('btnLoginOpen');
+const elLogout = document.getElementById('btnLogout');
+const elUser = document.getElementById('currentUser');
+
 function setGateMsg(msg){ const el=document.getElementById('authStatus'); if(el) el.textContent=msg||''; }
-function busy(on){ const b1=document.getElementById('btnLogin'); const b2=document.getElementById('btnSignup'); if(b1)b1.disabled=!!on; if(b2)b2.disabled=!!on; }
+function busy(on){ ['btnLogin','btnSignup'].forEach(id=>{const b=document.getElementById(id); if(b) b.disabled=!!on; }); }
 
 (async function bootstrapFromHash(){
   const hash=new URLSearchParams(location.hash.slice(1));
   const access_token=hash.get('access_token'); const refresh_token=hash.get('refresh_token');
-  if(access_token && refresh_token){
-    try{ await supabase.auth.setSession({access_token,refresh_token}); }catch(e){ console.error(e); }
-    finally{ history.replaceState(null,'',location.pathname+location.search); }
-  }
+  if(access_token&&refresh_token){ try{ await supabase.auth.setSession({access_token,refresh_token}); }catch{} finally{ history.replaceState(null,'',location.pathname+location.search);} }
 })();
 
-async function refreshGate(){
+async function applyAuthUI(){
   const { data:{ session } } = await supabase.auth.getSession();
-  document.getElementById('gate')?.classList.toggle('hidden', !!session);
-  document.querySelector('.wrap')?.classList.toggle('hidden', !session);
-  document.getElementById('currentUser').textContent = session?.user?.email ? `Connecté : ${session.user.email}` : '';
+  const authed = !!session;
+  elUser.textContent = session?.user?.email ? `Connecté : ${session.user.email}` : '';
+  elLogout.classList.toggle('hidden', !authed);
+  elLoginOpen.classList.toggle('hidden', authed);
+  elGate.classList.toggle('hidden', authed);
 }
 
 supabase.auth.onAuthStateChange((event, session)=>{
-  if(event==='SIGNED_IN' && session){
-    document.getElementById('gate')?.classList.add('hidden');
-    document.querySelector('.wrap')?.classList.remove('hidden');
-    document.getElementById('currentUser').textContent = session.user?.email ? `Connecté : ${session.user.email}` : '';
-  }
-  if(event==='SIGNED_OUT'){
-    document.getElementById('gate')?.classList.remove('hidden');
-    document.querySelector('.wrap')?.classList.add('hidden');
-    document.getElementById('currentUser').textContent = '';
-  }
+  if(event==='SIGNED_IN'){ elGate.classList.add('hidden'); elLoginOpen.classList.add('hidden'); elLogout.classList.remove('hidden'); elUser.textContent=session?.user?.email?`Connecté : ${session.user.email}`:''; }
+  if(event==='SIGNED_OUT'){ elGate.classList.remove('hidden'); elLoginOpen.classList.remove('hidden'); elLogout.classList.add('hidden'); elUser.textContent=''; }
 });
 
 document.getElementById('btnLogin')?.addEventListener('click', async ()=>{
@@ -265,7 +252,7 @@ document.getElementById('btnLogin')?.addEventListener('click', async ()=>{
     if(error) return setGateMsg('Erreur: '+error.message);
     const { data:{ session } } = await supabase.auth.getSession();
     if(!session){ location.reload(); return; }
-    setGateMsg('Authentification réussie, ouverture de l’outil…'); await refreshGate();
+    setGateMsg('Connecté.'); await applyAuthUI();
   }catch(e){ setGateMsg('Erreur inattendue: '+(e?.message||e)); } finally{ busy(false); }
 });
 
@@ -281,12 +268,10 @@ document.getElementById('btnSignup')?.addEventListener('click', async ()=>{
   }catch(e){ setGateMsg('Erreur inattendue: '+(e?.message||e)); } finally{ busy(false); }
 });
 
-document.getElementById('btnLogout')?.addEventListener('click', async ()=>{
-  try { await supabase.auth.signOut(); } catch(e){ console.error('logout',e); }
-  finally { await refreshGate(); }
-});
+elLoginOpen.addEventListener('click', ()=>{ elGate.classList.remove('hidden'); });
+elLogout.addEventListener('click', async ()=>{ try{ await supabase.auth.signOut(); }finally{ await applyAuthUI(); } });
 
-refreshGate();
+applyAuthUI();
 /* =================== Fin Supabase Auth + Gate =================== */
 
 
@@ -295,10 +280,6 @@ const state={dicos:{},dicoWeights:{},translations:{},parents:[],cfg:{stop:new Se
 function saveLocal(){localStorage.setItem('matcherFront',JSON.stringify({dicoWeights:state.dicoWeights,cfg:{stop:[...state.cfg.stop],exc:[...state.cfg.exc],multi:state.cfg.multi,ref:state.cfg.ref,min:state.cfg.min},translations:state.translations,parents:state.parents}))}
 function loadLocal(){const raw=localStorage.getItem('matcherFront');if(!raw)return;try{const obj=JSON.parse(raw);state.dicoWeights=obj.dicoWeights||{};state.cfg.stop=new Set(obj?.cfg?.stop||[]);state.cfg.exc=new Set(obj?.cfg?.exc||[]);state.cfg.multi=obj?.cfg?.multi||[];state.cfg.ref=obj?.cfg?.ref||state.cfg.ref;state.cfg.min=obj?.cfg?.min??0.5;state.translations=obj.translations||{};state.parents=obj.parents||[]}catch(e){}}
 loadLocal();
-
-const tabs=document.querySelectorAll('.tab');
-const panels={config:document.getElementById('tab-config'),test:document.getElementById('tab-test'),matching:document.getElementById('tab-matching'),docs:document.getElementById('tab-docs')};
-tabs.forEach(t=>{t.addEventListener('click',()=>{tabs.forEach(x=>x.classList.remove('active'));t.classList.add('active');Object.values(panels).forEach(p=>p.classList.add('hide'));panels[t.dataset.tab].classList.remove('hide')})});
 
 const apiBase=document.getElementById('apiBase');
 const useProxy=document.getElementById('useProxy');
@@ -331,55 +312,35 @@ inpMulti.value=state.cfg.multi.join(', ');
 inpRegex.value=state.cfg.ref;
 inpMin.value=state.cfg.min;
 
-/* ====== Prod: forcer proxy + masquer réglages ====== */
-function isProd(){
-  return location.hostname.endsWith('.vercel.app');
-}
-window.addEventListener('DOMContentLoaded',()=>{
-  if(isProd()){
-    const apiBlock = document.getElementById('apiBase')?.closest('.grow');
-    const proxyBlock = document.getElementById('useProxy')?.closest('.grow');
-    if(apiBlock)  apiBlock.style.display='none';
-    if(proxyBlock) proxyBlock.style.display='none';
-    if(useProxy) useProxy.checked=true;
-  }
-});
-/* ====== Fin patch prod ====== */
+/* Prod: proxy forcé + masquage du toggle */
+function isProd(){ return location.hostname.endsWith('.vercel.app'); }
+window.addEventListener('DOMContentLoaded',()=>{ if(isProd()){ if(useProxy) useProxy.checked=true; useProxy?.closest('label')?.classList.add('hidden'); } });
 
 function buildUrl(path){
   const p=path.startsWith('/')?path:'/'+path;
-  if (isProd()) return location.origin + '/api/proxy' + p; // toujours via proxy en prod
+  if (isProd()) return location.origin + '/api/proxy' + p; // prod → proxy
   if (useProxy && useProxy.checked) return location.origin + '/api/proxy' + p;
   return apiBase.value.replace(/\/$/,'') + p;
 }
 
-/* ====== Health check multi-sondes ====== */
-function hlog(m){ logsHealth.value += (logsHealth.value?'\n':'') + m; logsHealth.scrollTop=logsHealth.scrollHeight; }
-
+/* Health */
+function hlog(m){ logsHealth.value+=(logsHealth.value?'\n':'')+m; logsHealth.scrollTop=logsHealth.scrollHeight; }
 async function tryProbe(probe, timeoutMs=5000){
   const controller=new AbortController(); const t=setTimeout(()=>controller.abort(),timeoutMs);
   const init={method:probe.method,signal:controller.signal,headers:probe.headers||{},redirect:'manual'};
-  if ('body' in probe) init.body = probe.body;
+  if('body' in probe) init.body=probe.body;
   const url=buildUrl(probe.path); const started=Date.now();
-  try{
-    const resp=await fetch(url,init);
-    const ms=Date.now()-started;
-    const ok=probe.okStatuses.includes(resp.status) || (resp.ok && probe.okStatuses.includes(200));
-    return {ok,status:resp.status,ms,url};
-  }catch(err){
-    const ms=Date.now()-started; return {ok:false,error:String(err),ms,url};
-  }finally{ clearTimeout(t); }
+  try{ const resp=await fetch(url,init); const ms=Date.now()-started; const ok=probe.okStatuses.includes(resp.status)||(resp.ok&&probe.okStatuses.includes(200)); return {ok,status:resp.status,ms,url}; }
+  catch(err){ const ms=Date.now()-started; return {ok:false,error:String(err),ms,url}; }
+  finally{ clearTimeout(t); }
 }
-
 const HEALTH_PROBES=[
   {name:'GET /',             path:'/',             method:'GET',     okStatuses:[200,204]},
   {name:'HEAD /',            path:'/',             method:'HEAD',    okStatuses:[200,204]},
   {name:'GET /openapi.json', path:'/openapi.json', method:'GET',     okStatuses:[200]},
   {name:'OPTIONS /match',    path:'/match',        method:'OPTIONS', okStatuses:[200,204]},
-  // POST /match sans body = health (proxy n’exige pas d’auth)
   {name:'POST /match (empty)', path:'/match',      method:'POST',    okStatuses:[200,204,400,415,422]}
 ];
-
 btnHealth.addEventListener('click', async ()=>{
   healthBadge.textContent='test…'; healthBadge.className='badge';
   logsHealth.value='';
@@ -390,102 +351,29 @@ btnHealth.addEventListener('click', async ()=>{
   }
   healthBadge.textContent='ERREUR'; healthBadge.className='badge err';
 });
-/* ====== Fin health check ====== */
 
+/* Config */
 btnApply.addEventListener('click',()=>{
   state.cfg.stop=new Set(inpStop.value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean));
   state.cfg.exc=new Set(inpExc.value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean));
   state.cfg.multi=inpMulti.value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
   state.cfg.ref=inpRegex.value.trim()||state.cfg.ref;
   state.cfg.min=Number(inpMin.value)||0.5;
-  saveLocal(); logsCfg.value += (logsCfg.value?'\n':'') + '[CONFIG] Paramètres appliqués.';
+  saveLocal();
+  logsCfg.value+=(logsCfg.value?'\n':'')+'[CONFIG] Paramètres appliqués.';
 });
+async function readExcel(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=e=>{try{const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});resolve(wb)}catch(err){reject(err)}};reader.onerror=reject;reader.readAsArrayBuffer(file)});}
+fileDico.addEventListener('change',async()=>{logsCfg.value='';if(!fileDico.files[0])return;try{const wb=await readExcel(fileDico.files[0]);state.dicos={};wb.SheetNames.forEach(name=>{const sh=wb.Sheets[name];const df=XLSX.utils.sheet_to_json(sh,{header:1,blankrows:false});if(df.length===0)return;const cols=df[0].map((_,i)=>df.map(row=>row[i]));cols.forEach((col,idx)=>{const dicoName=String(df[0][idx]||`Dico_${idx+1}`);if(!state.dicos[dicoName])state.dicos[dicoName]={};for(let r=1;r<col.length;r++){const cell=col[r];if(cell==null)continue;const items=String(cell).split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);if(items.length===0)continue;const key=items[0];state.dicos[dicoName][key]=(state.dicos[dicoName][key]||new Set());items.forEach(x=>state.dicos[dicoName][key].add(x))}})});saveLocal();logsCfg.value=`[DICO] ${Object.keys(state.dicos).length} dictionnaire(s) chargé(s).`}catch(e){logsCfg.value='[DICO][ERREUR] '+e.message}});
+fileTrad.addEventListener('change',async()=>{if(!fileTrad.files[0])return;try{const wb=await readExcel(fileTrad.files[0]);state.translations={};wb.SheetNames.forEach(name=>{const sh=wb.Sheets[name];const arr=XLSX.utils.sheet_to_json(sh);arr.forEach(row=>{const s=String(row['SOURCE']||'').trim().toLowerCase();const t=String(row['TRANSLATION']||'').trim().toLowerCase();if(s)state.translations[s]=t})});saveLocal();logsCfg.value=`[TRAD] ${Object.keys(state.translations).length} entrées.`}catch(e){logsCfg.value='[TRAD][ERREUR] '+e.message}});
+fileParents.addEventListener('change',async()=>{if(!fileParents.files[0])return;try{const wb=await readExcel(fileParents.files[0]);state.parents=[];wb.SheetNames.forEach(name=>{const sh=wb.Sheets[name];const arr=XLSX.utils.sheet_to_json(sh);arr.forEach(row=>{if(row.URL)state.parents.push(String(row.URL))})});saveLocal();logsCfg.value=`[PARENTS] ${state.parents.length} URLs.`}catch(e){logsCfg.value='[PARENTS][ERREUR] '+e.message}});
 
-async function readExcel(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=e=>{try{const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});resolve(wb)}catch(err){reject(err)}};reader.onerror=reject;reader.readAsArrayBuffer(file)})}
+/* Test URL simple */
+btnTest.addEventListener('click',()=>{const url=testUrl.value.trim();const logs=[];if(!url){testOut.value='Veuillez saisir une URL.';return}logs.push(`URL brute : ${url}`);const cleaned=url.replace(/^https?:\/\//i,'').replace(/^www\./i,'');logs.push('URL nettoyée :');logs.push(' → '+cleaned);const tokens=cleaned.toLowerCase().split(/[\/\-\_\?\&\=\s]+/).filter(Boolean);logs.push('Tokens :');logs.push(tokens.length?(' → '+tokens.join(', ')):' → Aucun token');testOut.value=logs.join('\n')});
 
-fileDico.addEventListener('change',async()=>{
-  logsCfg.value=''; if(!fileDico.files[0])return;
-  try{
-    const wb=await readExcel(fileDico.files[0]); state.dicos={};
-    wb.SheetNames.forEach(name=>{
-      const sh=wb.Sheets[name]; const df=XLSX.utils.sheet_to_json(sh,{header:1,blankrows:false}); if(df.length===0)return;
-      const cols=df[0].map((_,i)=>df.map(row=>row[i]));
-      cols.forEach((col,idx)=>{
-        const dicoName=String(df[0][idx]||`Dico_${idx+1}`); if(!state.dicos[dicoName])state.dicos[dicoName]={};
-        for(let r=1;r<col.length;r++){ const cell=col[r]; if(cell==null)continue;
-          const items=String(cell).split(',').map(s=>s.trim().toLowerCase()).filter(Boolean); if(items.length===0)continue;
-          const key=items[0]; state.dicos[dicoName][key]=(state.dicos[dicoName][key]||new Set()); items.forEach(x=>state.dicos[dicoName][key].add(x));
-        }
-      });
-    });
-    logsCfg.value='[DICO] '+Object.keys(state.dicos).length+' dictionnaire(s) chargé(s).';
-  }catch(e){ logsCfg.value='[DICO][ERREUR] '+e.message; }
-});
-
-fileTrad.addEventListener('change',async()=>{
-  if(!fileTrad.files[0])return;
-  try{
-    const wb=await readExcel(fileTrad.files[0]); state.translations={};
-    wb.SheetNames.forEach(name=>{
-      const arr=XLSX.utils.sheet_to_json(wb.Sheets[name]);
-      arr.forEach(row=>{ const s=String(row['SOURCE']||'').trim().toLowerCase(); const t=String(row['TRANSLATION']||'').trim().toLowerCase(); if(s)state.translations[s]=t; });
-    });
-    logsCfg.value='[TRAD] '+Object.keys(state.translations).length+' entrées.';
-  }catch(e){ logsCfg.value='[TRAD][ERREUR] '+e.message; }
-});
-
-fileParents.addEventListener('change',async()=>{
-  if(!fileParents.files[0])return;
-  try{
-    const wb=await readExcel(fileParents.files[0]); state.parents=[];
-    wb.SheetNames.forEach(name=>{
-      const arr=XLSX.utils.sheet_to_json(wb.Sheets[name]);
-      arr.forEach(row=>{ if(row.URL) state.parents.push(String(row.URL)); });
-    });
-    logsCfg.value='[PARENTS] '+state.parents.length+' URLs.';
-  }catch(e){ logsCfg.value='[PARENTS][ERREUR] '+e.message; }
-});
-
-btnTest.addEventListener('click',()=>{
-  const url=testUrl.value.trim(); const logs=[];
-  if(!url){ testOut.value='Veuillez saisir une URL.'; return; }
-  logs.push(`URL brute : ${url}`);
-  const cleaned=url.replace(/^https?:\/\//i,'').replace(/^www\./i,'');
-  logs.push('URL nettoyée (clean) :'); logs.push(' → '+cleaned);
-  const tokens=cleaned.toLowerCase().split(/[\/\-\_\?\&\=\s]+/).filter(Boolean);
-  logs.push('Tokens :'); logs.push(tokens.length?(' → '+tokens.join(', ')):' → Aucun token');
-  testOut.value=logs.join('\n');
-});
-
-btnEstimate.addEventListener('click',async()=>{
-  logsMatch.value=''; if(!file404.files[0]||!file200.files[0]){logsMatch.value='Charge les deux fichiers d\'abord.';return}
-  try{
-    const wb404=await readExcel(file404.files[0]); const sh404=wb404.Sheets['404']||wb404.Sheets[wb404.SheetNames[0]]; const arr404=XLSX.utils.sheet_to_json(sh404);
-    const wb200=await readExcel(file200.files[0]); const sh200=wb200.Sheets['200']||wb200.Sheets[wb200.SheetNames[0]]; const arr200=XLSX.utils.sheet_to_json(sh200);
-    if(arr404.length===0||arr200.length===0){logsMatch.value='[ESTIMATION] Impossible : fichiers vides.';return}
-    const total=arr404.length; const est=(0.035+0.025)*total; const min=(est/60).toFixed(1);
-    logsMatch.value=`[ESTIMATION] ~ ${min} minutes (approximation navigateur).`;
-  }catch(e){ logsMatch.value='[ESTIMATION][ERREUR] '+e.message; }
-});
-
+/* Matching */
+btnEstimate.addEventListener('click',async()=>{logsMatch.value='';if(!file404.files[0]||!file200.files[0]){logsMatch.value='Charge les deux fichiers d\'abord.';return}try{const wb404=await readExcel(file404.files[0]);const sh404=wb404.Sheets['404']||wb404.Sheets[wb404.SheetNames[0]];const arr404=XLSX.utils.sheet_to_json(sh404);const wb200=await readExcel(file200.files[0]);const sh200=wb200.Sheets['200']||wb200.Sheets[wb200.SheetNames[0]];const arr200=XLSX.utils.sheet_to_json(sh200);if(arr404.length===0||arr200.length===0){logsMatch.value='[ESTIMATION] Fichiers vides.';return}const total=arr404.length;const est=(0.035+0.025)*total;const min=(est/60).toFixed(1);logsMatch.value=`[ESTIMATION] ~ ${min} minutes (approx).`}catch(e){logsMatch.value='[ESTIMATION][ERREUR] '+e.message}});
 btnClear.addEventListener('click',()=>{logsMatch.value='';file404.value='';file200.value=''});
-
-// Upload protégé : ajoute le token si connecté
-btnRun.addEventListener('click',async()=>{
-  logsMatch.value=''; if(!file404.files[0]||!file200.files[0]){logsMatch.value='Upload les fichiers d\'abord.';return}
-  try{
-    const form=new FormData(); form.append('file404',file404.files[0]); form.append('file200',file200.files[0]);
-    logsMatch.value='[0%] Upload en cours…';
-    const { data:{ session } } = await supabase.auth.getSession();
-    const token=session?.access_token||null; const headers={}; if(token) headers['Authorization']=`Bearer ${token}`;
-    const r=await fetch(buildUrl('/match'),{method:'POST',headers,body:form});
-    if(!r.ok){ const txt=await r.text(); throw new Error('HTTP '+r.status+' – '+txt); }
-    logsMatch.value+=' \n[60%] Traitement côté API…';
-    const blob=await r.blob(); logsMatch.value+=' \n[90%] Réception du résultat…';
-    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='result.xlsx'; document.body.appendChild(a); a.click(); a.remove();
-    logsMatch.value+=' \n[100%] Terminé. Fichier téléchargé : result.xlsx';
-  }catch(e){ logsMatch.value='[ERREUR] '+e.message; }
-});
+btnRun.addEventListener('click',async()=>{logsMatch.value='';if(!file404.files[0]||!file200.files[0]){logsMatch.value='Upload les fichiers d\'abord.';return}try{const form=new FormData();form.append('file404',file404.files[0]);form.append('file200',file200.files[0]);logsMatch.value='[0%] Upload en cours…';const { data:{ session } }=await supabase.auth.getSession();const token=session?.access_token||null;const headers={};if(token) headers['Authorization']=`Bearer ${token}`;const r=await fetch(buildUrl('/match'),{method:'POST',headers,body:form});if(!r.ok){const txt=await r.text();throw new Error('HTTP '+r.status+' – '+txt)}logsMatch.value+=' \n[60%] Traitement côté API…';const blob=await r.blob();logsMatch.value+=' \n[90%] Réception du résultat…';const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='result.xlsx';document.body.appendChild(a);a.click();a.remove();logsMatch.value+=' \n[100%] Terminé. Fichier téléchargé : result.xlsx'}catch(e){logsMatch.value='[ERREUR] '+e.message}});
 </script>
 </body>
 </html>
