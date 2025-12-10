@@ -13,7 +13,7 @@
     .card{background:var(--card);border:1px solid #21306a66;border-radius:14px;padding:16px;box-shadow:0 10px 40px #0004}
     .row{display:flex;gap:12px;flex-wrap:wrap}
     .grow{flex:1 1 260px}
-    input[type=text], input[type=url], input[type=number], textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #2a3a80;background:#0e1530;color:var(--text)}
+    input[type=text], input[type=url], input[type=number], input[type=email], input[type=password], textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #2a3a80;background:#0e1530;color:var(--text)}
     textarea{min-height:120px;white-space:pre-wrap}
     .btn{cursor:pointer;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 14px;font-weight:600}
     .btn.secondary{background:#1f2b5c}
@@ -32,12 +32,42 @@
     .footer{opacity:.7;margin:22px 0 40px}
     .code{background:#0a0f25;border:1px solid #1c2b69;padding:10px;border-radius:10px;overflow:auto}
   </style>
+
+  <!-- XLSX -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Variables publiques Supabase (remplace si besoin par injection build-time) -->
+  <script>
+    window.SUPABASE_URL = "https://srvvdrhiaygklqjijdtq.supabase.co";
+    window.SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Tm5K5o-Fq_UBHP9Qp6JBog_rtKQjpDi";
+  </script>
 </head>
 <body>
   <div class="wrap">
     <div class="title">Matching 404 → 200 – Interface Web</div>
     <div class="sub">Frontend statique. Upload → <code>/match</code> Cloud Run → téléchargement du résultat.</div>
+
+    <!-- Auth box -->
+    <div id="authBox" class="card" style="margin-top:12px; max-width:520px;">
+      <div style="font-weight:600; margin-bottom:8px;">Authentification</div>
+      <div class="row">
+        <div class="grow">
+          <input id="authEmail" type="email" placeholder="Email">
+        </div>
+        <div class="grow">
+          <input id="authPassword" type="password" placeholder="Mot de passe">
+        </div>
+      </div>
+      <div style="margin-top:10px; display:flex; gap:8px; align-items:center;">
+        <button class="btn" id="btnLogin">Se connecter</button>
+        <button class="btn secondary" id="btnSignup">Créer un compte</button>
+        <button class="btn ghost" id="btnLogout" style="margin-left:auto;">Se déconnecter</button>
+      </div>
+      <div id="authStatus" class="muted" style="margin-top:8px;"></div>
+    </div>
 
     <div class="card" style="margin-top:16px">
       <div class="row">
@@ -160,6 +190,56 @@
 <script>
 /* === JS principal === */
 
+/* ===== Supabase Auth ===== */
+const supabase = window.supabase.createClient(
+  window.SUPABASE_URL,
+  window.SUPABASE_PUBLISHABLE_KEY
+);
+
+async function getToken() {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token || null;
+}
+
+function setAuthStatus(msg) {
+  const el = document.getElementById('authStatus');
+  if (el) el.textContent = msg || '';
+}
+
+async function refreshAuthUI() {
+  const { data: { session } } = await supabase.auth.getSession();
+  const authed = !!session;
+  setAuthStatus(authed ? `Connecté en tant que ${session.user.email}` : 'Non connecté');
+}
+
+document.getElementById('btnLogin')?.addEventListener('click', async () => {
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) setAuthStatus('Erreur: ' + error.message);
+  else setAuthStatus('Connecté ✔');
+  refreshAuthUI();
+});
+
+document.getElementById('btnSignup')?.addEventListener('click', async () => {
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  const { error } = await supabase.auth.signUp({ email, password });
+  if (error) setAuthStatus('Erreur: ' + error.message);
+  else setAuthStatus('Compte créé ✔ — vérifie ton email si la confirmation est activée');
+  refreshAuthUI();
+});
+
+document.getElementById('btnLogout')?.addEventListener('click', async () => {
+  await supabase.auth.signOut();
+  setAuthStatus('Déconnecté');
+  refreshAuthUI();
+});
+
+supabase.auth.onAuthStateChange((_event, _session) => refreshAuthUI());
+refreshAuthUI();
+/* === Fin Supabase Auth === */
+
 const state={dicos:{},dicoWeights:{},translations:{},parents:[],cfg:{stop:new Set(),exc:new Set(),multi:[],ref:'(?i)ref[:\\- ]?([a-z0-9\\-]+)',min:0.5}};
 function saveLocal(){localStorage.setItem('matcherFront',JSON.stringify({dicoWeights:state.dicoWeights,cfg:{stop:[...state.cfg.stop],exc:[...state.cfg.exc],multi:state.cfg.multi,ref:state.cfg.ref,min:state.cfg.min},translations:state.translations,parents:state.parents}))}
 function loadLocal(){const raw=localStorage.getItem('matcherFront');if(!raw)return;try{const obj=JSON.parse(raw);state.dicoWeights=obj.dicoWeights||{};state.cfg.stop=new Set(obj?.cfg?.stop||[]);state.cfg.exc=new Set(obj?.cfg?.exc||[]);state.cfg.multi=obj?.cfg?.multi||[];state.cfg.ref=obj?.cfg?.ref||state.cfg.ref;state.cfg.min=obj?.cfg?.min??0.5;state.translations=obj.translations||{};state.parents=obj.parents||[]}catch(e){}}
@@ -221,7 +301,7 @@ window.addEventListener('DOMContentLoaded',()=>{
     const proxyBlock = document.getElementById('useProxy')?.closest('.grow');
     if(apiBlock)  apiBlock.style.display='none';
     if(proxyBlock) proxyBlock.style.display='none';
-    // Forcer la case proxy (utile si buildUrl se base sur la checkbox en dev)
+    // Forcer la case proxy
     if (useProxy) useProxy.checked = true;
   }
 });
@@ -233,7 +313,7 @@ function buildUrl(path){
     // En production: toujours via le proxy Vercel
     return location.origin + '/api/proxy' + p;
   }
-  // En dev: garder le comportement existant (checkbox)
+  // En dev: checkbox
   if(useProxy && useProxy.checked){return location.origin+'/api/proxy'+p}
   return apiBase.value.replace(/\/$/,'')+p
 }
@@ -300,7 +380,41 @@ btnEstimate.addEventListener('click',async()=>{logsMatch.value='';if(!file404.fi
 
 btnClear.addEventListener('click',()=>{logsMatch.value='';file404.value='';file200.value=''});
 
-btnRun.addEventListener('click',async()=>{logsMatch.value='';if(!file404.files[0]||!file200.files[0]){logMatch('Upload les fichiers d\'abord.');return}try{const form=new FormData();form.append('file404',file404.files[0]);form.append('file200',file200.files[0]);logMatch('[0%] Upload en cours…');const r=await fetch(buildUrl('/match'),{method:'POST',body:form});if(!r.ok){const txt=await r.text();throw new Error('HTTP '+r.status+' – '+txt)}logMatch('[60%] Traitement côté API…');const blob=await r.blob();logMatch('[90%] Réception du résultat…');const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='result.xlsx';document.body.appendChild(a);a.click();a.remove();logMatch('[100%] Terminé. Fichier téléchargé : result.xlsx')}catch(e){logMatch('[ERREUR] '+e.message)}});
+// >>>>>>>>>>>> ICI : envoi du token Supabase pour le vrai upload
+btnRun.addEventListener('click',async()=>{
+  logsMatch.value='';
+  if(!file404.files[0]||!file200.files[0]){logMatch('Upload les fichiers d\'abord.');return}
+  try{
+    const form=new FormData();
+    form.append('file404',file404.files[0]);
+    form.append('file200',file200.files[0]);
+
+    logMatch('[0%] Upload en cours…');
+
+    const token = await getToken();
+    const headers = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const r=await fetch(buildUrl('/match'),{method:'POST',headers,body:form});
+    if(!r.ok){
+      const txt=await r.text();
+      throw new Error('HTTP '+r.status+' – '+txt)
+    }
+
+    logMatch('[60%] Traitement côté API…');
+    const blob=await r.blob();
+    logMatch('[90%] Réception du résultat…');
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='result.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    logMatch('[100%] Terminé. Fichier téléchargé : result.xlsx')
+  }catch(e){
+    logMatch('[ERREUR] '+e.message)
+  }
+});
 </script>
 </body>
 </html>
