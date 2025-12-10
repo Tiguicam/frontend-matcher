@@ -47,7 +47,6 @@
 
   <!-- Variables publiques Supabase -->
   <script>
-    // Remplace si besoin par des variables injectées au build
     window.SUPABASE_URL = "https://srvvdrhiaygklqjijdtq.supabase.co";
     window.SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Tm5K5o-Fq_UBHP9Qp6JBog_rtKQjpDi";
   </script>
@@ -214,6 +213,29 @@ function setGateMsg(msg) {
   if (el) el.textContent = msg || '';
 }
 
+// Désactive/active les boutons pendant les requêtes
+function busy(on) {
+  const btnL = document.getElementById('btnLogin');
+  const btnS = document.getElementById('btnSignup');
+  if (btnL) btnL.disabled = !!on;
+  if (btnS) btnS.disabled = !!on;
+}
+
+// Si on revient depuis l’email (#access_token / #refresh_token) → crée la session et nettoie l’URL
+(async function bootstrapFromHash() {
+  const hash = new URLSearchParams(location.hash.slice(1));
+  const access_token = hash.get('access_token');
+  const refresh_token = hash.get('refresh_token');
+  if (access_token && refresh_token) {
+    try {
+      await supabase.auth.setSession({ access_token, refresh_token });
+      history.replaceState(null, '', location.pathname + location.search);
+    } catch (e) {
+      console.error('setSession from hash failed:', e);
+    }
+  }
+})();
+
 async function refreshGate() {
   const { data: { session } } = await supabase.auth.getSession();
   const authed = !!session;
@@ -225,19 +247,51 @@ document.getElementById('btnLogin')?.addEventListener('click', async () => {
   const email = document.getElementById('authEmail').value.trim();
   const password = document.getElementById('authPassword').value;
   if (!email || !password) return setGateMsg('Renseignez email et mot de passe.');
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) setGateMsg('Erreur: ' + error.message);
-  else setGateMsg('Connecté ✔');
-  refreshGate();
+  setGateMsg('Connexion en cours…');
+  busy(true);
+  try {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      setGateMsg('Erreur: ' + error.message);
+      console.error('login error', error);
+      return;
+    }
+    setGateMsg('Connecté ✔');
+    await refreshGate();
+  } catch (e) {
+    console.error(e);
+    setGateMsg('Erreur inattendue: ' + (e?.message || e));
+  } finally {
+    busy(false);
+  }
 });
 
 document.getElementById('btnSignup')?.addEventListener('click', async () => {
   const email = document.getElementById('authEmail').value.trim();
   const password = document.getElementById('authPassword').value;
   if (!email || !password) return setGateMsg('Renseignez email et mot de passe (min. 6 caractères).');
-  const { error } = await supabase.auth.signUp({ email, password });
-  if (error) setGateMsg('Erreur: ' + error.message);
-  else setGateMsg('Compte créé ✔. Vérifiez votre email si la confirmation est activée.');
+  setGateMsg('Création du compte…');
+  busy(true);
+  try {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      // Redirection après clic sur l’email de confirmation
+      options: { emailRedirectTo: `${location.origin}/` }
+    });
+    if (error) {
+      setGateMsg('Erreur: ' + error.message);
+      console.error('signup error', error);
+      return;
+    }
+    console.log('signup result', data);
+    setGateMsg('Compte créé ✔. Vérifie ton email et clique sur le lien.');
+  } catch (e) {
+    console.error(e);
+    setGateMsg('Erreur inattendue: ' + (e?.message || e));
+  } finally {
+    busy(false);
+  }
 });
 
 supabase.auth.onAuthStateChange((_event, _session) => refreshGate());
