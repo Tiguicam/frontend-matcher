@@ -51,7 +51,7 @@
           <div class="muted">Coche si CORS bloque ou par défaut en production Vercel.</div>
         </div>
         <div style="display:flex;align-items:flex-end;gap:8px">
-          <button class="btn" id="btnHealth">Tester l’API</button>
+          <button class="btn" id="btnHealth">Test de fonctionnement</button>
           <span id="healthBadge" class="badge muted">en attente…</span>
         </div>
       </div>
@@ -158,9 +158,7 @@
   </div>
 
 <script>
-/* === Tout ton code JS complet ici === */
-/* EXACTEMENT celui que tu avais collé dans ton message précédent */
-/* Je te le laisse tel quel ci-dessous pour ne rien casser : */
+/* === JS principal === */
 
 const state={dicos:{},dicoWeights:{},translations:{},parents:[],cfg:{stop:new Set(),exc:new Set(),multi:[],ref:'(?i)ref[:\\- ]?([a-z0-9\\-]+)',min:0.5}};
 function saveLocal(){localStorage.setItem('matcherFront',JSON.stringify({dicoWeights:state.dicoWeights,cfg:{stop:[...state.cfg.stop],exc:[...state.cfg.exc],multi:state.cfg.multi,ref:state.cfg.ref,min:state.cfg.min},translations:state.translations,parents:state.parents}))}
@@ -211,9 +209,36 @@ function logMatch(msg){logsMatch.value+=(logsMatch.value?"\n":"")+msg;logsMatch.
 function normalizeText(s){if(!s)return'';return String(s).toLowerCase().replace(/[-_\/]+/g,' ').trim()}
 function tokenize(s){let t=normalizeText(s);state.cfg.multi.forEach(exp=>{const r=new RegExp(exp.replace(/[-\s]+/g,'\\s+'),'gi');t=t.replace(r,exp.replace(/\s+/g,'-'))});let tokens=t.split(/\s+/).filter(Boolean);tokens=tokens.filter(x=>!state.cfg.stop.has(x));tokens=tokens.map(tok=>state.translations[tok]||tok);const active=Object.keys(state.dicos).filter(n=>(state.dicoWeights[n]||{active:true}).active);tokens=tokens.map(tok=>{for(const name of active){const dict=state.dicos[name];for(const key in dict){if(dict[key].has(tok)||key===tok)return key}}return tok});return tokens}
 function extractRef(s){try{const m=new RegExp(state.cfg.ref).exec(s);return m?m[1]:null}catch(e){return null}}
-function buildUrl(path){const p=path.startsWith('/')?path:'/'+path;if(useProxy&&useProxy.checked){return location.origin+'/api/proxy'+p}return apiBase.value.replace(/\/$/,'')+p}
 
-/* ====== Health check multi-sondes (remplace l'ancien /healthz) ====== */
+/* ====== Prod: forcer proxy + masquer réglages ====== */
+function isProd(){
+  return location.hostname.endsWith('.vercel.app') || location.hostname === 'frontend-matcher.vercel.app';
+}
+window.addEventListener('DOMContentLoaded',()=>{
+  if(isProd()){
+    // Masquer les blocs "URL API" et "Utiliser proxy"
+    const apiBlock = document.getElementById('apiBase')?.closest('.grow');
+    const proxyBlock = document.getElementById('useProxy')?.closest('.grow');
+    if(apiBlock)  apiBlock.style.display='none';
+    if(proxyBlock) proxyBlock.style.display='none';
+    // Forcer la case proxy (utile si buildUrl se base sur la checkbox en dev)
+    if (useProxy) useProxy.checked = true;
+  }
+});
+/* ====== Fin patch prod ====== */
+
+function buildUrl(path){
+  const p=path.startsWith('/')?path:'/'+path;
+  if (isProd()) {
+    // En production: toujours via le proxy Vercel
+    return location.origin + '/api/proxy' + p;
+  }
+  // En dev: garder le comportement existant (checkbox)
+  if(useProxy && useProxy.checked){return location.origin+'/api/proxy'+p}
+  return apiBase.value.replace(/\/$/,'')+p
+}
+
+/* ====== Health check multi-sondes ====== */
 async function tryProbe(probe, timeoutMs=4000){
   const controller=new AbortController();
   const t=setTimeout(()=>controller.abort(),timeoutMs);
