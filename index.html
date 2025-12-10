@@ -5,37 +5,42 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Matching 404/200 – Frontend</title>
   <style>
-    :root{--bg:#0b1020;--card:#121a35;--muted:#8aa0ff;--text:#e6ebff;--accent:#4f66ff;--ok:#2ecc71;--err:#ff5c5c}
-    *{box-sizing:border-box} body{margin:0;font-family:system-ui,Segoe UI,Roboto,Arial;background:linear-gradient(180deg,#0b1020,#0b1020 40%,#111936);color:var(--text)}
+    :root{
+      --bg:#f6f8fb; --card:#ffffff; --muted:#5f6b7a; --text:#0f172a; --accent:#3b82f6;
+      --ok:#16a34a; --err:#dc2626; --border:#e5e7eb; --input:#f9fafb
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text)}
     .wrap{max-width:1000px;margin:24px auto;padding:0 16px}
-    .title{font-weight:700;font-size:28px;letter-spacing:.3px}
+    .title{font-weight:700;font-size:28px;letter-spacing:.2px}
     .sub{opacity:.85;margin-top:4px}
-    .card{background:var(--card);border:1px solid #21306a66;border-radius:14px;padding:16px;box-shadow:0 10px 40px #0004}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:0 6px 24px #0000000d}
     .row{display:flex;gap:12px;flex-wrap:wrap}
     .grow{flex:1 1 260px}
-    input[type=text], input[type=url], input[type=number], input[type=email], input[type=password], textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #2a3a80;background:#0e1530;color:var(--text)}
+    input[type=text],input[type=url],input[type=number],input[type=email],input[type=password],textarea{
+      width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);
+      background:var(--input);color:var(--text)
+    }
     textarea{min-height:120px;white-space:pre-wrap}
     .btn{cursor:pointer;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 14px;font-weight:600}
-    .btn.secondary{background:#1f2b5c}
-    .btn.ghost{background:transparent;border:1px solid #2a3a80}
+    .btn.secondary{background:#64748b}
+    .btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
     .tabs{display:flex;gap:10px;margin:18px 0}
-    .tab{padding:10px 12px;border-radius:10px;background:#142057;cursor:pointer;border:1px solid #223072}
-    .tab.active{background:var(--accent)}
+    .tab{padding:10px 12px;border-radius:10px;background:#eef2ff;cursor:pointer;border:1px solid var(--border);color:#1e3a8a}
+    .tab.active{background:var(--accent);color:#fff}
     .hide{display:none}
     .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px}
-    .ok{background:#193f2b;color:#9ff1bf}
-    .err{background:#43202b;color:#ffb0b0}
-    .muted{color:#a9b6ff99;font-size:14px}
-    .table{width:100%;border-collapse:collapse}
-    .table th,.table td{border:1px solid #2a3a80;padding:6px 8px}
-    .sticky{position:sticky;top:0;background:var(--card);z-index:2}
+    .ok{background:#dcfce7;color:#065f46;border:1px solid #bbf7d0}
+    .err{background:#fee2e2;color:#991b1b;border:1px solid #fecaca}
+    .muted{color:var(--muted);font-size:14px}
     .footer{opacity:.7;margin:22px 0 40px}
-    .code{background:#0a0f25;border:1px solid #1c2b69;padding:10px;border-radius:10px;overflow:auto}
-    /* === Auth Gate === */
+    .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+    .hidden{display:none !important}
+
+    /* === Auth Gate (light) === */
     #gate { position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
-      background:linear-gradient(180deg,#0b1020,#111936); z-index:50; }
-    #gate .card { width: 520px; }
-    .hidden { display:none !important; }
+      background:#eef2f7; z-index:50; }
+    #gate .card { width:520px }
   </style>
 
   <!-- XLSX -->
@@ -54,8 +59,8 @@
   <!-- ===== AUTH GATE ===== -->
   <div id="gate">
     <div class="card">
-      <div style="font-weight:700; font-size:20px; margin-bottom:6px;">Connexion requise</div>
-      <div class="muted" style="margin-bottom:12px;">Connectez-vous pour accéder à l’outil.</div>
+      <div class="title" style="font-size:22px">Connexion requise</div>
+      <div class="muted" style="margin:6px 0 12px">Connectez-vous pour accéder à l’outil.</div>
 
       <div class="row">
         <div class="grow">
@@ -76,24 +81,37 @@
   <!-- ===== FIN AUTH GATE ===== -->
 
   <div class="wrap hidden"><!-- masquée tant que non connecté -->
-    <div class="title">Matching 404 → 200 – Interface Web</div>
-    <div class="sub">Frontend statique. Upload → <code>/match</code> Cloud Run → téléchargement du résultat.</div>
 
-    <div class="card" style="margin-top:16px">
+    <div class="topbar">
+      <div>
+        <div class="title">Matching 404 → 200 – Interface Web</div>
+        <div class="sub">Frontend statique. Upload → <code>/match</code> Cloud Run → téléchargement du résultat.</div>
+      </div>
+      <div>
+        <span id="currentUser" class="muted" style="margin-right:8px"></span>
+        <button class="btn ghost" id="btnLogout">Se déconnecter</button>
+      </div>
+    </div>
+
+    <div class="card">
       <div class="row">
         <div class="grow">
           <label>URL de l'API (Cloud Run)</label>
           <input id="apiBase" type="url" value="https://url-matcher-70649262164.europe-west1.run.app" />
-          <div class="muted">Doit exposer <code>POST /match</code>. Le health check teste <code>/</code>, <code>/openapi.json</code>, <code>OPTIONS /match</code> ou un <code>POST /match</code> “à vide”.</div>
+          <div class="muted">Expose <code>POST /match</code>. Le health check teste <code>/</code>, <code>/openapi.json</code>, <code>OPTIONS /match</code> et un <code>POST /match</code> “à vide”.</div>
         </div>
         <div class="grow" style="align-self:flex-end">
           <label><input id="useProxy" type="checkbox" /> Utiliser proxy relatif <code>/api/proxy</code> (Vercel)</label>
-          <div class="muted">Coche si CORS bloque ou par défaut en production Vercel.</div>
+          <div class="muted">Par défaut forcé en production Vercel.</div>
         </div>
         <div style="display:flex;align-items:flex-end;gap:8px">
           <button class="btn" id="btnHealth">Test de fonctionnement</button>
           <span id="healthBadge" class="badge muted">en attente…</span>
         </div>
+      </div>
+      <div style="margin-top:10px">
+        <label>Logs health</label>
+        <textarea id="logsHealth" readonly></textarea>
       </div>
     </div>
 
@@ -191,10 +209,10 @@
         <li>Excel "404" avec onglet <code>404</code> + colonne <code>URL_404</code>.</li>
         <li>Excel "200" avec onglet <code>200</code> + colonne <code>URL_200</code>.</li>
       </ul>
-      <p>Proxy Vercel activable via la case “Utiliser proxy”.</p>
+      <p>En production, le proxy <code>/api/proxy</code> est utilisé automatiquement.</p>
     </section>
 
-    <div class="footer">© Interface statique – Vercel Ready</div>
+    <div class="footer">© Interface statique – Vercel Ready (thème clair)</div>
   </div>
 
 <script>
@@ -202,125 +220,77 @@
 const supabase = window.supabase.createClient(
   window.SUPABASE_URL,
   window.SUPABASE_PUBLISHABLE_KEY,
-  {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true
-    }
-  }
+  { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
 );
 
-function setGateMsg(msg) {
-  const el = document.getElementById('authStatus');
-  if (el) el.textContent = msg || '';
-}
+function setGateMsg(msg){ const el=document.getElementById('authStatus'); if(el) el.textContent=msg||''; }
+function busy(on){ const b1=document.getElementById('btnLogin'); const b2=document.getElementById('btnSignup'); if(b1)b1.disabled=!!on; if(b2)b2.disabled=!!on; }
 
-function busy(on) {
-  const btnL = document.getElementById('btnLogin');
-  const btnS = document.getElementById('btnSignup');
-  if (btnL) btnL.disabled = !!on;
-  if (btnS) btnS.disabled = !!on;
-}
-
-// Bootstrap session depuis #access_token/#refresh_token (retour email)
-(async function bootstrapFromHash() {
-  const hash = new URLSearchParams(location.hash.slice(1));
-  const access_token = hash.get('access_token');
-  const refresh_token = hash.get('refresh_token');
-  if (access_token && refresh_token) {
-    try {
-      await supabase.auth.setSession({ access_token, refresh_token });
-    } catch (e) {
-      console.error('setSession from hash failed:', e);
-    } finally {
-      history.replaceState(null, '', location.pathname + location.search);
-    }
+(async function bootstrapFromHash(){
+  const hash=new URLSearchParams(location.hash.slice(1));
+  const access_token=hash.get('access_token'); const refresh_token=hash.get('refresh_token');
+  if(access_token && refresh_token){
+    try{ await supabase.auth.setSession({access_token,refresh_token}); }catch(e){ console.error(e); }
+    finally{ history.replaceState(null,'',location.pathname+location.search); }
   }
 })();
 
-async function refreshGate() {
-  const { data: { session } } = await supabase.auth.getSession();
-  console.log('REFRESH_GATE session?', !!session);
+async function refreshGate(){
+  const { data:{ session } } = await supabase.auth.getSession();
   document.getElementById('gate')?.classList.toggle('hidden', !!session);
   document.querySelector('.wrap')?.classList.toggle('hidden', !session);
+  document.getElementById('currentUser').textContent = session?.user?.email ? `Connecté : ${session.user.email}` : '';
 }
 
-// Bascule UI immédiatement sur évènements d’auth
-supabase.auth.onAuthStateChange((event, session) => {
-  console.log('AUTH_EVT', event, !!session);
-  if (event === 'SIGNED_IN' && session) {
+supabase.auth.onAuthStateChange((event, session)=>{
+  if(event==='SIGNED_IN' && session){
     document.getElementById('gate')?.classList.add('hidden');
     document.querySelector('.wrap')?.classList.remove('hidden');
+    document.getElementById('currentUser').textContent = session.user?.email ? `Connecté : ${session.user.email}` : '';
   }
-  if (event === 'SIGNED_OUT') {
+  if(event==='SIGNED_OUT'){
     document.getElementById('gate')?.classList.remove('hidden');
     document.querySelector('.wrap')?.classList.add('hidden');
+    document.getElementById('currentUser').textContent = '';
   }
 });
 
-document.getElementById('btnLogin')?.addEventListener('click', async () => {
-  const email = document.getElementById('authEmail').value.trim();
-  const password = document.getElementById('authPassword').value;
-  if (!email || !password) return setGateMsg('Renseignez email et mot de passe.');
-  setGateMsg('Connexion en cours…');
-  busy(true);
-  try {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      setGateMsg('Erreur: ' + error.message);
-      console.error('login error', error);
-      return;
-    }
-    // Fallback si la session n'est pas lisible immédiatement
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      console.warn('Session encore null juste après login → reload de garde');
-      location.reload();
-      return;
-    }
-    setGateMsg('Authentification réussie, ouverture de l’outil…');
-    await refreshGate();
-  } catch (e) {
-    console.error(e);
-    setGateMsg('Erreur inattendue: ' + (e?.message || e));
-  } finally {
-    busy(false);
-  }
+document.getElementById('btnLogin')?.addEventListener('click', async ()=>{
+  const email=document.getElementById('authEmail').value.trim();
+  const password=document.getElementById('authPassword').value;
+  if(!email||!password) return setGateMsg('Renseignez email et mot de passe.');
+  setGateMsg('Connexion en cours…'); busy(true);
+  try{
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if(error) return setGateMsg('Erreur: '+error.message);
+    const { data:{ session } } = await supabase.auth.getSession();
+    if(!session){ location.reload(); return; }
+    setGateMsg('Authentification réussie, ouverture de l’outil…'); await refreshGate();
+  }catch(e){ setGateMsg('Erreur inattendue: '+(e?.message||e)); } finally{ busy(false); }
 });
 
-document.getElementById('btnSignup')?.addEventListener('click', async () => {
-  const email = document.getElementById('authEmail').value.trim();
-  const password = document.getElementById('authPassword').value;
-  if (!email || !password) return setGateMsg('Renseignez email et mot de passe (min. 6 caractères).');
-  setGateMsg('Création du compte…');
-  busy(true);
-  try {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: `${location.origin}/` }
-    });
-    if (error) {
-      setGateMsg('Erreur: ' + error.message);
-      console.error('signup error', error);
-      return;
-    }
-    console.log('signup result', data);
+document.getElementById('btnSignup')?.addEventListener('click', async ()=>{
+  const email=document.getElementById('authEmail').value.trim();
+  const password=document.getElementById('authPassword').value;
+  if(!email||!password) return setGateMsg('Renseignez email et mot de passe (min. 6 caractères).');
+  setGateMsg('Création du compte…'); busy(true);
+  try{
+    const { error } = await supabase.auth.signUp({ email, password, options:{ emailRedirectTo: `${location.origin}/` } });
+    if(error) return setGateMsg('Erreur: '+error.message);
     setGateMsg('Compte créé ✔. Vérifie ton email et clique sur le lien.');
-  } catch (e) {
-    console.error(e);
-    setGateMsg('Erreur inattendue: ' + (e?.message || e));
-  } finally {
-    busy(false);
-  }
+  }catch(e){ setGateMsg('Erreur inattendue: '+(e?.message||e)); } finally{ busy(false); }
+});
+
+document.getElementById('btnLogout')?.addEventListener('click', async ()=>{
+  try { await supabase.auth.signOut(); } catch(e){ console.error('logout',e); }
+  finally { await refreshGate(); }
 });
 
 refreshGate();
 /* =================== Fin Supabase Auth + Gate =================== */
 
 
-/* =================== App / UI restant =================== */
+/* =================== App / UI =================== */
 const state={dicos:{},dicoWeights:{},translations:{},parents:[],cfg:{stop:new Set(),exc:new Set(),multi:[],ref:'(?i)ref[:\\- ]?([a-z0-9\\-]+)',min:0.5}};
 function saveLocal(){localStorage.setItem('matcherFront',JSON.stringify({dicoWeights:state.dicoWeights,cfg:{stop:[...state.cfg.stop],exc:[...state.cfg.exc],multi:state.cfg.multi,ref:state.cfg.ref,min:state.cfg.min},translations:state.translations,parents:state.parents}))}
 function loadLocal(){const raw=localStorage.getItem('matcherFront');if(!raw)return;try{const obj=JSON.parse(raw);state.dicoWeights=obj.dicoWeights||{};state.cfg.stop=new Set(obj?.cfg?.stop||[]);state.cfg.exc=new Set(obj?.cfg?.exc||[]);state.cfg.multi=obj?.cfg?.multi||[];state.cfg.ref=obj?.cfg?.ref||state.cfg.ref;state.cfg.min=obj?.cfg?.min??0.5;state.translations=obj.translations||{};state.parents=obj.parents||[]}catch(e){}}
@@ -334,6 +304,7 @@ const apiBase=document.getElementById('apiBase');
 const useProxy=document.getElementById('useProxy');
 const btnHealth=document.getElementById('btnHealth');
 const healthBadge=document.getElementById('healthBadge');
+const logsHealth=document.getElementById('logsHealth');
 const fileDico=document.getElementById('fileDico');
 const fileTrad=document.getElementById('fileTrad');
 const fileParents=document.getElementById('fileParents');
@@ -344,7 +315,6 @@ const inpRegex=document.getElementById('inpRegex');
 const inpMin=document.getElementById('inpMin');
 const btnApply=document.getElementById('btnApply');
 const logsCfg=document.getElementById('logsCfg');
-const tblDico=document.getElementById('tblDico')?.querySelector('tbody')||document.createElement('tbody');
 const testUrl=document.getElementById('testUrl');
 const btnTest=document.getElementById('btnTest');
 const testOut=document.getElementById('testOut');
@@ -361,19 +331,9 @@ inpMulti.value=state.cfg.multi.join(', ');
 inpRegex.value=state.cfg.ref;
 inpMin.value=state.cfg.min;
 
-function renderDicoTable(){if(!tblDico)return;tblDico.innerHTML='';Object.keys(state.dicos).forEach(name=>{const tr=document.createElement('tr');const w=state.dicoWeights[name]||{bonus:1,malus:1,active:true};tr.innerHTML=`<td>${name}</td><td><input type="number" value="${w.bonus}" data-k="bonus" style="width:100%"></td><td><input type="number" value="${w.malus}" data-k="malus" style="width:100%"></td><td style="text-align:center"><input type="checkbox" ${w.active?'checked':''} data-k="active"></td>`;tr.querySelectorAll('input').forEach(inp=>{inp.addEventListener('change',()=>{const key=inp.dataset.k;const row=state.dicoWeights[name]||{bonus:1,malus:1,active:true};if(key==='active')row.active=inp.checked;else row[key]=Number(inp.value);state.dicoWeights[name]=row;saveLocal()})});tblDico.appendChild(tr)})}
-renderDicoTable();
-
-function logCfg(msg){logsCfg.value+=(logsCfg.value?"\n":"")+msg;logsCfg.scrollTop=logsCfg.scrollHeight}
-function logMatch(msg){logsMatch.value+=(logsMatch.value?"\n":"")+msg;logsMatch.scrollTop=logsMatch.scrollHeight}
-
-function normalizeText(s){if(!s)return'';return String(s).toLowerCase().replace(/[-_\/]+/g,' ').trim()}
-function tokenize(s){let t=normalizeText(s);state.cfg.multi.forEach(exp=>{const r=new RegExp(exp.replace(/[-\s]+/g,'\\s+'),'gi');t=t.replace(r,exp.replace(/\s+/g,'-'))});let tokens=t.split(/\s+/).filter(Boolean);tokens=tokens.filter(x=>!state.cfg.stop.has(x));tokens=tokens.map(tok=>state.translations[tok]||tok);const active=Object.keys(state.dicos).filter(n=>(state.dicoWeights[n]||{active:true}).active);tokens=tokens.map(tok=>{for(const name of active){const dict=state.dicos[name];for(const key in dict){if(dict[key].has(tok)||key===tok)return key}}return tok});return tokens}
-function extractRef(s){try{const m=new RegExp(state.cfg.ref).exec(s);return m?m[1]:null}catch(e){return null}}
-
 /* ====== Prod: forcer proxy + masquer réglages ====== */
 function isProd(){
-  return location.hostname.endsWith('.vercel.app') || location.hostname === 'frontend-matcher.vercel.app';
+  return location.hostname.endsWith('.vercel.app');
 }
 window.addEventListener('DOMContentLoaded',()=>{
   if(isProd()){
@@ -381,7 +341,7 @@ window.addEventListener('DOMContentLoaded',()=>{
     const proxyBlock = document.getElementById('useProxy')?.closest('.grow');
     if(apiBlock)  apiBlock.style.display='none';
     if(proxyBlock) proxyBlock.style.display='none';
-    if (useProxy) useProxy.checked = true;
+    if(useProxy) useProxy.checked=true;
   }
 });
 /* ====== Fin patch prod ====== */
@@ -389,30 +349,26 @@ window.addEventListener('DOMContentLoaded',()=>{
 function buildUrl(path){
   const p=path.startsWith('/')?path:'/'+path;
   if (isProd()) return location.origin + '/api/proxy' + p; // toujours via proxy en prod
-  if(useProxy && useProxy.checked){return location.origin+'/api/proxy'+p}
-  return apiBase.value.replace(/\/$/,'')+p
+  if (useProxy && useProxy.checked) return location.origin + '/api/proxy' + p;
+  return apiBase.value.replace(/\/$/,'') + p;
 }
 
 /* ====== Health check multi-sondes ====== */
-async function tryProbe(probe, timeoutMs=4000){
-  const controller=new AbortController();
-  const t=setTimeout(()=>controller.abort(),timeoutMs);
+function hlog(m){ logsHealth.value += (logsHealth.value?'\n':'') + m; logsHealth.scrollTop=logsHealth.scrollHeight; }
+
+async function tryProbe(probe, timeoutMs=5000){
+  const controller=new AbortController(); const t=setTimeout(()=>controller.abort(),timeoutMs);
   const init={method:probe.method,signal:controller.signal,headers:probe.headers||{},redirect:'manual'};
-  if (Object.prototype.hasOwnProperty.call(probe, 'body')) {
-    init.body = probe.body;
-  }
-  const started=Date.now();
+  if ('body' in probe) init.body = probe.body;
+  const url=buildUrl(probe.path); const started=Date.now();
   try{
-    const resp=await fetch(buildUrl(probe.path),init);
+    const resp=await fetch(url,init);
     const ms=Date.now()-started;
     const ok=probe.okStatuses.includes(resp.status) || (resp.ok && probe.okStatuses.includes(200));
-    return {ok,status:resp.status,ms};
+    return {ok,status:resp.status,ms,url};
   }catch(err){
-    const ms=Date.now()-started;
-    return {ok:false,error:err,ms};
-  }finally{
-    clearTimeout(t);
-  }
+    const ms=Date.now()-started; return {ok:false,error:String(err),ms,url};
+  }finally{ clearTimeout(t); }
 }
 
 const HEALTH_PROBES=[
@@ -420,22 +376,19 @@ const HEALTH_PROBES=[
   {name:'HEAD /',            path:'/',             method:'HEAD',    okStatuses:[200,204]},
   {name:'GET /openapi.json', path:'/openapi.json', method:'GET',     okStatuses:[200]},
   {name:'OPTIONS /match',    path:'/match',        method:'OPTIONS', okStatuses:[200,204]},
+  // POST /match sans body = health (proxy n’exige pas d’auth)
   {name:'POST /match (empty)', path:'/match',      method:'POST',    okStatuses:[200,204,400,415,422]}
 ];
 
 btnHealth.addEventListener('click', async ()=>{
-  healthBadge.textContent='test…';
-  healthBadge.className='badge muted';
+  healthBadge.textContent='test…'; healthBadge.className='badge';
+  logsHealth.value='';
   for(const probe of HEALTH_PROBES){
     const r=await tryProbe(probe);
-    if(r.ok){
-      healthBadge.textContent='OK';
-      healthBadge.className='badge ok';
-      return;
-    }
+    if(r.ok){ hlog(`✅ ${probe.name} → ${r.status} (${r.ms}ms) via ${r.url}`); healthBadge.textContent='OK'; healthBadge.className='badge ok'; return; }
+    else { hlog(`❌ ${probe.name} → ${r.status||'ERR'} (${r.ms}ms) via ${r.url}${r.error?(' | '+r.error):''}`); }
   }
-  healthBadge.textContent='ERREUR';
-  healthBadge.className='badge err';
+  healthBadge.textContent='ERREUR'; healthBadge.className='badge err';
 });
 /* ====== Fin health check ====== */
 
@@ -445,172 +398,93 @@ btnApply.addEventListener('click',()=>{
   state.cfg.multi=inpMulti.value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
   state.cfg.ref=inpRegex.value.trim()||state.cfg.ref;
   state.cfg.min=Number(inpMin.value)||0.5;
-  saveLocal();
-  logCfg('[CONFIG] Paramètres appliqués.');
+  saveLocal(); logsCfg.value += (logsCfg.value?'\n':'') + '[CONFIG] Paramètres appliqués.';
 });
 
 async function readExcel(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=e=>{try{const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});resolve(wb)}catch(err){reject(err)}};reader.onerror=reject;reader.readAsArrayBuffer(file)})}
 
 fileDico.addEventListener('change',async()=>{
-  logsCfg.value='';
-  if(!fileDico.files[0])return;
+  logsCfg.value=''; if(!fileDico.files[0])return;
   try{
-    const wb=await readExcel(fileDico.files[0]);
-    state.dicos={};
+    const wb=await readExcel(fileDico.files[0]); state.dicos={};
     wb.SheetNames.forEach(name=>{
-      const sh=wb.Sheets[name];
-      const df=XLSX.utils.sheet_to_json(sh,{header:1,blankrows:false});
-      if(df.length===0)return;
+      const sh=wb.Sheets[name]; const df=XLSX.utils.sheet_to_json(sh,{header:1,blankrows:false}); if(df.length===0)return;
       const cols=df[0].map((_,i)=>df.map(row=>row[i]));
       cols.forEach((col,idx)=>{
-        const dicoName=String(df[0][idx]||`Dico_${idx+1}`);
-        if(!state.dicos[dicoName])state.dicos[dicoName]={};
-        for(let r=1;r<col.length;r++){
-          const cell=col[r];
-          if(cell==null)continue;
-          const items=String(cell).split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
-          if(items.length===0)continue;
-          const key=items[0];
-          state.dicos[dicoName][key]=(state.dicos[dicoName][key]||new Set());
-          items.forEach(x=>state.dicos[dicoName][key].add(x))
+        const dicoName=String(df[0][idx]||`Dico_${idx+1}`); if(!state.dicos[dicoName])state.dicos[dicoName]={};
+        for(let r=1;r<col.length;r++){ const cell=col[r]; if(cell==null)continue;
+          const items=String(cell).split(',').map(s=>s.trim().toLowerCase()).filter(Boolean); if(items.length===0)continue;
+          const key=items[0]; state.dicos[dicoName][key]=(state.dicos[dicoName][key]||new Set()); items.forEach(x=>state.dicos[dicoName][key].add(x));
         }
-      })
+      });
     });
-    renderDicoTable();
-    saveLocal();
-    logCfg(`[DICO] ${Object.keys(state.dicos).length} dictionnaire(s) chargé(s).`)
-  }catch(e){
-    logCfg('[DICO][ERREUR] '+e.message)
-  }
+    logsCfg.value='[DICO] '+Object.keys(state.dicos).length+' dictionnaire(s) chargé(s).';
+  }catch(e){ logsCfg.value='[DICO][ERREUR] '+e.message; }
 });
 
 fileTrad.addEventListener('change',async()=>{
   if(!fileTrad.files[0])return;
   try{
-    const wb=await readExcel(fileTrad.files[0]);
-    state.translations={};
+    const wb=await readExcel(fileTrad.files[0]); state.translations={};
     wb.SheetNames.forEach(name=>{
-      const sh=wb.Sheets[name];
-      const arr=XLSX.utils.sheet_to_json(sh);
-      arr.forEach(row=>{
-        const s=String(row['SOURCE']||'').trim().toLowerCase();
-        const t=String(row['TRANSLATION']||'').trim().toLowerCase();
-        if(s)state.translations[s]=t
-      })
+      const arr=XLSX.utils.sheet_to_json(wb.Sheets[name]);
+      arr.forEach(row=>{ const s=String(row['SOURCE']||'').trim().toLowerCase(); const t=String(row['TRANSLATION']||'').trim().toLowerCase(); if(s)state.translations[s]=t; });
     });
-    saveLocal();
-    logCfg(`[TRAD] ${Object.keys(state.translations).length} entrées.`)
-  }catch(e){
-    logCfg('[TRAD][ERREUR] '+e.message)
-  }
+    logsCfg.value='[TRAD] '+Object.keys(state.translations).length+' entrées.';
+  }catch(e){ logsCfg.value='[TRAD][ERREUR] '+e.message; }
 });
 
 fileParents.addEventListener('change',async()=>{
   if(!fileParents.files[0])return;
   try{
-    const wb=await readExcel(fileParents.files[0]);
-    state.parents=[];
+    const wb=await readExcel(fileParents.files[0]); state.parents=[];
     wb.SheetNames.forEach(name=>{
-      const sh=wb.Sheets[name];
-      const arr=XLSX.utils.sheet_to_json(sh);
-      arr.forEach(row=>{if(row.URL)state.parents.push(String(row.URL))})
+      const arr=XLSX.utils.sheet_to_json(wb.Sheets[name]);
+      arr.forEach(row=>{ if(row.URL) state.parents.push(String(row.URL)); });
     });
-    saveLocal();
-    logCfg(`[PARENTS] ${state.parents.length} URLs.`)
-  }catch(e){
-    logCfg('[PARENTS][ERREUR] '+e.message)
-  }
+    logsCfg.value='[PARENTS] '+state.parents.length+' URLs.';
+  }catch(e){ logsCfg.value='[PARENTS][ERREUR] '+e.message; }
 });
 
 btnTest.addEventListener('click',()=>{
-  const url=testUrl.value.trim();
-  const logs=[];
-  if(!url){testOut.value='Veuillez saisir une URL.';return}
+  const url=testUrl.value.trim(); const logs=[];
+  if(!url){ testOut.value='Veuillez saisir une URL.'; return; }
   logs.push(`URL brute : ${url}`);
   const cleaned=url.replace(/^https?:\/\//i,'').replace(/^www\./i,'');
-  logs.push('URL nettoyée (clean) :');
-  logs.push(' → '+cleaned);
-  const tokens=tokenize(cleaned);
-  logs.push('URL après synonymes (apply_synonym_substitution) :');
-  logs.push(' → '+tokens.join(' '));
-  logs.push('Tokens (get_tokens) :');
-  logs.push(tokens.length?(' → '+tokens.join(', ')):' → Aucun token');
-  const ref=extractRef(url);
-  logs.push(ref?`Référence détectée : ${ref}`:'Aucune référence détectée via la regex.');
-  logs.push('Caractéristiques détectées :');
-  const active=Object.keys(state.dicos).filter(n=>(state.dicoWeights[n]||{active:true}).active);
-  if(active.length===0){
-    logs.push(' → Aucun dictionnaire dynamique chargé.');
-  }else{
-    active.forEach(name=>{
-      const dict=state.dicos[name];
-      const hits=new Set();
-      tokens.forEach(tok=>{
-        for(const key in dict){ if(dict[key].has(tok))hits.add(key) }
-      });
-      logs.push(hits.size?` [${name}] → ${[...hits].join(', ')}`:` [${name}] → aucune caractéristique trouvée`)
-    })
-  }
-  testOut.value=logs.join('\n')
+  logs.push('URL nettoyée (clean) :'); logs.push(' → '+cleaned);
+  const tokens=cleaned.toLowerCase().split(/[\/\-\_\?\&\=\s]+/).filter(Boolean);
+  logs.push('Tokens :'); logs.push(tokens.length?(' → '+tokens.join(', ')):' → Aucun token');
+  testOut.value=logs.join('\n');
 });
 
 btnEstimate.addEventListener('click',async()=>{
-  logsMatch.value='';
-  if(!file404.files[0]||!file200.files[0]){logMatch('Charge les deux fichiers d\'abord.');return}
+  logsMatch.value=''; if(!file404.files[0]||!file200.files[0]){logsMatch.value='Charge les deux fichiers d\'abord.';return}
   try{
-    const wb404=await readExcel(file404.files[0]);
-    const sh404=wb404.Sheets['404']||wb404.Sheets[wb404.SheetNames[0]];
-    const arr404=XLSX.utils.sheet_to_json(sh404);
-    const wb200=await readExcel(file200.files[0]);
-    const sh200=wb200.Sheets['200']||wb200.Sheets[wb200.SheetNames[0]];
-    const arr200=XLSX.utils.sheet_to_json(sh200);
-    if(arr404.length===0||arr200.length===0){logMatch('[ESTIMATION] Impossible : fichiers vides.');return}
-    const total=arr404.length;
-    const est=(0.035+0.025)*total;
-    const min=(est/60).toFixed(1);
-    logMatch(`[ESTIMATION] ~ ${min} minutes (approximation navigateur).`)
-  }catch(e){
-    logMatch('[ESTIMATION][ERREUR] '+e.message)
-  }
+    const wb404=await readExcel(file404.files[0]); const sh404=wb404.Sheets['404']||wb404.Sheets[wb404.SheetNames[0]]; const arr404=XLSX.utils.sheet_to_json(sh404);
+    const wb200=await readExcel(file200.files[0]); const sh200=wb200.Sheets['200']||wb200.Sheets[wb200.SheetNames[0]]; const arr200=XLSX.utils.sheet_to_json(sh200);
+    if(arr404.length===0||arr200.length===0){logsMatch.value='[ESTIMATION] Impossible : fichiers vides.';return}
+    const total=arr404.length; const est=(0.035+0.025)*total; const min=(est/60).toFixed(1);
+    logsMatch.value=`[ESTIMATION] ~ ${min} minutes (approximation navigateur).`;
+  }catch(e){ logsMatch.value='[ESTIMATION][ERREUR] '+e.message; }
 });
 
 btnClear.addEventListener('click',()=>{logsMatch.value='';file404.value='';file200.value=''});
 
 // Upload protégé : ajoute le token si connecté
 btnRun.addEventListener('click',async()=>{
-  logsMatch.value='';
-  if(!file404.files[0]||!file200.files[0]){logMatch('Upload les fichiers d\'abord.');return}
+  logsMatch.value=''; if(!file404.files[0]||!file200.files[0]){logsMatch.value='Upload les fichiers d\'abord.';return}
   try{
-    const form=new FormData();
-    form.append('file404',file404.files[0]);
-    form.append('file200',file200.files[0]);
-
-    logMatch('[0%] Upload en cours…');
-
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token || null;
-    const headers = {};
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-
+    const form=new FormData(); form.append('file404',file404.files[0]); form.append('file200',file200.files[0]);
+    logsMatch.value='[0%] Upload en cours…';
+    const { data:{ session } } = await supabase.auth.getSession();
+    const token=session?.access_token||null; const headers={}; if(token) headers['Authorization']=`Bearer ${token}`;
     const r=await fetch(buildUrl('/match'),{method:'POST',headers,body:form});
-    if(!r.ok){
-      const txt=await r.text();
-      throw new Error('HTTP '+r.status+' – '+txt)
-    }
-
-    logMatch('[60%] Traitement côté API…');
-    const blob=await r.blob();
-    logMatch('[90%] Réception du résultat…');
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(blob);
-    a.download='result.xlsx';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    logMatch('[100%] Terminé. Fichier téléchargé : result.xlsx')
-  }catch(e){
-    logMatch('[ERREUR] '+e.message)
-  }
+    if(!r.ok){ const txt=await r.text(); throw new Error('HTTP '+r.status+' – '+txt); }
+    logsMatch.value+=' \n[60%] Traitement côté API…';
+    const blob=await r.blob(); logsMatch.value+=' \n[90%] Réception du résultat…';
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='result.xlsx'; document.body.appendChild(a); a.click(); a.remove();
+    logsMatch.value+=' \n[100%] Terminé. Fichier téléchargé : result.xlsx';
+  }catch(e){ logsMatch.value='[ERREUR] '+e.message; }
 });
 </script>
 </body>
