@@ -59,6 +59,17 @@
     /* Auth gate */
     #gate{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#eef2f7;z-index:50}
     #gate .card{width:520px}
+
+    /* Table dictionnaires */
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px;border-bottom:1px solid var(--border);text-align:left}
+    th{font-size:13px;color:var(--muted);font-weight:600}
+    .switch{appearance:none;width:42px;height:24px;background:#e5e7eb;border-radius:999px;position:relative;outline:none;cursor:pointer;transition:.2s}
+    .switch:checked{background:var(--accent)}
+    .switch:before{content:"";position:absolute;left:3px;top:3px;width:18px;height:18px;background:#fff;border-radius:999px;transition:.2s;box-shadow:0 1px 3px #0001}
+    .switch:checked:before{left:21px}
+    details{background:#fafafa;border:1px solid var(--border);border-radius:10px;padding:10px}
+    summary{cursor:pointer;font-weight:600}
   </style>
 
   <!-- libs -->
@@ -106,57 +117,18 @@
   <div class="container">
     <div class="hero">
       <h1 class="h1">Matching 404 → 200</h1>
-      <div class="sub">Trois onglets : Matching, Test URL, Configuration. En production, les appels passent par <code>/api/proxy</code>.</div>
+      <div class="sub">Onglets : Configuration, Test URL, Matching. En production, les appels passent par <code>/api/proxy</code>.</div>
     </div>
 
     <!-- Tabs -->
     <div class="tabs">
-      <button class="tab active" data-tab="matching">Matching</button>
+      <button class="tab active" data-tab="config">Configuration</button>
       <button class="tab" data-tab="test">Test URL</button>
-      <button class="tab" data-tab="config">Configuration</button>
+      <button class="tab" data-tab="matching">Matching</button>
     </div>
 
-    <!-- Panel: Matching -->
-    <section id="panel-matching" class="tab-panel active">
-      <div class="card">
-        <div class="section-title">Matching</div>
-        <div class="row">
-          <div class="grow">
-            <label>Fichier 404 (onglet <code>404</code>, col <code>URL_404</code>)</label>
-            <input id="file404" type="file" accept=".xlsx,.xls" />
-          </div>
-          <div class="grow">
-            <label>Fichier 200 (onglet <code>200</code>, col <code>URL_200</code>)</label>
-            <input id="file200" type="file" accept=".xlsx,.xls" />
-          </div>
-        </div>
-        <div class="row" style="margin-top:12px">
-          <button class="btn ghost" id="btnEstimate">Estimation</button>
-          <div style="flex:1"></div>
-          <button class="btn ghost" id="btnClear">Vider</button>
-          <button class="btn primary" id="btnRun">Lancer le matching</button>
-        </div>
-        <div style="margin-top:12px">
-          <label>Logs matching</label>
-          <textarea id="logsMatch" readonly></textarea>
-        </div>
-      </div>
-    </section>
-
-    <!-- Panel: Test URL -->
-    <section id="panel-test" class="tab-panel">
-      <div class="card">
-        <div class="section-title">Test URL</div>
-        <div class="row">
-          <div class="grow"><label>URL</label><input id="testUrl" type="text" placeholder="https://www.exemple.com/produit/ref-AB1234?color=red"></div>
-          <button class="btn primary" id="btnTest" style="align-self:flex-end">Analyser</button>
-        </div>
-        <div style="margin-top:10px"><label>Résultat</label><textarea id="testOut" readonly></textarea></div>
-      </div>
-    </section>
-
     <!-- Panel: Configuration -->
-    <section id="panel-config" class="tab-panel">
+    <section id="panel-config" class="tab-panel active">
       <div class="card">
         <div class="section-title">Santé API / Proxy</div>
         <div class="row">
@@ -182,7 +154,7 @@
       </div>
 
       <div class="card" style="margin-top:16px">
-        <div class="section-title">Paramètres (optionnels)</div>
+        <div class="section-title">Paramètres</div>
         <div class="row">
           <div class="grow">
             <label>Dictionnaire Excel (colonnes = noms de dicos, lignes = "clé, syn1, syn2…")</label>
@@ -196,17 +168,80 @@
         <div class="row" style="margin-top:10px">
           <div class="grow"><label>Parents (optionnel) – Excel avec colonne URL</label><input id="fileParents" type="file" accept=".xlsx,.xls" /></div>
         </div>
-        <div class="row" style="margin-top:10px">
-          <div class="grow"><label>Stopwords (virgules)</label><input id="inpStop" type="text" /></div>
-          <div class="grow"><label>Exceptions normalisation (virgules)</label><input id="inpExc" type="text" /></div>
-        </div>
-        <div class="row" style="margin-top:10px">
-          <div class="grow"><label>Expressions multi-mots (virgules)</label><input id="inpMulti" type="text" /></div>
-          <div class="grow"><label>Regex référence</label><input id="inpRegex" type="text" value="(?i)ref[:\- ]?([a-z0-9\-]+)" /></div>
-          <div class="grow"><label>Score minimum (UI)</label><input id="inpMin" type="number" step="0.1" value="0.5" /></div>
-        </div>
+
+        <details style="margin-top:14px" open>
+          <summary>Réglages avancés (afficher/masquer)</summary>
+          <div class="row" style="margin-top:10px">
+            <div class="grow"><label>Stopwords (virgules)</label><input id="inpStop" type="text" /></div>
+            <div class="grow"><label>Exceptions normalisation (virgules)</label><input id="inpExc" type="text" /></div>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <div class="grow"><label>Expressions multi-mots (virgules)</label><input id="inpMulti" type="text" /></div>
+            <div class="grow"><label>Regex référence</label><input id="inpRegex" type="text" value="(?i)ref[:\\- ]?([a-z0-9\\-]+)" /></div>
+            <div class="grow"><label>Score minimum (UI)</label><input id="inpMin" type="number" step="0.1" value="0.5" /></div>
+          </div>
+
+          <div style="margin-top:14px">
+            <div class="section-title" style="margin-bottom:8px">Dictionnaires dynamiques</div>
+            <div class="sub" style="margin-bottom:8px">Activez/désactivez, ajustez les pondérations. Cette table se remplit après import du fichier Dictionnaire.</div>
+            <div class="table-wrap">
+              <table id="tblDico">
+                <thead>
+                  <tr>
+                    <th>Dictionnaire</th>
+                    <th style="width:130px">Bonus</th>
+                    <th style="width:130px">Malus</th>
+                    <th style="width:120px">Actif</th>
+                    <th style="width:140px">Entrées</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+
         <div style="margin-top:12px"><button class="btn ghost" id="btnApply">Appliquer</button></div>
         <div style="margin-top:12px"><label>Logs configuration</label><textarea id="logsCfg" readonly></textarea></div>
+      </div>
+    </section>
+
+    <!-- Panel: Test URL -->
+    <section id="panel-test" class="tab-panel">
+      <div class="card">
+        <div class="section-title">Test URL</div>
+        <div class="row">
+          <div class="grow"><label>URL</label><input id="testUrl" type="text" placeholder="https://www.exemple.com/produit/ref-AB1234?color=red"></div>
+          <button class="btn primary" id="btnTest" style="align-self:flex-end">Analyser</button>
+        </div>
+        <div style="margin-top:10px"><label>Résultat</label><textarea id="testOut" readonly></textarea></div>
+      </div>
+    </section>
+
+    <!-- Panel: Matching -->
+    <section id="panel-matching" class="tab-panel">
+      <div class="card">
+        <div class="section-title">Matching</div>
+        <div class="row">
+          <div class="grow">
+            <label>Fichier 404 (onglet <code>404</code>, col <code>URL_404</code>)</label>
+            <input id="file404" type="file" accept=".xlsx,.xls" />
+          </div>
+          <div class="grow">
+            <label>Fichier 200 (onglet <code>200</code>, col <code>URL_200</code>)</label>
+            <input id="file200" type="file" accept=".xlsx,.xls" />
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn ghost" id="btnEstimate">Estimation</button>
+          <div style="flex:1"></div>
+          <button class="btn ghost" id="btnClear">Vider</button>
+          <button class="btn primary" id="btnRun">Lancer le matching</button>
+        </div>
+        <div style="margin-top:12px">
+          <label>Logs matching</label>
+          <textarea id="logsMatch" readonly></textarea>
+        </div>
       </div>
     </section>
 
@@ -285,9 +320,9 @@ applyAuthUI();
 /* =================== Tabs =================== */
 const tabs = document.querySelectorAll('.tab');
 const panels = {
-  matching: document.getElementById('panel-matching'),
+  config: document.getElementById('panel-config'),
   test: document.getElementById('panel-test'),
-  config: document.getElementById('panel-config')
+  matching: document.getElementById('panel-matching')
 };
 tabs.forEach(t=>{
   t.addEventListener('click',()=>{
@@ -328,6 +363,7 @@ const btnEstimate=document.getElementById('btnEstimate');
 const btnRun=document.getElementById('btnRun');
 const btnClear=document.getElementById('btnClear');
 const logsMatch=document.getElementById('logsMatch');
+const tblDico=document.querySelector('#tblDico tbody');
 
 inpStop.value=[...state.cfg.stop].join(', ');
 inpExc.value=[...state.cfg.exc].join(', ');
@@ -375,7 +411,7 @@ btnHealth.addEventListener('click', async ()=>{
   healthBadge.textContent='ERREUR'; healthBadge.className='badge err';
 });
 
-/* Config */
+/* Config save */
 btnApply.addEventListener('click',()=>{
   state.cfg.stop=new Set(inpStop.value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean));
   state.cfg.exc=new Set(inpExc.value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean));
@@ -385,10 +421,51 @@ btnApply.addEventListener('click',()=>{
   saveLocal();
   logsCfg.value+=(logsCfg.value?'\n':'')+'[CONFIG] Paramètres appliqués.';
 });
+
+/* Excel readers */
 async function readExcel(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=e=>{try{const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});resolve(wb)}catch(err){reject(err)}};reader.onerror=reject;reader.readAsArrayBuffer(file)});}
-fileDico.addEventListener('change',async()=>{logsCfg.value='';if(!fileDico.files[0])return;try{const wb=await readExcel(fileDico.files[0]);state.dicos={};wb.SheetNames.forEach(name=>{const sh=wb.Sheets[name];const df=XLSX.utils.sheet_to_json(sh,{header:1,blankrows:false});if(df.length===0)return;const cols=df[0].map((_,i)=>df.map(row=>row[i]));cols.forEach((col,idx)=>{const dicoName=String(df[0][idx]||`Dico_${idx+1}`);if(!state.dicos[dicoName])state.dicos[dicoName]={};for(let r=1;r<col.length;r++){const cell=col[r];if(cell==null)continue;const items=String(cell).split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);if(items.length===0)continue;const key=items[0];state.dicos[dicoName][key]=(state.dicos[dicoName][key]||new Set());items.forEach(x=>state.dicos[dicoName][key].add(x))}})});saveLocal();logsCfg.value=`[DICO] ${Object.keys(state.dicos).length} dictionnaire(s) chargé(s).`}catch(e){logsCfg.value='[DICO][ERREUR] '+e.message}});
+
+fileDico.addEventListener('change',async()=>{logsCfg.value='';if(!fileDico.files[0])return;try{const wb=await readExcel(fileDico.files[0]);state.dicos={};wb.SheetNames.forEach(name=>{const sh=wb.Sheets[name];const df=XLSX.utils.sheet_to_json(sh,{header:1,blankrows:false});if(df.length===0)return;const cols=df[0].map((_,i)=>df.map(row=>row[i]));cols.forEach((col,idx)=>{const dicoName=String(df[0][idx]||`Dico_${idx+1}`);if(!state.dicos[dicoName])state.dicos[dicoName]={};for(let r=1;r<col.length;r++){const cell=col[r];if(cell==null)continue;const items=String(cell).split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);if(items.length===0)continue;const key=items[0];state.dicos[dicoName][key]=(state.dicos[dicoName][key]||new Set());items.forEach(x=>state.dicos[dicoName][key].add(x))}})});saveLocal();renderDicoTable();logsCfg.value=`[DICO] ${Object.keys(state.dicos).length} dictionnaire(s) chargé(s).`}catch(e){logsCfg.value='[DICO][ERREUR] '+e.message}});
+
 fileTrad.addEventListener('change',async()=>{if(!fileTrad.files[0])return;try{const wb=await readExcel(fileTrad.files[0]);state.translations={};wb.SheetNames.forEach(name=>{const sh=wb.Sheets[name];const arr=XLSX.utils.sheet_to_json(sh);arr.forEach(row=>{const s=String(row['SOURCE']||'').trim().toLowerCase();const t=String(row['TRANSLATION']||'').trim().toLowerCase();if(s)state.translations[s]=t})});saveLocal();logsCfg.value=`[TRAD] ${Object.keys(state.translations).length} entrées.`}catch(e){logsCfg.value='[TRAD][ERREUR] '+e.message}});
+
 fileParents.addEventListener('change',async()=>{if(!fileParents.files[0])return;try{const wb=await readExcel(fileParents.files[0]);state.parents=[];wb.SheetNames.forEach(name=>{const sh=wb.Sheets[name];const arr=XLSX.utils.sheet_to_json(sh);arr.forEach(row=>{if(row.URL)state.parents.push(String(row.URL))})});saveLocal();logsCfg.value=`[PARENTS] ${state.parents.length} URLs.`}catch(e){logsCfg.value='[PARENTS][ERREUR] '+e.message}});
+
+/* Dico table rendering */
+function renderDicoTable(){
+  if(!tblDico) return;
+  tblDico.innerHTML='';
+  const names=Object.keys(state.dicos);
+  if(names.length===0){
+    const tr=document.createElement('tr');
+    const td=document.createElement('td');
+    td.colSpan=5; td.textContent='Aucun dictionnaire chargé.'; td.style.color='var(--muted)';
+    tr.appendChild(td); tblDico.appendChild(tr); return;
+  }
+  names.forEach(name=>{
+    const dict=state.dicos[name];
+    const w=state.dicoWeights[name]||{bonus:1,malus:1,active:true};
+    const entries=Object.keys(dict).length;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td>${name}</td>
+      <td><input type=\"number\" step=\"0.1\" value=\"${w.bonus}\" data-k=\"bonus\" style=\"width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;background:#fff\"></td>
+      <td><input type=\"number\" step=\"0.1\" value=\"${w.malus}\" data-k=\"malus\" style=\"width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;background:#fff\"></td>
+      <td><input class=\"switch\" type=\"checkbox\" ${w.active?'checked':''} data-k=\"active\"></td>
+      <td>${entries.toLocaleString('fr-FR')}</td>
+    `;
+    tr.querySelectorAll('input').forEach(inp=>{
+      inp.addEventListener('change',()=>{
+        const key=inp.dataset.k;
+        const row=state.dicoWeights[name]||{bonus:1,malus:1,active:true};
+        if(key==='active') row.active=inp.checked; else row[key]=Number(inp.value);
+        state.dicoWeights[name]=row; saveLocal();
+      });
+    });
+    tblDico.appendChild(tr);
+  });
+}
+renderDicoTable();
 
 /* Test URL */
 btnTest.addEventListener('click',()=>{const url=testUrl.value.trim();const logs=[];if(!url){testOut.value='Veuillez saisir une URL.';return}logs.push(`URL brute : ${url}`);const cleaned=url.replace(/^https?:\/\//i,'').replace(/^www\./i,'');logs.push('URL nettoyée :');logs.push(' → '+cleaned);const tokens=cleaned.toLowerCase().split(/[\/\-\_\?\&\=\s]+/).filter(Boolean);logs.push('Tokens :');logs.push(tokens.length?(' → '+tokens.join(', ')):' → Aucun token');testOut.value=logs.join('\n')});
