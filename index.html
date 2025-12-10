@@ -31,6 +31,12 @@
     .sticky{position:sticky;top:0;background:var(--card);z-index:2}
     .footer{opacity:.7;margin:22px 0 40px}
     .code{background:#0a0f25;border:1px solid #1c2b69;padding:10px;border-radius:10px;overflow:auto}
+
+    /* === Auth Gate === */
+    #gate { position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+      background:linear-gradient(180deg,#0b1020,#111936); z-index:50; }
+    #gate .card { width: 520px; }
+    .hidden { display:none !important; }
   </style>
 
   <!-- XLSX -->
@@ -39,20 +45,21 @@
   <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <!-- Variables publiques Supabase (remplace si besoin par injection build-time) -->
+  <!-- Variables publiques Supabase -->
   <script>
+    // Remplace si besoin par des variables injectées au build
     window.SUPABASE_URL = "https://srvvdrhiaygklqjijdtq.supabase.co";
     window.SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Tm5K5o-Fq_UBHP9Qp6JBog_rtKQjpDi";
   </script>
 </head>
 <body>
-  <div class="wrap">
-    <div class="title">Matching 404 → 200 – Interface Web</div>
-    <div class="sub">Frontend statique. Upload → <code>/match</code> Cloud Run → téléchargement du résultat.</div>
 
-    <!-- Auth box -->
-    <div id="authBox" class="card" style="margin-top:12px; max-width:520px;">
-      <div style="font-weight:600; margin-bottom:8px;">Authentification</div>
+  <!-- ===== AUTH GATE: visible tant que l’utilisateur n’est pas connecté ===== -->
+  <div id="gate">
+    <div class="card">
+      <div style="font-weight:700; font-size:20px; margin-bottom:6px;">Connexion requise</div>
+      <div class="muted" style="margin-bottom:12px;">Connectez-vous pour accéder à l’outil.</div>
+
       <div class="row">
         <div class="grow">
           <input id="authEmail" type="email" placeholder="Email">
@@ -61,13 +68,19 @@
           <input id="authPassword" type="password" placeholder="Mot de passe">
         </div>
       </div>
+
       <div style="margin-top:10px; display:flex; gap:8px; align-items:center;">
         <button class="btn" id="btnLogin">Se connecter</button>
         <button class="btn secondary" id="btnSignup">Créer un compte</button>
-        <button class="btn ghost" id="btnLogout" style="margin-left:auto;">Se déconnecter</button>
       </div>
-      <div id="authStatus" class="muted" style="margin-top:8px;"></div>
+      <div id="authStatus" class="muted" style="margin-top:10px;"></div>
     </div>
+  </div>
+  <!-- ===== FIN AUTH GATE ===== -->
+
+  <div class="wrap hidden"><!-- masquée tant que non connecté -->
+    <div class="title">Matching 404 → 200 – Interface Web</div>
+    <div class="sub">Frontend statique. Upload → <code>/match</code> Cloud Run → téléchargement du résultat.</div>
 
     <div class="card" style="margin-top:16px">
       <div class="row">
@@ -190,55 +203,46 @@
 <script>
 /* === JS principal === */
 
-/* ===== Supabase Auth ===== */
+/* ===== Supabase Auth + Gate ===== */
 const supabase = window.supabase.createClient(
   window.SUPABASE_URL,
   window.SUPABASE_PUBLISHABLE_KEY
 );
 
-async function getToken() {
-  const { data: { session } } = await supabase.auth.getSession();
-  return session?.access_token || null;
-}
-
-function setAuthStatus(msg) {
+function setGateMsg(msg) {
   const el = document.getElementById('authStatus');
   if (el) el.textContent = msg || '';
 }
 
-async function refreshAuthUI() {
+async function refreshGate() {
   const { data: { session } } = await supabase.auth.getSession();
   const authed = !!session;
-  setAuthStatus(authed ? `Connecté en tant que ${session.user.email}` : 'Non connecté');
+  document.getElementById('gate')?.classList.toggle('hidden', authed);
+  document.querySelector('.wrap')?.classList.toggle('hidden', !authed);
 }
 
 document.getElementById('btnLogin')?.addEventListener('click', async () => {
   const email = document.getElementById('authEmail').value.trim();
   const password = document.getElementById('authPassword').value;
+  if (!email || !password) return setGateMsg('Renseignez email et mot de passe.');
   const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) setAuthStatus('Erreur: ' + error.message);
-  else setAuthStatus('Connecté ✔');
-  refreshAuthUI();
+  if (error) setGateMsg('Erreur: ' + error.message);
+  else setGateMsg('Connecté ✔');
+  refreshGate();
 });
 
 document.getElementById('btnSignup')?.addEventListener('click', async () => {
   const email = document.getElementById('authEmail').value.trim();
   const password = document.getElementById('authPassword').value;
+  if (!email || !password) return setGateMsg('Renseignez email et mot de passe (min. 6 caractères).');
   const { error } = await supabase.auth.signUp({ email, password });
-  if (error) setAuthStatus('Erreur: ' + error.message);
-  else setAuthStatus('Compte créé ✔ — vérifie ton email si la confirmation est activée');
-  refreshAuthUI();
+  if (error) setGateMsg('Erreur: ' + error.message);
+  else setGateMsg('Compte créé ✔. Vérifiez votre email si la confirmation est activée.');
 });
 
-document.getElementById('btnLogout')?.addEventListener('click', async () => {
-  await supabase.auth.signOut();
-  setAuthStatus('Déconnecté');
-  refreshAuthUI();
-});
-
-supabase.auth.onAuthStateChange((_event, _session) => refreshAuthUI());
-refreshAuthUI();
-/* === Fin Supabase Auth === */
+supabase.auth.onAuthStateChange((_event, _session) => refreshGate());
+refreshGate();
+/* ===== Fin Supabase Auth + Gate ===== */
 
 const state={dicos:{},dicoWeights:{},translations:{},parents:[],cfg:{stop:new Set(),exc:new Set(),multi:[],ref:'(?i)ref[:\\- ]?([a-z0-9\\-]+)',min:0.5}};
 function saveLocal(){localStorage.setItem('matcherFront',JSON.stringify({dicoWeights:state.dicoWeights,cfg:{stop:[...state.cfg.stop],exc:[...state.cfg.exc],multi:state.cfg.multi,ref:state.cfg.ref,min:state.cfg.min},translations:state.translations,parents:state.parents}))}
@@ -296,12 +300,10 @@ function isProd(){
 }
 window.addEventListener('DOMContentLoaded',()=>{
   if(isProd()){
-    // Masquer les blocs "URL API" et "Utiliser proxy"
     const apiBlock = document.getElementById('apiBase')?.closest('.grow');
     const proxyBlock = document.getElementById('useProxy')?.closest('.grow');
     if(apiBlock)  apiBlock.style.display='none';
     if(proxyBlock) proxyBlock.style.display='none';
-    // Forcer la case proxy
     if (useProxy) useProxy.checked = true;
   }
 });
@@ -309,11 +311,7 @@ window.addEventListener('DOMContentLoaded',()=>{
 
 function buildUrl(path){
   const p=path.startsWith('/')?path:'/'+path;
-  if (isProd()) {
-    // En production: toujours via le proxy Vercel
-    return location.origin + '/api/proxy' + p;
-  }
-  // En dev: checkbox
+  if (isProd()) return location.origin + '/api/proxy' + p; // toujours via proxy en prod
   if(useProxy && useProxy.checked){return location.origin+'/api/proxy'+p}
   return apiBase.value.replace(/\/$/,'')+p
 }
@@ -323,17 +321,18 @@ async function tryProbe(probe, timeoutMs=4000){
   const controller=new AbortController();
   const t=setTimeout(()=>controller.abort(),timeoutMs);
   const init={method:probe.method,signal:controller.signal,headers:probe.headers||{},redirect:'manual'};
-  if(!['GET','HEAD','OPTIONS'].includes(probe.method) && probe.body!==undefined){init.body=probe.body}
+  // Pas de body par défaut (permet POST /match vide)
+  if (Object.prototype.hasOwnProperty.call(probe, 'body')) {
+    init.body = probe.body;
+  }
   const started=Date.now();
   try{
     const resp=await fetch(buildUrl(probe.path),init);
     const ms=Date.now()-started;
-    console.debug(`[health] ${probe.name} -> ${resp.status} (${ms} ms)`);
     const ok=probe.okStatuses.includes(resp.status) || (resp.ok && probe.okStatuses.includes(200));
     return {ok,status:resp.status,ms};
   }catch(err){
     const ms=Date.now()-started;
-    console.debug(`[health] ${probe.name} -> erreur ${err?.name==='AbortError'?'timeout':(err?.message||'inconnue')} (${ms} ms)`);
     return {ok:false,error:err,ms};
   }finally{
     clearTimeout(t);
@@ -345,7 +344,8 @@ const HEALTH_PROBES=[
   {name:'HEAD /',            path:'/',             method:'HEAD',    okStatuses:[200,204]},
   {name:'GET /openapi.json', path:'/openapi.json', method:'GET',     okStatuses:[200]},
   {name:'OPTIONS /match',    path:'/match',        method:'OPTIONS', okStatuses:[200,204]},
-  {name:'POST /match (dry)', path:'/match',        method:'POST',    okStatuses:[200,400,415,422], body:'{}', headers:{'content-type':'application/json'}}
+  // POST /match sans body = health OK même avec auth proxy
+  {name:'POST /match (empty)', path:'/match',      method:'POST',    okStatuses:[200,204,400,415,422]}
 ];
 
 btnHealth.addEventListener('click', async ()=>{
@@ -380,7 +380,7 @@ btnEstimate.addEventListener('click',async()=>{logsMatch.value='';if(!file404.fi
 
 btnClear.addEventListener('click',()=>{logsMatch.value='';file404.value='';file200.value=''});
 
-// >>>>>>>>>>>> ICI : envoi du token Supabase pour le vrai upload
+// Upload protégé : ajoute le token si connecté
 btnRun.addEventListener('click',async()=>{
   logsMatch.value='';
   if(!file404.files[0]||!file200.files[0]){logMatch('Upload les fichiers d\'abord.');return}
@@ -391,7 +391,8 @@ btnRun.addEventListener('click',async()=>{
 
     logMatch('[0%] Upload en cours…');
 
-    const token = await getToken();
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token || null;
     const headers = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
 

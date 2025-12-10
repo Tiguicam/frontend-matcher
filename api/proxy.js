@@ -1,33 +1,49 @@
-// api/proxy.js — version STABLE (base originale + correctifs) + AUTH MINIMALE
+// api/proxy.js — STABLE + AUTH minimale + CORS proxy
 // - Support ?path= ET /api/proxy/<suffixe>
-// - Autorise toutes les sondes (dont POST vide /match)
-// - Pas de debug
-// - Comportement identique à ton proxy d’origine
-// - + Auth requise uniquement pour POST /match avec body (vrai upload)
+// - Sondes OK (GET /, HEAD /, GET /openapi.json, OPTIONS /match, POST /match vide)
+// - Auth requise uniquement pour POST /match avec body
+// - CORS géré côté proxy (préflights répondus localement)
 
 import { createClient } from "@supabase/supabase-js";
 
 export const config = { api: { bodyParser: false } };
 
-// Résout le chemin amont (supporte les deux syntaxes)
+// ---------- Utils ----------
 function resolveUpstreamPath(req) {
   let p = req.query?.path;
   if (Array.isArray(p)) p = p[0];
   if (typeof p === "string" && p.length > 0) return p.startsWith("/") ? p : `/${p}`;
-
   const withoutPrefix = req.url.replace(/^\/api\/proxy(?:\.js)?/i, "");
   if (!withoutPrefix || withoutPrefix === "/" || withoutPrefix === "") return "/";
   return withoutPrefix.startsWith("/") ? withoutPrefix : `/${withoutPrefix}`;
 }
 
-// Détection POST /match vide (health probe)
 function isEmptyPostMatch(req, upstreamPath) {
   if (req.method !== "POST" || upstreamPath !== "/match") return false;
   const cl = req.headers["content-length"];
   return !(cl && Number(cl) > 0);
 }
 
+// CORS helpers
+function corsAllow(req, res) {
+  const origin = req.headers.origin || "*";
+  res.setHeader("Access-Control-Allow-Origin", origin);
+  res.setHeader("Vary", "Origin");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader("Access-Control-Allow-Headers", req.headers["access-control-request-headers"] || "authorization,content-type");
+  res.setHeader("Access-Control-Allow-Methods", "GET,HEAD,POST,OPTIONS");
+}
+
+// ---------- Handler ----------
 export default async function handler(req, res) {
+  // CORS: toujours renseigner les headers
+  corsAllow(req, res);
+
+  // Préflight: répondre localement
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
   const API_BASE = process.env.API_BASE;
   if (!API_BASE) return res.status(500).json({ error: "API_BASE is not defined" });
 
@@ -47,7 +63,6 @@ export default async function handler(req, res) {
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       return res.status(500).json({ error: "Supabase server env missing" });
     }
-
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
       auth: { persistSession: false }
     });
@@ -68,38 +83,31 @@ export default async function handler(req, res) {
     if (["host", "content-length", "authorization"].includes(key)) continue;
     headers[key] = v;
   }
-  if (userId) headers["x-user-id"] = userId; // optionnel, pour corrélation côté Cloud Run
+  if (userId) headers["x-user-id"] = userId; // optionnel
 
-  const init = {
-    method: req.method,
-    headers,
-    redirect: "manual"
-  };
+  const init = { method: req.method, headers, redirect: "manual" };
 
-  // POST /match vide = sonde → pas de body
+  // POST /match vide = sonde → pas de body ; sinon on streame (uploads)
   const isProbeEmpty = isEmptyPostMatch(req, upstreamPath);
   const hasBody = !["GET", "HEAD"].includes(req.method);
-
-  if (hasBody && !isProbeEmpty) {
-    init.body = req; // stream brut (uploads)
-  }
+  if (hasBody && !isProbeEmpty) init.body = req;
 
   try {
     const upstream = await fetch(url, init);
 
-    // Re-propage presque tous les headers
+    // Re-propage presque tous les headers (plus CORS)
     upstream.headers.forEach((value, key) => {
       const lk = key.toLowerCase();
       if (!["content-encoding", "transfer-encoding"].includes(lk)) {
         res.setHeader(key, value);
       }
     });
+    corsAllow(req, res); // s'assurer que CORS reste présent sur la réponse
 
     res.status(upstream.status);
-
     const buf = Buffer.from(await upstream.arrayBuffer());
     res.send(buf);
   } catch (e) {
-    res.status(502).json({ error: "Bad gateway", detail: e?.message || String(e) });
+    return res.status(502).json({ error: "Bad gateway", detail: e?.message || String(e) });
   }
 }
