@@ -1,8 +1,11 @@
-// api/proxy.js — version STABLE (base originale + correctifs)
+// api/proxy.js — version STABLE (base originale + correctifs) + AUTH MINIMALE
 // - Support ?path= ET /api/proxy/<suffixe>
 // - Autorise toutes les sondes (dont POST vide /match)
 // - Pas de debug
 // - Comportement identique à ton proxy d’origine
+// - + Auth requise uniquement pour POST /match avec body (vrai upload)
+
+import { createClient } from "@supabase/supabase-js";
 
 export const config = { api: { bodyParser: false } };
 
@@ -32,6 +35,32 @@ export default async function handler(req, res) {
   const base = API_BASE.replace(/\/$/, "");
   const url = base + (upstreamPath.startsWith("/") ? upstreamPath : `/${upstreamPath}`);
 
+  // === AUTH: requise seulement pour un vrai POST /match (pas la sonde POST vide) ===
+  const needsAuth =
+    req.method === "POST" &&
+    upstreamPath === "/match" &&
+    !isEmptyPostMatch(req, upstreamPath);
+
+  let userId = null;
+  if (needsAuth) {
+    const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env;
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      return res.status(500).json({ error: "Supabase server env missing" });
+    }
+
+    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { persistSession: false }
+    });
+
+    const authz = req.headers["authorization"] || "";
+    const token = authz.startsWith("Bearer ") ? authz.slice(7) : null;
+    if (!token) return res.status(401).json({ error: "Unauthorized" });
+
+    const { data, error } = await supabaseAdmin.auth.getUser(token);
+    if (error || !data?.user) return res.status(401).json({ error: "Invalid token" });
+    userId = data.user.id;
+  }
+
   // En-têtes à relayer (sans host, content-length, authorization)
   const headers = {};
   for (const [k, v] of Object.entries(req.headers)) {
@@ -39,6 +68,7 @@ export default async function handler(req, res) {
     if (["host", "content-length", "authorization"].includes(key)) continue;
     headers[key] = v;
   }
+  if (userId) headers["x-user-id"] = userId; // optionnel, pour corrélation côté Cloud Run
 
   const init = {
     method: req.method,
