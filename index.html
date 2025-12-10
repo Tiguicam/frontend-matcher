@@ -15,7 +15,7 @@
     .container{max-width:1100px;margin:0 auto;padding:0 20px}
 
     /* Topbar */
-    .topbar{position:sticky;top:0;z-index:40;background:rgba(255,255,255,.8);backdrop-filter:saturate(180%) blur(8px);
+    .topbar{position:sticky;top:0;z-index:40;background:rgba(255,255,255,.85);backdrop-filter:saturate(180%) blur(8px);
       border-bottom:1px solid var(--border)}
     .nav{display:flex;align-items:center;justify-content:space-between;height:60px}
     .brand{display:flex;align-items:center;gap:10px;font-weight:700}
@@ -29,44 +29,42 @@
     .btn.ghost:hover{background:#fafafa}
     .hidden{display:none !important}
 
-    /* Layout */
-    .hero{padding:28px 0 10px}
+    /* Hero */
+    .hero{padding:28px 0 12px}
     .h1{font-size:26px;font-weight:800;margin:0}
     .sub{margin-top:6px;color:var(--muted)}
-    .grid{display:grid;grid-template-columns:1fr;gap:16px;margin:18px 0}
-    @media(min-width:900px){ .grid{grid-template-columns:1.2fr .8fr} }
 
+    /* Tabs */
+    .tabs{display:flex;gap:8px;border-bottom:1px solid var(--border);padding-bottom:8px;margin:18px 0}
+    .tab{padding:8px 12px;border-radius:10px;background:var(--chip);color:#1e3a8a;cursor:pointer;border:1px solid var(--border)}
+    .tab.active{background:var(--accent);color:#fff}
+    .tab-panel{display:none}
+    .tab-panel.active{display:block}
+
+    /* Cards / form */
     .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:0 8px 24px #0000000a}
     .section-title{font-weight:700;margin:0 0 8px 0}
     .row{display:flex;gap:12px;flex-wrap:wrap}
     .grow{flex:1 1 260px}
-
     input[type=text],input[type=url],input[type=number],input[type=email],input[type=password],textarea{
       width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:#fafafa;color:var(--text)
     }
     input[type=file]{width:100%}
     textarea{min-height:110px;white-space:pre-wrap}
     label{font-size:14px;color:var(--muted);display:block;margin-bottom:6px}
-
-    .tabs{display:flex;gap:8px;border-bottom:1px solid var(--border);padding-bottom:8px;margin:18px 0}
-    .tab{padding:8px 12px;border-radius:10px;background:var(--chip);color:#1e3a8a;cursor:pointer;border:1px solid var(--border)}
-    .tab.active{background:var(--accent);color:#fff}
-
     .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;border:1px solid var(--border)}
     .badge.ok{background:#dcfce7;color:#065f46;border-color:#bbf7d0}
     .badge.err{background:#fee2e2;color:#991b1b;border-color:#fecaca}
 
-    /* Auth gate (clair) */
+    /* Auth gate */
     #gate{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#eef2f7;z-index:50}
     #gate .card{width:520px}
-
-    /* Two-columns upload panel (clean) */
-    .two-cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    @media(max-width:700px){.two-cols{grid-template-columns:1fr}}
   </style>
 
+  <!-- libs -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <script>
     window.SUPABASE_URL="https://srvvdrhiaygklqjijdtq.supabase.co";
     window.SUPABASE_PUBLISHABLE_KEY="sb_publishable_Tm5K5o-Fq_UBHP9Qp6JBog_rtKQjpDi";
@@ -104,104 +102,113 @@
     </div>
   </div>
 
+  <!-- Main -->
   <div class="container">
     <div class="hero">
       <h1 class="h1">Matching 404 → 200</h1>
-      <div class="sub">Chargez vos fichiers 404/200 et récupérez un <i>result.xlsx</i>. En production, les appels transitent via <code>/api/proxy</code>.</div>
+      <div class="sub">Trois onglets : Matching, Test URL, Configuration. En production, les appels passent par <code>/api/proxy</code>.</div>
     </div>
 
-    <div class="grid">
-      <!-- Colonne gauche -->
-      <div class="col-left">
-        <div class="card">
-          <div class="section-title">Matching</div>
-          <div class="two-cols">
-            <div>
-              <label>Fichier 404 (onglet <code>404</code>, col <code>URL_404</code>)</label>
-              <input id="file404" type="file" accept=".xlsx,.xls" />
-            </div>
-            <div>
-              <label>Fichier 200 (onglet <code>200</code>, col <code>URL_200</code>)</label>
-              <input id="file200" type="file" accept=".xlsx,.xls" />
-            </div>
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" data-tab="matching">Matching</button>
+      <button class="tab" data-tab="test">Test URL</button>
+      <button class="tab" data-tab="config">Configuration</button>
+    </div>
+
+    <!-- Panel: Matching -->
+    <section id="panel-matching" class="tab-panel active">
+      <div class="card">
+        <div class="section-title">Matching</div>
+        <div class="row">
+          <div class="grow">
+            <label>Fichier 404 (onglet <code>404</code>, col <code>URL_404</code>)</label>
+            <input id="file404" type="file" accept=".xlsx,.xls" />
           </div>
-          <div class="row" style="margin-top:12px">
-            <button class="btn ghost" id="btnEstimate">Estimation</button>
-            <div style="flex:1"></div>
-            <button class="btn ghost" id="btnClear">Vider</button>
-            <button class="btn primary" id="btnRun">Lancer le matching</button>
-          </div>
-          <div style="margin-top:12px">
-            <label>Logs matching</label>
-            <textarea id="logsMatch" readonly></textarea>
+          <div class="grow">
+            <label>Fichier 200 (onglet <code>200</code>, col <code>URL_200</code>)</label>
+            <input id="file200" type="file" accept=".xlsx,.xls" />
           </div>
         </div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn ghost" id="btnEstimate">Estimation</button>
+          <div style="flex:1"></div>
+          <button class="btn ghost" id="btnClear">Vider</button>
+          <button class="btn primary" id="btnRun">Lancer le matching</button>
+        </div>
+        <div style="margin-top:12px">
+          <label>Logs matching</label>
+          <textarea id="logsMatch" readonly></textarea>
+        </div>
+      </div>
+    </section>
 
-        <div class="card" style="margin-top:16px">
-          <div class="section-title">Configuration (optionnelle)</div>
-          <div class="two-cols">
-            <div>
-              <label>Dictionnaire Excel (colonnes = noms de dicos, lignes = "clé, syn1, syn2…")</label>
-              <input id="fileDico" type="file" accept=".xlsx,.xls" />
-            </div>
-            <div>
-              <label>Traductions Excel (colonnes <code>SOURCE</code>, <code>TRANSLATION</code>)</label>
-              <input id="fileTrad" type="file" accept=".xlsx,.xls" />
-            </div>
+    <!-- Panel: Test URL -->
+    <section id="panel-test" class="tab-panel">
+      <div class="card">
+        <div class="section-title">Test URL</div>
+        <div class="row">
+          <div class="grow"><label>URL</label><input id="testUrl" type="text" placeholder="https://www.exemple.com/produit/ref-AB1234?color=red"></div>
+          <button class="btn primary" id="btnTest" style="align-self:flex-end">Analyser</button>
+        </div>
+        <div style="margin-top:10px"><label>Résultat</label><textarea id="testOut" readonly></textarea></div>
+      </div>
+    </section>
+
+    <!-- Panel: Configuration -->
+    <section id="panel-config" class="tab-panel">
+      <div class="card">
+        <div class="section-title">Santé API / Proxy</div>
+        <div class="row">
+          <div class="grow">
+            <label>URL Cloud Run (dev)</label>
+            <input id="apiBase" type="url" value="https://url-matcher-70649262164.europe-west1.run.app" />
+            <div class="sub">En production Vercel, le proxy <code>/api/proxy</code> est utilisé automatiquement.</div>
           </div>
-          <div class="row" style="margin-top:10px">
-            <div class="grow"><label>Parents (optionnel) – Excel avec colonne URL</label><input id="fileParents" type="file" accept=".xlsx,.xls" /></div>
-          </div>
-          <div class="row" style="margin-top:10px">
-            <div class="grow"><label>Stopwords (virgules)</label><input id="inpStop" type="text" /></div>
-            <div class="grow"><label>Exceptions normalisation (virgules)</label><input id="inpExc" type="text" /></div>
-          </div>
-          <div class="row" style="margin-top:10px">
-            <div class="grow"><label>Expressions multi-mots (virgules)</label><input id="inpMulti" type="text" /></div>
-            <div class="grow"><label>Regex référence</label><input id="inpRegex" type="text" value="(?i)ref[:\- ]?([a-z0-9\-]+)" /></div>
-            <div class="grow"><label>Score minimum (UI)</label><input id="inpMin" type="number" step="0.1" value="0.5" /></div>
-          </div>
-          <div style="margin-top:12px"><button class="btn ghost" id="btnApply">Appliquer</button></div>
-          <div style="margin-top:12px"><label>Logs configuration</label><textarea id="logsCfg" readonly></textarea></div>
+        </div>
+        <div class="row" style="margin-top:10px;align-items:center">
+          <label style="display:flex;align-items:center;gap:8px">
+            <input id="useProxy" type="checkbox" />
+            Utiliser <code>/api/proxy</code> (dev uniquement)
+          </label>
+          <div style="flex:1"></div>
+          <button class="btn primary" id="btnHealth">Test de fonctionnement</button>
+          <span id="healthBadge" class="badge">en attente…</span>
+        </div>
+        <div style="margin-top:10px">
+          <label>Logs health</label>
+          <textarea id="logsHealth" readonly></textarea>
         </div>
       </div>
 
-      <!-- Colonne droite -->
-      <div class="col-right">
-        <div class="card">
-          <div class="section-title">Santé API / Proxy</div>
-          <div class="row">
-            <div class="grow">
-              <label>URL Cloud Run (dev)</label>
-              <input id="apiBase" type="url" value="https://url-matcher-70649262164.europe-west1.run.app" />
-              <div class="sub">En production Vercel, le proxy <code>/api/proxy</code> est utilisé automatiquement.</div>
-            </div>
+      <div class="card" style="margin-top:16px">
+        <div class="section-title">Paramètres (optionnels)</div>
+        <div class="row">
+          <div class="grow">
+            <label>Dictionnaire Excel (colonnes = noms de dicos, lignes = "clé, syn1, syn2…")</label>
+            <input id="fileDico" type="file" accept=".xlsx,.xls" />
           </div>
-          <div class="row" style="margin-top:10px;align-items:center">
-            <label style="display:flex;align-items:center;gap:8px">
-              <input id="useProxy" type="checkbox" />
-              Utiliser <code>/api/proxy</code> (dev uniquement)
-            </label>
-            <div style="flex:1"></div>
-            <button class="btn primary" id="btnHealth">Test de fonctionnement</button>
-            <span id="healthBadge" class="badge">en attente…</span>
-          </div>
-          <div style="margin-top:10px">
-            <label>Logs health</label>
-            <textarea id="logsHealth" readonly></textarea>
+          <div class="grow">
+            <label>Traductions Excel (colonnes <code>SOURCE</code>, <code>TRANSLATION</code>)</label>
+            <input id="fileTrad" type="file" accept=".xlsx,.xls" />
           </div>
         </div>
-
-        <div class="card" style="margin-top:16px">
-          <div class="section-title">Test URL rapide</div>
-          <div class="row">
-            <div class="grow"><label>URL</label><input id="testUrl" type="text" placeholder="https://www.exemple.com/produit/ref-AB1234?color=red"></div>
-            <button class="btn primary" id="btnTest" style="align-self:flex-end">Analyser</button>
-          </div>
-          <div style="margin-top:10px"><label>Résultat</label><textarea id="testOut" readonly></textarea></div>
+        <div class="row" style="margin-top:10px">
+          <div class="grow"><label>Parents (optionnel) – Excel avec colonne URL</label><input id="fileParents" type="file" accept=".xlsx,.xls" /></div>
         </div>
+        <div class="row" style="margin-top:10px">
+          <div class="grow"><label>Stopwords (virgules)</label><input id="inpStop" type="text" /></div>
+          <div class="grow"><label>Exceptions normalisation (virgules)</label><input id="inpExc" type="text" /></div>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <div class="grow"><label>Expressions multi-mots (virgules)</label><input id="inpMulti" type="text" /></div>
+          <div class="grow"><label>Regex référence</label><input id="inpRegex" type="text" value="(?i)ref[:\- ]?([a-z0-9\-]+)" /></div>
+          <div class="grow"><label>Score minimum (UI)</label><input id="inpMin" type="number" step="0.1" value="0.5" /></div>
+        </div>
+        <div style="margin-top:12px"><button class="btn ghost" id="btnApply">Appliquer</button></div>
+        <div style="margin-top:12px"><label>Logs configuration</label><textarea id="logsCfg" readonly></textarea></div>
       </div>
-    </div>
+    </section>
 
     <div class="sub" style="margin:24px 0 40px">© URL Matcher – Vercel + Cloud Run</div>
   </div>
@@ -274,6 +281,22 @@ elLogout.addEventListener('click', async ()=>{ try{ await supabase.auth.signOut(
 applyAuthUI();
 /* =================== Fin Supabase Auth + Gate =================== */
 
+
+/* =================== Tabs =================== */
+const tabs = document.querySelectorAll('.tab');
+const panels = {
+  matching: document.getElementById('panel-matching'),
+  test: document.getElementById('panel-test'),
+  config: document.getElementById('panel-config')
+};
+tabs.forEach(t=>{
+  t.addEventListener('click',()=>{
+    tabs.forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    Object.values(panels).forEach(p=>p.classList.remove('active'));
+    panels[t.dataset.tab].classList.add('active');
+  });
+});
 
 /* =================== App / UI =================== */
 const state={dicos:{},dicoWeights:{},translations:{},parents:[],cfg:{stop:new Set(),exc:new Set(),multi:[],ref:'(?i)ref[:\\- ]?([a-z0-9\\-]+)',min:0.5}};
@@ -367,7 +390,7 @@ fileDico.addEventListener('change',async()=>{logsCfg.value='';if(!fileDico.files
 fileTrad.addEventListener('change',async()=>{if(!fileTrad.files[0])return;try{const wb=await readExcel(fileTrad.files[0]);state.translations={};wb.SheetNames.forEach(name=>{const sh=wb.Sheets[name];const arr=XLSX.utils.sheet_to_json(sh);arr.forEach(row=>{const s=String(row['SOURCE']||'').trim().toLowerCase();const t=String(row['TRANSLATION']||'').trim().toLowerCase();if(s)state.translations[s]=t})});saveLocal();logsCfg.value=`[TRAD] ${Object.keys(state.translations).length} entrées.`}catch(e){logsCfg.value='[TRAD][ERREUR] '+e.message}});
 fileParents.addEventListener('change',async()=>{if(!fileParents.files[0])return;try{const wb=await readExcel(fileParents.files[0]);state.parents=[];wb.SheetNames.forEach(name=>{const sh=wb.Sheets[name];const arr=XLSX.utils.sheet_to_json(sh);arr.forEach(row=>{if(row.URL)state.parents.push(String(row.URL))})});saveLocal();logsCfg.value=`[PARENTS] ${state.parents.length} URLs.`}catch(e){logsCfg.value='[PARENTS][ERREUR] '+e.message}});
 
-/* Test URL simple */
+/* Test URL */
 btnTest.addEventListener('click',()=>{const url=testUrl.value.trim();const logs=[];if(!url){testOut.value='Veuillez saisir une URL.';return}logs.push(`URL brute : ${url}`);const cleaned=url.replace(/^https?:\/\//i,'').replace(/^www\./i,'');logs.push('URL nettoyée :');logs.push(' → '+cleaned);const tokens=cleaned.toLowerCase().split(/[\/\-\_\?\&\=\s]+/).filter(Boolean);logs.push('Tokens :');logs.push(tokens.length?(' → '+tokens.join(', ')):' → Aucun token');testOut.value=logs.join('\n')});
 
 /* Matching */
