@@ -44,14 +44,14 @@
         <div class="grow">
           <label>URL de l'API (Cloud Run)</label>
           <input id="apiBase" type="url" value="https://url-matcher-70649262164.europe-west1.run.app" />
-          <div class="muted">Doit exposer <code>GET /healthz</code> et <code>POST /match</code>.</div>
+          <div class="muted">Doit exposer <code>POST /match</code>. Le health check teste <code>/</code>, <code>/openapi.json</code>, <code>OPTIONS /match</code> ou un <code>POST /match</code> “à vide”.</div>
         </div>
         <div class="grow" style="align-self:flex-end">
           <label><input id="useProxy" type="checkbox" /> Utiliser proxy relatif <code>/api/proxy</code> (Vercel)</label>
           <div class="muted">Coche si CORS bloque ou par défaut en production Vercel.</div>
         </div>
         <div style="display:flex;align-items:flex-end;gap:8px">
-          <button class="btn" id="btnHealth">Tester /healthz</button>
+          <button class="btn" id="btnHealth">Tester l’API</button>
           <span id="healthBadge" class="badge muted">en attente…</span>
         </div>
       </div>
@@ -213,7 +213,51 @@ function tokenize(s){let t=normalizeText(s);state.cfg.multi.forEach(exp=>{const 
 function extractRef(s){try{const m=new RegExp(state.cfg.ref).exec(s);return m?m[1]:null}catch(e){return null}}
 function buildUrl(path){const p=path.startsWith('/')?path:'/'+path;if(useProxy&&useProxy.checked){return location.origin+'/api/proxy'+p}return apiBase.value.replace(/\/$/,'')+p}
 
-btnHealth.addEventListener('click',async()=>{healthBadge.textContent='test…';healthBadge.className='badge muted';try{let r=await fetch(buildUrl('/healthz'));if(!r.ok&&!useProxy.checked){r=await fetch(buildUrl('/healthz/'))}if(!r.ok)throw new Error('status '+r.status);healthBadge.textContent='OK';healthBadge.className='badge ok'}catch(e){healthBadge.textContent='ERREUR';healthBadge.className='badge err'}});
+/* ====== Health check multi-sondes (remplace l'ancien /healthz) ====== */
+async function tryProbe(probe, timeoutMs=4000){
+  const controller=new AbortController();
+  const t=setTimeout(()=>controller.abort(),timeoutMs);
+  const init={method:probe.method,signal:controller.signal,headers:probe.headers||{},redirect:'manual'};
+  if(!['GET','HEAD','OPTIONS'].includes(probe.method) && probe.body!==undefined){init.body=probe.body}
+  const started=Date.now();
+  try{
+    const resp=await fetch(buildUrl(probe.path),init);
+    const ms=Date.now()-started;
+    console.debug(`[health] ${probe.name} -> ${resp.status} (${ms} ms)`);
+    const ok=probe.okStatuses.includes(resp.status) || (resp.ok && probe.okStatuses.includes(200));
+    return {ok,status:resp.status,ms};
+  }catch(err){
+    const ms=Date.now()-started;
+    console.debug(`[health] ${probe.name} -> erreur ${err?.name==='AbortError'?'timeout':(err?.message||'inconnue')} (${ms} ms)`);
+    return {ok:false,error:err,ms};
+  }finally{
+    clearTimeout(t);
+  }
+}
+
+const HEALTH_PROBES=[
+  {name:'GET /',             path:'/',             method:'GET',     okStatuses:[200,204]},
+  {name:'HEAD /',            path:'/',             method:'HEAD',    okStatuses:[200,204]},
+  {name:'GET /openapi.json', path:'/openapi.json', method:'GET',     okStatuses:[200]},
+  {name:'OPTIONS /match',    path:'/match',        method:'OPTIONS', okStatuses:[200,204]},
+  {name:'POST /match (dry)', path:'/match',        method:'POST',    okStatuses:[200,400,415,422], body:'{}', headers:{'content-type':'application/json'}}
+];
+
+btnHealth.addEventListener('click', async ()=>{
+  healthBadge.textContent='test…';
+  healthBadge.className='badge muted';
+  for(const probe of HEALTH_PROBES){
+    const r=await tryProbe(probe);
+    if(r.ok){
+      healthBadge.textContent='OK';
+      healthBadge.className='badge ok';
+      return;
+    }
+  }
+  healthBadge.textContent='ERREUR';
+  healthBadge.className='badge err';
+});
+/* ====== Fin health check ====== */
 
 btnApply.addEventListener('click',()=>{state.cfg.stop=new Set(inpStop.value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean));state.cfg.exc=new Set(inpExc.value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean));state.cfg.multi=inpMulti.value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);state.cfg.ref=inpRegex.value.trim()||state.cfg.ref;state.cfg.min=Number(inpMin.value)||0.5;saveLocal();logCfg('[CONFIG] Paramètres appliqués.')});
 
@@ -229,7 +273,7 @@ btnTest.addEventListener('click',()=>{const url=testUrl.value.trim();const logs=
 
 btnEstimate.addEventListener('click',async()=>{logsMatch.value='';if(!file404.files[0]||!file200.files[0]){logMatch('Charge les deux fichiers d\'abord.');return}try{const wb404=await readExcel(file404.files[0]);const sh404=wb404.Sheets['404']||wb404.Sheets[wb404.SheetNames[0]];const arr404=XLSX.utils.sheet_to_json(sh404);const wb200=await readExcel(file200.files[0]);const sh200=wb200.Sheets['200']||wb200.Sheets[wb200.SheetNames[0]];const arr200=XLSX.utils.sheet_to_json(sh200);if(arr404.length===0||arr200.length===0){logMatch('[ESTIMATION] Impossible : fichiers vides.');return}const total=arr404.length;const est=(0.035+0.025)*total;const min=(est/60).toFixed(1);logMatch(`[ESTIMATION] ~ ${min} minutes (approximation navigateur).`)}catch(e){logMatch('[ESTIMATION][ERREUR] '+e.message)}});
 
-btnClear.addEventListener('click',()=>{logsMatch.value='';file404.value='';file200.value='';});
+btnClear.addEventListener('click',()=>{logsMatch.value='';file404.value='';file200.value=''});
 
 btnRun.addEventListener('click',async()=>{logsMatch.value='';if(!file404.files[0]||!file200.files[0]){logMatch('Upload les fichiers d\'abord.');return}try{const form=new FormData();form.append('file404',file404.files[0]);form.append('file200',file200.files[0]);logMatch('[0%] Upload en cours…');const r=await fetch(buildUrl('/match'),{method:'POST',body:form});if(!r.ok){const txt=await r.text();throw new Error('HTTP '+r.status+' – '+txt)}logMatch('[60%] Traitement côté API…');const blob=await r.blob();logMatch('[90%] Réception du résultat…');const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='result.xlsx';document.body.appendChild(a);a.click();a.remove();logMatch('[100%] Terminé. Fichier téléchargé : result.xlsx')}catch(e){logMatch('[ERREUR] '+e.message)}});
 </script>
