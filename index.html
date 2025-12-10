@@ -43,7 +43,7 @@
 
     /* Cards / form */
     .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:0 8px 24px #0000000a}
-    .section-title{font-weight:700;margin:0 0 8px 0}
+    .section-title{font-weight:700;margin:0 0 8px 0;display:flex;align-items:center;gap:8px}
     .row{display:flex;gap:12px;flex-wrap:wrap}
     .grow{flex:1 1 260px}
     input[type=text],input[type=url],input[type=number],input[type=email],input[type=password],textarea{
@@ -55,6 +55,7 @@
     .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;border:1px solid var(--border)}
     .badge.ok{background:#dcfce7;color:#065f46;border-color:#bbf7d0}
     .badge.err{background:#fee2e2;color:#991b1b;border-color:#fecaca}
+    .badge.info{background:#eff6ff;color:#1e3a8a;border-color:#bfdbfe}
 
     /* Auth gate */
     #gate{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#eef2f7;z-index:50}
@@ -70,6 +71,7 @@
     .switch:checked:before{left:21px}
     details{background:#fafafa;border:1px solid var(--border);border-radius:10px;padding:10px}
     summary{cursor:pointer;font-weight:600}
+    .help{font-size:12px;color:var(--muted)}
   </style>
 
   <!-- libs -->
@@ -154,10 +156,13 @@
       </div>
 
       <div class="card" style="margin-top:16px">
-        <div class="section-title">Paramètres</div>
+        <div class="section-title">
+          Paramètres
+          <span id="prefilterBadge" class="badge info" title="Le préfiltre est actif si au moins un dictionnaire est coché dans le tableau ci-dessous.">Préfiltre : inactif</span>
+        </div>
         <div class="row">
           <div class="grow">
-            <label>Dictionnaire Excel (colonnes = noms de dicos, lignes = "clé, syn1, syn2…")</label>
+            <label>Dictionnaire Excel (colonnes = noms de dicos, lignes = \"clé, syn1, syn2…\")</label>
             <input id="fileDico" type="file" accept=".xlsx,.xls" />
           </div>
           <div class="grow">
@@ -183,15 +188,15 @@
 
           <div style="margin-top:14px">
             <div class="section-title" style="margin-bottom:8px">Dictionnaires dynamiques</div>
-            <div class="sub" style="margin-bottom:8px">Activez/désactivez, ajustez les pondérations. Cette table se remplit après import du fichier Dictionnaire.</div>
+            <div class="help" style="margin-bottom:8px">Réglez bonus/malus et activez le préfiltre par dico. <b title="Le bonus augmente la priorité des tokens de ce dico; le malus pénalise les tokens hors dico.">Aide bonus/malus</b></div>
             <div class="table-wrap">
               <table id="tblDico">
                 <thead>
                   <tr>
                     <th>Dictionnaire</th>
-                    <th style="width:130px">Bonus</th>
-                    <th style="width:130px">Malus</th>
-                    <th style="width:120px">Actif</th>
+                    <th style="width:130px" title="Poids positif appliqué aux tokens issus de ce dico.">Bonus</th>
+                    <th style="width:130px" title="Pénalité (valeur positive) pour les tokens hors dico.">Malus</th>
+                    <th style="width:120px" title="Active le préfiltre pour ce dico.">Actif</th>
                     <th style="width:140px">Entrées</th>
                   </tr>
                 </thead>
@@ -364,6 +369,7 @@ const btnRun=document.getElementById('btnRun');
 const btnClear=document.getElementById('btnClear');
 const logsMatch=document.getElementById('logsMatch');
 const tblDico=document.querySelector('#tblDico tbody');
+const prefilterBadge=document.getElementById('prefilterBadge');
 
 inpStop.value=[...state.cfg.stop].join(', ');
 inpExc.value=[...state.cfg.exc].join(', ');
@@ -411,6 +417,28 @@ btnHealth.addEventListener('click', async ()=>{
   healthBadge.textContent='ERREUR'; healthBadge.className='badge err';
 });
 
+/* =================== Fonctionnalités type moteur (UI) =================== */
+function normalizeText(s){ if(!s) return ''; return String(s).toLowerCase().replace(/\s+/g,' ').trim(); }
+function cleanAndNormalizeUrl(url){ if(!url) return ''; let u=String(url).toLowerCase(); u=u.replace(/^https?:\/\//,''); u=u.replace(/^www\./,''); u=u.replace(/[-_\/?&=]+/g,' '); // exceptions: placeholder si logique fine nécessaire
+  return normalizeText(u); }
+function applyMultiWords(text){ let t=text; state.cfg.multi.forEach(exp=>{ if(!exp) return; const r=new RegExp(exp.replace(/[-\s]+/g,'\\s+'),'gi'); t=t.replace(r,exp.replace(/\s+/g,'-')); }); return t; }
+function getTokensFromText(text){ let tokens=text.split(/\s+/).filter(Boolean); tokens=tokens.filter(tok=>!state.cfg.stop.has(tok)); tokens=tokens.map(tok=>state.translations[tok]||tok); return tokens; }
+function reduceByActiveDictionaries(tokens){ const active=Object.keys(state.dicos).filter(n=>(state.dicoWeights[n]||{active:true}).active); return tokens.map(tok=>{ for(const name of active){ const dict=state.dicos[name]; for(const key in dict){ if(dict[key].has(tok)||key===tok) return key; } } return tok; }); }
+function applySynonymSubstitution(rawUrl){ const clean=cleanAndNormalizeUrl(rawUrl); const mw=applyMultiWords(clean); const t1=getTokensFromText(mw); const t2=reduceByActiveDictionaries(t1); return { clean, substituted:t2.join(' '), tokens:t2 }; }
+function extractRefFromUrl(url){ try{ const m=new RegExp(state.cfg.ref).exec(url); return m?m[1]:null; }catch(e){ return null; } }
+function detectCharacteristics(substitutedText){ const hitsByDico={}; const active=Object.keys(state.dicos).filter(n=>(state.dicoWeights[n]||{active:true}).active); const tokens=substitutedText.split(/\s+/).filter(Boolean); active.forEach(name=>{ const dict=state.dicos[name]; const hits=new Set(); tokens.forEach(tok=>{ for(const key in dict){ if(dict[key].has(tok)||key===tok) hits.add(key); } }); hitsByDico[name]=[...hits]; }); return hitsByDico; }
+
+/* Dico table rendering + badge */
+function updatePrefilterBadge(){ const active=Object.keys(state.dicoWeights).filter(n=> (state.dicoWeights[n]||{}).active); if(active.length>0){ prefilterBadge.textContent='Préfiltre : actif'; prefilterBadge.className='badge ok'; prefilterBadge.title='Au moins un dictionnaire actif : le préfiltre est appliqué.'; } else { prefilterBadge.textContent='Préfiltre : inactif'; prefilterBadge.className='badge info'; prefilterBadge.title='Activez un dictionnaire pour activer le préfiltre.'; } }
+function renderDicoTable(){ if(!tblDico) return; tblDico.innerHTML=''; const names=Object.keys(state.dicos); if(names.length===0){ const tr=document.createElement('tr'); const td=document.createElement('td'); td.colSpan=5; td.textContent='Aucun dictionnaire chargé.'; td.style.color='var(--muted)'; tr.appendChild(td); tblDico.appendChild(tr); updatePrefilterBadge(); return; } names.forEach(name=>{ const dict=state.dicos[name]; const w=state.dicoWeights[name]||{bonus:1,malus:1,active:true}; const entries=Object.keys(dict).length; const tr=document.createElement('tr'); tr.innerHTML=`
+      <td>${name}</td>
+      <td><input type="number" step="0.1" value="${w.bonus}" data-k="bonus" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;background:#fff" title="Bonus: augmente l'influence des tokens de ce dico."></td>
+      <td><input type="number" step="0.1" value="${w.malus}" data-k="malus" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;background:#fff" title="Malus: pénalise les tokens hors dico (valeur positive affichée)."></td>
+      <td><input class="switch" type="checkbox" ${w.active?'checked':''} data-k="active" title="Activer/Désactiver le préfiltre pour ce dico."></td>
+      <td>${entries.toLocaleString('fr-FR')}</td>
+    `; tr.querySelectorAll('input').forEach(inp=>{ inp.addEventListener('change',()=>{ const key=inp.dataset.k; const row=state.dicoWeights[name]||{bonus:1,malus:1,active:true}; if(key==='active') row.active=inp.checked; else row[key]=Number(inp.value); state.dicoWeights[name]=row; saveLocal(); updatePrefilterBadge(); }); }); tblDico.appendChild(tr); }); updatePrefilterBadge(); }
+renderDicoTable();
+
 /* Config save */
 btnApply.addEventListener('click',()=>{
   state.cfg.stop=new Set(inpStop.value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean));
@@ -431,44 +459,8 @@ fileTrad.addEventListener('change',async()=>{if(!fileTrad.files[0])return;try{co
 
 fileParents.addEventListener('change',async()=>{if(!fileParents.files[0])return;try{const wb=await readExcel(fileParents.files[0]);state.parents=[];wb.SheetNames.forEach(name=>{const sh=wb.Sheets[name];const arr=XLSX.utils.sheet_to_json(sh);arr.forEach(row=>{if(row.URL)state.parents.push(String(row.URL))})});saveLocal();logsCfg.value=`[PARENTS] ${state.parents.length} URLs.`}catch(e){logsCfg.value='[PARENTS][ERREUR] '+e.message}});
 
-/* Dico table rendering */
-function renderDicoTable(){
-  if(!tblDico) return;
-  tblDico.innerHTML='';
-  const names=Object.keys(state.dicos);
-  if(names.length===0){
-    const tr=document.createElement('tr');
-    const td=document.createElement('td');
-    td.colSpan=5; td.textContent='Aucun dictionnaire chargé.'; td.style.color='var(--muted)';
-    tr.appendChild(td); tblDico.appendChild(tr); return;
-  }
-  names.forEach(name=>{
-    const dict=state.dicos[name];
-    const w=state.dicoWeights[name]||{bonus:1,malus:1,active:true};
-    const entries=Object.keys(dict).length;
-    const tr=document.createElement('tr');
-    tr.innerHTML=`
-      <td>${name}</td>
-      <td><input type=\"number\" step=\"0.1\" value=\"${w.bonus}\" data-k=\"bonus\" style=\"width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;background:#fff\"></td>
-      <td><input type=\"number\" step=\"0.1\" value=\"${w.malus}\" data-k=\"malus\" style=\"width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;background:#fff\"></td>
-      <td><input class=\"switch\" type=\"checkbox\" ${w.active?'checked':''} data-k=\"active\"></td>
-      <td>${entries.toLocaleString('fr-FR')}</td>
-    `;
-    tr.querySelectorAll('input').forEach(inp=>{
-      inp.addEventListener('change',()=>{
-        const key=inp.dataset.k;
-        const row=state.dicoWeights[name]||{bonus:1,malus:1,active:true};
-        if(key==='active') row.active=inp.checked; else row[key]=Number(inp.value);
-        state.dicoWeights[name]=row; saveLocal();
-      });
-    });
-    tblDico.appendChild(tr);
-  });
-}
-renderDicoTable();
-
-/* Test URL */
-btnTest.addEventListener('click',()=>{const url=testUrl.value.trim();const logs=[];if(!url){testOut.value='Veuillez saisir une URL.';return}logs.push(`URL brute : ${url}`);const cleaned=url.replace(/^https?:\/\//i,'').replace(/^www\./i,'');logs.push('URL nettoyée :');logs.push(' → '+cleaned);const tokens=cleaned.toLowerCase().split(/[\/\-\_\?\&\=\s]+/).filter(Boolean);logs.push('Tokens :');logs.push(tokens.length?(' → '+tokens.join(', ')):' → Aucun token');testOut.value=logs.join('\n')});
+/* Test URL complet (réutilise la config + dicos actifs) */
+btnTest.addEventListener('click',()=>{ const url=testUrl.value.trim(); const out=[]; if(!url){ testOut.value='Veuillez saisir une URL.'; return; } const { clean, substituted, tokens }=applySynonymSubstitution(url); out.push(`URL brute : ${url}`); out.push('URL nettoyée (clean_and_normalize_url) :'); out.push(' → '+clean); out.push('URL après synonymes (apply_synonym_substitution) :'); out.push(' → '+substituted); out.push('Tokens (get_tokens) :'); out.push(tokens.length?(' → '+tokens.join(', ')):' → Aucun token'); const ref=extractRefFromUrl(url); out.push(ref?`Référence détectée : ${ref}`:'Aucune référence détectée via la regex.'); const dicoHits=detectCharacteristics(substituted); out.push('Caractéristiques détectées :'); const dicos=Object.keys(dicoHits); if(!dicos.length){ out.push(' → Aucun dictionnaire dynamique chargé.'); } else { dicos.forEach(name=>{ const keys=dicoHits[name]; out.push(keys.length?` [${name}] → ${keys.join(', ')}`:` [${name}] → aucune caractéristique trouvée`); }); } testOut.value=out.join('\n'); });
 
 /* Matching */
 btnEstimate.addEventListener('click',async()=>{logsMatch.value='';if(!file404.files[0]||!file200.files[0]){logsMatch.value='Charge les deux fichiers d\'abord.';return}try{const wb404=await readExcel(file404.files[0]);const sh404=wb404.Sheets['404']||wb404.Sheets[wb404.SheetNames[0]];const arr404=XLSX.utils.sheet_to_json(sh404);const wb200=await readExcel(file200.files[0]);const sh200=wb200.Sheets['200']||wb200.Sheets[wb200.SheetNames[0]];const arr200=XLSX.utils.sheet_to_json(sh200);if(arr404.length===0||arr200.length===0){logsMatch.value='[ESTIMATION] Fichiers vides.';return}const total=arr404.length;const est=(0.035+0.025)*total;const min=(est/60).toFixed(1);logsMatch.value=`[ESTIMATION] ~ ${min} minutes (approx).`}catch(e){logsMatch.value='[ESTIMATION][ERREUR] '+e.message}});
