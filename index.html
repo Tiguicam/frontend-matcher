@@ -406,15 +406,32 @@ const HEALTH_PROBES=[
   {name:'POST /match (empty)', path:'/match',      method:'POST',    okStatuses:[200,204,400,415,422]}
 ];
 btnHealth.addEventListener('click', async ()=>{
-  healthBadge.textContent='test…'; healthBadge.className='badge';
+  healthBadge.textContent='test…';
+  healthBadge.className='badge';
   logsHealth.value='';
-  for(const probe of HEALTH_PROBES){
-    const r=await tryProbe(probe);
-    if(r.ok){ hlog(`✅ ${probe.name} → ${r.status} (${r.ms}ms) via ${r.url}`); healthBadge.textContent='OK'; healthBadge.className='badge ok'; return; }
-    else { hlog(`❌ ${probe.name} → ${r.status||'ERR'} (${r.ms}ms) via ${r.url}${r.error?(' | '+r.error):''}`); }
+
+  // on exécute TOUTES les sondes, on n'arrête pas au premier succès
+  let allOk = true;
+
+  for (const probe of HEALTH_PROBES) {
+    const r = await tryProbe(probe);
+    if (r.ok) {
+      hlog(`✅ ${probe.name} → ${r.status} (${r.ms}ms) via ${r.url}`);
+    } else {
+      allOk = false;
+      hlog(`❌ ${probe.name} → ${r.status || 'ERR'} (${r.ms}ms) via ${r.url}${r.error ? (' | ' + r.error) : ''}`);
+    }
   }
-  healthBadge.textContent='ERREUR'; healthBadge.className='badge err';
+
+  if (allOk) {
+    healthBadge.textContent = 'OK';
+    healthBadge.className = 'badge ok';
+  } else {
+    healthBadge.textContent = 'ERREUR';
+    healthBadge.className = 'badge err';
+  }
 });
+
 
 /* =================== Fonctionnalités type moteur (UI) =================== */
 function normalizeText(s){ if(!s) return ''; return String(s).toLowerCase().replace(/\s+/g,' ').trim(); }
