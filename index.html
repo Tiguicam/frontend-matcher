@@ -377,16 +377,11 @@ inpMulti.value=state.cfg.multi.join(', ');
 inpRegex.value=state.cfg.ref;
 inpMin.value=state.cfg.min;
 
-/* Prod: proxy forcé + masquage du toggle */
-function isProd(){ return location.hostname.endsWith('.vercel.app'); }
-window.addEventListener('DOMContentLoaded',()=>{ if(isProd()){ if(useProxy) useProxy.checked=true; useProxy?.closest('label')?.classList.add('hidden'); } });
-
-function buildUrl(path){
-  const p=path.startsWith('/')?path:'/'+path;
-  if (isProd()) return location.origin + '/api/proxy' + p; // prod → proxy
-  if (useProxy && useProxy.checked) return location.origin + '/api/proxy' + p;
-  return apiBase.value.replace(/\/$/,'') + p;
-}
+/* Prod/Custom domain: proxy forcé + masquage du toggle (fix) */
+function isLocalHost(){ const h=location.hostname; return h==='localhost'||h==='127.0.0.1'; }
+function shouldUseProxy(){ if(isLocalHost()) return !!(useProxy && useProxy.checked); return true; }
+window.addEventListener('DOMContentLoaded',()=>{ if(!isLocalHost()){ if(useProxy) useProxy.checked=true; useProxy?.closest('label')?.classList.add('hidden'); } });
+function buildUrl(path){ const p=path.startsWith('/')?path:'/'+path; if(shouldUseProxy()) return location.origin + '/api/proxy' + p; return apiBase.value.replace(/\/$/,'') + p; }
 
 /* Health */
 function hlog(m){ logsHealth.value+=(logsHealth.value?'\n':'')+m; logsHealth.scrollTop=logsHealth.scrollHeight; }
@@ -451,7 +446,7 @@ btnApply.addEventListener('click',()=>{
 });
 
 /* Excel readers */
-async function readExcel(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=e=>{try{const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});resolve(wb)}catch(err){reject(err)}};reader.onerror=reject;reader.readAsArrayBuffer(file)});}
+async function readExcel(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=e=>{try{const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});resolve(wb)}catch(err){reject(err)}};reader.onerror=reject;reader.readAsArrayBuffer(file)});} 
 
 fileDico.addEventListener('change',async()=>{logsCfg.value='';if(!fileDico.files[0])return;try{const wb=await readExcel(fileDico.files[0]);state.dicos={};wb.SheetNames.forEach(name=>{const sh=wb.Sheets[name];const df=XLSX.utils.sheet_to_json(sh,{header:1,blankrows:false});if(df.length===0)return;const cols=df[0].map((_,i)=>df.map(row=>row[i]));cols.forEach((col,idx)=>{const dicoName=String(df[0][idx]||`Dico_${idx+1}`);if(!state.dicos[dicoName])state.dicos[dicoName]={};for(let r=1;r<col.length;r++){const cell=col[r];if(cell==null)continue;const items=String(cell).split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);if(items.length===0)continue;const key=items[0];state.dicos[dicoName][key]=(state.dicos[dicoName][key]||new Set());items.forEach(x=>state.dicos[dicoName][key].add(x))}})});saveLocal();renderDicoTable();logsCfg.value=`[DICO] ${Object.keys(state.dicos).length} dictionnaire(s) chargé(s).`}catch(e){logsCfg.value='[DICO][ERREUR] '+e.message}});
 
@@ -459,7 +454,7 @@ fileTrad.addEventListener('change',async()=>{if(!fileTrad.files[0])return;try{co
 
 fileParents.addEventListener('change',async()=>{if(!fileParents.files[0])return;try{const wb=await readExcel(fileParents.files[0]);state.parents=[];wb.SheetNames.forEach(name=>{const sh=wb.Sheets[name];const arr=XLSX.utils.sheet_to_json(sh);arr.forEach(row=>{if(row.URL)state.parents.push(String(row.URL))})});saveLocal();logsCfg.value=`[PARENTS] ${state.parents.length} URLs.`}catch(e){logsCfg.value='[PARENTS][ERREUR] '+e.message}});
 
-/* Test URL complet (réutilise la config + dicos actifs) */
+/* Test URL complet (local, sans backend /debug-url obligatoire) */
 btnTest.addEventListener('click',()=>{ const url=testUrl.value.trim(); const out=[]; if(!url){ testOut.value='Veuillez saisir une URL.'; return; } const { clean, substituted, tokens }=applySynonymSubstitution(url); out.push(`URL brute : ${url}`); out.push('URL nettoyée (clean_and_normalize_url) :'); out.push(' → '+clean); out.push('URL après synonymes (apply_synonym_substitution) :'); out.push(' → '+substituted); out.push('Tokens (get_tokens) :'); out.push(tokens.length?(' → '+tokens.join(', ')):' → Aucun token'); const ref=extractRefFromUrl(url); out.push(ref?`Référence détectée : ${ref}`:'Aucune référence détectée via la regex.'); const dicoHits=detectCharacteristics(substituted); out.push('Caractéristiques détectées :'); const dicos=Object.keys(dicoHits); if(!dicos.length){ out.push(' → Aucun dictionnaire dynamique chargé.'); } else { dicos.forEach(name=>{ const keys=dicoHits[name]; out.push(keys.length?` [${name}] → ${keys.join(', ')}`:` [${name}] → aucune caractéristique trouvée`); }); } testOut.value=out.join('\n'); });
 
 /* Matching */
