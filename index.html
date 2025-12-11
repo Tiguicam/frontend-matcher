@@ -162,7 +162,7 @@
         </div>
         <div class="row">
           <div class="grow">
-            <label>Dictionnaire Excel (colonnes = noms de dicos, lignes = \"clé, syn1, syn2…\")</label>
+            <label>Dictionnaire Excel (colonnes = noms de dicos, lignes = "clé, syn1, syn2…")</label>
             <input id="fileDico" type="file" accept=".xlsx,.xls" />
           </div>
           <div class="grow">
@@ -182,7 +182,7 @@
           </div>
           <div class="row" style="margin-top:10px">
             <div class="grow"><label>Expressions multi-mots (virgules)</label><input id="inpMulti" type="text" /></div>
-            <div class="grow"><label>Regex référence</label><input id="inpRegex" type="text" value="(?i)ref[:\\- ]?([a-z0-9\\-]+)" /></div>
+            <div class="grow"><label>Regex référence</label><input id="inpRegex" type="text" value="(?i)ref[:\- ]?([a-z0-9\-]+)" /></div>
             <div class="grow"><label>Score minimum (UI)</label><input id="inpMin" type="number" step="0.1" value="0.5" /></div>
           </div>
 
@@ -444,6 +444,33 @@ function applySynonymSubstitution(rawUrl){ const clean=cleanAndNormalizeUrl(rawU
 function extractRefFromUrl(url){ try{ const m=new RegExp(state.cfg.ref).exec(url); return m?m[1]:null; }catch(e){ return null; } }
 function detectCharacteristics(substitutedText){ const hitsByDico={}; const active=Object.keys(state.dicos).filter(n=>(state.dicoWeights[n]||{active:true}).active); const tokens=substitutedText.split(/\s+/).filter(Boolean); active.forEach(name=>{ const dict=state.dicos[name]; const hits=new Set(); tokens.forEach(tok=>{ for(const key in dict){ if(dict[key].has(tok)||key===tok) hits.add(key); } }); hitsByDico[name]=[...hits]; }); return hitsByDico; }
 
+/* ===== Helper: sérialiser la config UI pour l'envoyer au backend ===== */
+function buildConfigFromUI(){
+  const dictionaries = Object.entries(state.dicos).map(([name, dict]) => ({
+    name,
+    rows: Object.entries(dict).map(([k, synSet]) => [k, ...Array.from(synSet)].join(','))
+  }));
+  const bonus = {}, malus = {}, prefilter = {};
+  Object.entries(state.dicoWeights || {}).forEach(([name, w]) => {
+    bonus[name] = Number(w?.bonus || 0);
+    malus[name] = Number(w?.malus || 0);
+    prefilter[name] = !!w?.active;
+  });
+  return {
+    stopwords: [...state.cfg.stop],
+    exceptions: [...state.cfg.exc],
+    multi: state.cfg.multi,
+    refRegex: state.cfg.ref,
+    translations: Object.entries(state.translations || {}).map(([SOURCE, TRANSLATION]) => ({ SOURCE, TRANSLATION })),
+    dictionaries,
+    bonus,
+    malus,
+    prefilter,
+    scoreMin: state.cfg.min,
+    parents: state.parents || []
+  };
+}
+
 /* Dico table rendering + badge */
 function updatePrefilterBadge(){ const active=Object.keys(state.dicoWeights).filter(n=> (state.dicoWeights[n]||{}).active); if(active.length>0){ prefilterBadge.textContent='Préfiltre : actif'; prefilterBadge.className='badge ok'; prefilterBadge.title='Au moins un dictionnaire actif : le préfiltre est appliqué.'; } else { prefilterBadge.textContent='Préfiltre : inactif'; prefilterBadge.className='badge info'; prefilterBadge.title='Activez un dictionnaire pour activer le préfiltre.'; } }
 function renderDicoTable(){ if(!tblDico) return; tblDico.innerHTML=''; const names=Object.keys(state.dicos); if(names.length===0){ const tr=document.createElement('tr'); const td=document.createElement('td'); td.colSpan=5; td.textContent='Aucun dictionnaire chargé.'; td.style.color='var(--muted)'; tr.appendChild(td); tblDico.appendChild(tr); updatePrefilterBadge(); return; } names.forEach(name=>{ const dict=state.dicos[name]; const w=state.dicoWeights[name]||{bonus:1,malus:1,active:true}; const entries=Object.keys(dict).length; const tr=document.createElement('tr'); tr.innerHTML=`
@@ -475,13 +502,47 @@ fileTrad.addEventListener('change',async()=>{if(!fileTrad.files[0])return;try{co
 
 fileParents.addEventListener('change',async()=>{if(!fileParents.files[0])return;try{const wb=await readExcel(fileParents.files[0]);state.parents=[];wb.SheetNames.forEach(name=>{const sh=wb.Sheets[name];const arr=XLSX.utils.sheet_to_json(sh);arr.forEach(row=>{if(row.URL)state.parents.push(String(row.URL))})});saveLocal();logsCfg.value=`[PARENTS] ${state.parents.length} URLs.`}catch(e){logsCfg.value='[PARENTS][ERREUR] '+e.message}});
 
-/* Test URL complet (local, sans backend /debug-url obligatoire) */
-btnTest.addEventListener('click',()=>{ const url=testUrl.value.trim(); const out=[]; if(!url){ testOut.value='Veuillez saisir une URL.'; return; } const { clean, substituted, tokens }=applySynonymSubstitution(url); out.push(`URL brute : ${url}`); out.push('URL nettoyée (clean_and_normalize_url) :'); out.push(' → '+clean); out.push('URL après synonymes (apply_synonym_substitution) :'); out.push(' → '+substituted); out.push('Tokens (get_tokens) :'); out.push(tokens.length?(' → '+tokens.join(', ')):' → Aucun token'); const ref=extractRefFromUrl(url); out.push(ref?`Référence détectée : ${ref}`:'Aucune référence détectée via la regex.'); const dicoHits=detectCharacteristics(substituted); out.push('Caractéristiques détectées :'); const dicos=Object.keys(dicoHits); if(!dicos.length){ out.push(' → Aucun dictionnaire dynamique chargé.'); } else { dicos.forEach(name=>{ const keys=dicoHits[name]; out.push(keys.length?` [${name}] → ${keys.join(', ')}`:` [${name}] → aucune caractéristique trouvée`); }); } testOut.value=out.join('\n'); });
+/* Test URL → appelle le backend /debug-url avec la config */
+btnTest.addEventListener('click', async () => {
+  const url = testUrl.value.trim();
+  if(!url){ testOut.value = 'Veuillez saisir une URL.'; return; }
+  try{
+    const payload = { url, config: buildConfigFromUI() };
+    const r = await fetch(buildUrl('/debug-url'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if(!r.ok){ throw new Error('HTTP '+r.status+' – '+await r.text()); }
+    const j = await r.json();
+    const out = [];
+    out.push(`URL brute : ${j.input}`);
+    out.push('URL nettoyée :');
+    out.push(' → ' + j.clean);
+    out.push('Après synonymes :');
+    out.push(' → ' + j.substituted);
+    out.push('Tokens :');
+    out.push(j.tokens?.length ? (' → ' + j.tokens.join(', ')) : ' → Aucun token');
+    out.push(j.reference ? `Référence détectée : ${j.reference}` : 'Aucune référence détectée via la regex.');
+    out.push('Caractéristiques détectées :');
+    const dicos = Object.keys(j.dico_hits || {});
+    if(!dicos.length){ out.push(' → Aucun dictionnaire.'); }
+    else {
+      dicos.forEach(name => {
+        const keys = j.dico_hits[name] || [];
+        out.push(keys.length ? ` [${name}] → ${keys.join(', ')}` : ` [${name}] → aucune`);
+      });
+    }
+    testOut.value = out.join('\n');
+  }catch(e){
+    testOut.value = '[ERREUR] ' + (e?.message || String(e));
+  }
+});
 
 /* Matching */
 btnEstimate.addEventListener('click',async()=>{logsMatch.value='';if(!file404.files[0]||!file200.files[0]){logsMatch.value='Charge les deux fichiers d\'abord.';return}try{const wb404=await readExcel(file404.files[0]);const sh404=wb404.Sheets['404']||wb404.Sheets[wb404.SheetNames[0]];const arr404=XLSX.utils.sheet_to_json(sh404);const wb200=await readExcel(file200.files[0]);const sh200=wb200.Sheets['200']||wb200.Sheets[wb200.SheetNames[0]];const arr200=XLSX.utils.sheet_to_json(sh200);if(arr404.length===0||arr200.length===0){logsMatch.value='[ESTIMATION] Fichiers vides.';return}const total=arr404.length;const est=(0.035+0.025)*total;const min=(est/60).toFixed(1);logsMatch.value=`[ESTIMATION] ~ ${min} minutes (approx).`}catch(e){logsMatch.value='[ESTIMATION][ERREUR] '+e.message}});
 btnClear.addEventListener('click',()=>{logsMatch.value='';file404.value='';file200.value=''});
-btnRun.addEventListener('click',async()=>{logsMatch.value='';if(!file404.files[0]||!file200.files[0]){logsMatch.value='Upload les fichiers d\'abord.';return}try{const form=new FormData();form.append('file404',file404.files[0]);form.append('file200',file200.files[0]);logsMatch.value='[0%] Upload en cours…';const { data:{ session } }=await supabase.auth.getSession();const token=session?.access_token||null;const headers={};if(token) headers['Authorization']=`Bearer ${token}`;const r=await fetch(buildUrl('/match'),{method:'POST',headers,body:form});if(!r.ok){const txt=await r.text();throw new Error('HTTP '+r.status+' – '+txt)}logsMatch.value+=' \n[60%] Traitement côté API…';const blob=await r.blob();logsMatch.value+=' \n[90%] Réception du résultat…';const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='result.xlsx';document.body.appendChild(a);a.click();a.remove();logsMatch.value+=' \n[100%] Terminé. Fichier téléchargé : result.xlsx'}catch(e){logsMatch.value='[ERREUR] '+e.message}});
+btnRun.addEventListener('click',async()=>{logsMatch.value='';if(!file404.files[0]||!file200.files[0]){logsMatch.value='Upload les fichiers d\'abord.';return}try{const form=new FormData();form.append('file404',file404.files[0]);form.append('file200',file200.files[0]);form.append('config', JSON.stringify(buildConfigFromUI()));logsMatch.value='[0%] Upload en cours…';const { data:{ session } }=await supabase.auth.getSession();const token=session?.access_token||null;const headers={};if(token) headers['Authorization']=`Bearer ${token}`;const r=await fetch(buildUrl('/match'),{method:'POST',headers,body:form});if(!r.ok){const txt=await r.text();throw new Error('HTTP '+r.status+' – '+txt)}logsMatch.value+=' \n[60%] Traitement côté API…';const blob=await r.blob();logsMatch.value+=' \n[90%] Réception du résultat…';const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='result.xlsx';document.body.appendChild(a);a.click();a.remove();logsMatch.value+=' \n[100%] Terminé. Fichier téléchargé : result.xlsx'}catch(e){logsMatch.value='[ERREUR] '+e.message}});
 </script>
 </body>
 </html>
