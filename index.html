@@ -381,7 +381,11 @@ inpMin.value=state.cfg.min;
 function isLocalHost(){ const h=location.hostname; return h==='localhost'||h==='127.0.0.1'; }
 function shouldUseProxy(){ if(isLocalHost()) return !!(useProxy && useProxy.checked); return true; }
 window.addEventListener('DOMContentLoaded',()=>{ if(!isLocalHost()){ if(useProxy) useProxy.checked=true; useProxy?.closest('label')?.classList.add('hidden'); } });
-function buildUrl(path){ const p=path.startsWith('/')?path:'/'+path; if(shouldUseProxy()) return location.origin + '/api/proxy' + p; return apiBase.value.replace(/\/$/,'') + p; }
+function buildUrl(path){
+  const p = path.startsWith('/') ? path : '/' + path;
+  if (shouldUseProxy()) return location.origin + '/api/proxy?path=' + encodeURIComponent(p);
+  return apiBase.value.replace(/\/$/, '') + p;
+}
 
 /* Health */
 function hlog(m){ logsHealth.value+=(logsHealth.value?'\n':'')+m; logsHealth.scrollTop=logsHealth.scrollHeight; }
