@@ -379,8 +379,13 @@ inpMin.value=state.cfg.min;
 
 /* Prod/Custom domain: proxy forcé + masquage du toggle (fix) */
 function isLocalHost(){ const h=location.hostname; return h==='localhost'||h==='127.0.0.1'; }
-function shouldUseProxy(){ if(isLocalHost()) return !!(useProxy && useProxy.checked); return true; }
-window.addEventListener('DOMContentLoaded',()=>{ if(!isLocalHost()){ if(useProxy) useProxy.checked=true; useProxy?.closest('label')?.classList.add('hidden'); } });
+function shouldUseProxy() {
+  return useProxy && useProxy.checked;
+}
+window.addEventListener('DOMContentLoaded',()=>{
+  // Ne force plus le proxy en production.
+});
+
 function buildUrl(path){
   const p = path.startsWith('/') ? path : '/' + path;
   if (shouldUseProxy()) return location.origin + '/api/proxy?path=' + encodeURIComponent(p);
