@@ -513,7 +513,7 @@ btnTest.addEventListener('click', async () => {
   if(!url){ testOut.value = 'Veuillez saisir une URL.'; return; }
   try{
     const payload = { url, config: buildConfigFromUI() };
-    const r = await fetch(buildUrl('/debug_url'), {
+    const r = await fetch(buildUrl('/debug-url'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
