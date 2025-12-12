@@ -378,10 +378,19 @@ inpRegex.value=state.cfg.ref;
 inpMin.value=state.cfg.min;
 
 /* Prod/Custom domain: proxy forcé + masquage du toggle (fix) */
-function isLocalHost(){ const h=location.hostname; return h==='localhost'||h==='127.0.0.1'; }
+function isLocalHost(){ 
+  const h = location.hostname; 
+  return h === 'localhost' || h === '127.0.0.1'; 
+}
+
 function shouldUseProxy() {
+  // En production (Vercel) : on force toujours le proxy
+  if (!isLocalHost()) return true;
+
+  // En local : on laisse le toggle décider
   return useProxy && useProxy.checked;
 }
+
 window.addEventListener('DOMContentLoaded',()=>{
   // Ne force plus le proxy en production.
 });
