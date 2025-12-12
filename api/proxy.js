@@ -1,5 +1,4 @@
 // api/proxy.js — VERSION CORRIGÉE ET STABLE
-import { createClient } from "@supabase/supabase-js";
 
 export const config = { api: { bodyParser: false } };
 
@@ -81,29 +80,33 @@ export default async function handler(req, res) {
 
   let userId = null;
 
-  if (needsAuth) {
-    const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env;
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      return res.status(500).json({ error: "Supabase env missing" });
-    }
-
-    const supabaseAdmin = createClient(
-      SUPABASE_URL,
-      SUPABASE_SERVICE_ROLE_KEY,
-      { auth: { persistSession: false } }
-    );
-
-    const authz = req.headers["authorization"] || "";
-    const token = authz.startsWith("Bearer ") ? authz.slice(7) : null;
-
-    if (!token) return res.status(401).json({ error: "Unauthorized" });
-
-    const { data, error } = await supabaseAdmin.auth.getUser(token);
-    if (error || !data?.user)
-      return res.status(401).json({ error: "Invalid token" });
-
-    userId = data.user.id;
+if (needsAuth) {
+  const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env;
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    return res.status(500).json({ error: "Supabase env missing" });
   }
+
+  // Import Supabase uniquement quand on en a besoin (POST /match réel)
+  const { createClient } = await import("@supabase/supabase-js");
+
+  const supabaseAdmin = createClient(
+    SUPABASE_URL,
+    SUPABASE_SERVICE_ROLE_KEY,
+    { auth: { persistSession: false } }
+  );
+
+  const authz = req.headers["authorization"] || "";
+  const token = authz.startsWith("Bearer ") ? authz.slice(7) : null;
+
+  if (!token) return res.status(401).json({ error: "Unauthorized" });
+
+  const { data, error } = await supabaseAdmin.auth.getUser(token);
+  if (error || !data?.user)
+    return res.status(401).json({ error: "Invalid token" });
+
+  userId = data.user.id;
+}
+
 
   // ====================================================================
   // PREPARE HEADERS
