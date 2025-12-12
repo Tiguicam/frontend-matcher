@@ -1,13 +1,12 @@
 {
   "version": 2,
-  "functions": {
-    "api/proxy.js": {
-      "runtime": "nodejs18.x"
-    }
-  },
+  "builds": [
+    { "src": "api/proxy.js", "use": "@vercel/node" },
+    { "src": "index.html", "use": "@vercel/static" }
+  ],
   "routes": [
-    { "src": "/api/proxy/(.*)", "dest": "api/proxy.js" },
-    { "src": "/api/proxy", "dest": "api/proxy.js" },
+    { "src": "/api/proxy", "dest": "/api/proxy.js" },
+    { "src": "/api/proxy/(.*)", "dest": "/api/proxy.js" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
