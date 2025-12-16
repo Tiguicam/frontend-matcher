@@ -247,10 +247,17 @@
           <label>Logs matching</label>
           <textarea id="logsMatch" readonly></textarea>
         </div>
+
+        <!-- NOUVEAU: bloc téléchargement -->
+        <div id="downloadWrap" class="hidden" style="margin-top:12px; display:flex; gap:10px; align-items:center;">
+          <button class="btn primary" id="btnDownload" type="button">Télécharger le résultat</button>
+          <span id="downloadLabel" class="sub"></span>
+        </div>
+
       </div>
     </section>
 
-    <div class="sub" style="margin:24px 0 40px">© URL Matcher – Vercel + Cloud Run</div>
+    <div class="sub" style="margin:24px 0 40px">© Tigui Camara</div>
   </div>
 
 <script>
@@ -370,6 +377,35 @@ const btnClear=document.getElementById('btnClear');
 const logsMatch=document.getElementById('logsMatch');
 const tblDico=document.querySelector('#tblDico tbody');
 const prefilterBadge=document.getElementById('prefilterBadge');
+
+/* NOUVEAU: éléments + state téléchargement */
+const downloadWrap = document.getElementById('downloadWrap');
+const btnDownload = document.getElementById('btnDownload');
+const downloadLabel = document.getElementById('downloadLabel');
+
+let resultBlobUrl = null;
+let resultFilename = 'result.xlsx';
+
+function resetDownloadUI() {
+  if (resultBlobUrl) {
+    URL.revokeObjectURL(resultBlobUrl);
+    resultBlobUrl = null;
+  }
+  resultFilename = 'result.xlsx';
+  downloadWrap.classList.add('hidden');
+  downloadLabel.textContent = '';
+}
+
+btnDownload.addEventListener('click', () => {
+  if (!resultBlobUrl) return;
+
+  const a = document.createElement('a');
+  a.href = resultBlobUrl;
+  a.download = resultFilename || 'result.xlsx';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+});
 
 inpStop.value=[...state.cfg.stop].join(', ');
 inpExc.value=[...state.cfg.exc].join(', ');
@@ -554,9 +590,83 @@ btnTest.addEventListener('click', async () => {
 });
 
 /* Matching */
-btnEstimate.addEventListener('click',async()=>{logsMatch.value='';if(!file404.files[0]||!file200.files[0]){logsMatch.value='Charge les deux fichiers d\'abord.';return}try{const wb404=await readExcel(file404.files[0]);const sh404=wb404.Sheets['404']||wb404.Sheets[wb404.SheetNames[0]];const arr404=XLSX.utils.sheet_to_json(sh404);const wb200=await readExcel(file200.files[0]);const sh200=wb200.Sheets['200']||wb200.Sheets[wb200.SheetNames[0]];const arr200=XLSX.utils.sheet_to_json(sh200);if(arr404.length===0||arr200.length===0){logsMatch.value='[ESTIMATION] Fichiers vides.';return}const total=arr404.length;const est=(0.035+0.025)*total;const min=(est/60).toFixed(1);logsMatch.value=`[ESTIMATION] ~ ${min} minutes (approx).`}catch(e){logsMatch.value='[ESTIMATION][ERREUR] '+e.message}});
-btnClear.addEventListener('click',()=>{logsMatch.value='';file404.value='';file200.value=''});
-btnRun.addEventListener('click',async()=>{logsMatch.value='';if(!file404.files[0]||!file200.files[0]){logsMatch.value='Upload les fichiers d\'abord.';return}try{const form=new FormData();form.append('file404',file404.files[0]);form.append('file200',file200.files[0]);form.append('config', JSON.stringify(buildConfigFromUI()));logsMatch.value='[0%] Upload en cours…';const { data:{ session } }=await supabase.auth.getSession();const token=session?.access_token||null;const headers={};if(token) headers['Authorization']=`Bearer ${token}`;const r=await fetch(buildUrl('/match'),{method:'POST',headers,body:form});if(!r.ok){const txt=await r.text();throw new Error('HTTP '+r.status+' – '+txt)}logsMatch.value+=' \n[60%] Traitement côté API…';const blob=await r.blob();logsMatch.value+=' \n[90%] Réception du résultat…';const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='result.xlsx';document.body.appendChild(a);a.click();a.remove();logsMatch.value+=' \n[100%] Terminé. Fichier téléchargé : result.xlsx'}catch(e){logsMatch.value='[ERREUR] '+e.message}});
+btnEstimate.addEventListener('click',async()=>{
+  logsMatch.value='';
+  resetDownloadUI();
+  if(!file404.files[0]||!file200.files[0]){logsMatch.value='Charge les deux fichiers d\'abord.';return}
+  try{
+    const wb404=await readExcel(file404.files[0]);
+    const sh404=wb404.Sheets['404']||wb404.Sheets[wb404.SheetNames[0]];
+    const arr404=XLSX.utils.sheet_to_json(sh404);
+    const wb200=await readExcel(file200.files[0]);
+    const sh200=wb200.Sheets['200']||wb200.Sheets[wb200.SheetNames[0]];
+    const arr200=XLSX.utils.sheet_to_json(sh200);
+    if(arr404.length===0||arr200.length===0){logsMatch.value='[ESTIMATION] Fichiers vides.';return}
+    const total=arr404.length;
+    const est=(0.035+0.025)*total;
+    const min=(est/60).toFixed(1);
+    logsMatch.value=`[ESTIMATION] ~ ${min} minutes (approx).`
+  }catch(e){logsMatch.value='[ESTIMATION][ERREUR] '+e.message}
+});
+
+btnClear.addEventListener('click',()=>{
+  logsMatch.value='';
+  file404.value='';
+  file200.value='';
+  resetDownloadUI();
+});
+
+btnRun.addEventListener('click', async () => {
+  logsMatch.value = '';
+  resetDownloadUI();
+
+  if (!file404.files[0] || !file200.files[0]) {
+    logsMatch.value = "Upload les fichiers d'abord.";
+    return;
+  }
+
+  try {
+    const form = new FormData();
+    form.append('file404', file404.files[0]);
+    form.append('file200', file200.files[0]);
+    form.append('config', JSON.stringify(buildConfigFromUI()));
+
+    logsMatch.value = '[0%] Upload en cours…';
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token || null;
+
+    const headers = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const r = await fetch(buildUrl('/match'), { method: 'POST', headers, body: form });
+
+    if (!r.ok) {
+      const txt = await r.text();
+      throw new Error('HTTP ' + r.status + ' – ' + txt);
+    }
+
+    logsMatch.value += '\n[60%] Traitement côté API…';
+
+    // On récupère le fichier en blob
+    const blob = await r.blob();
+
+    logsMatch.value += '\n[90%] Réception du résultat…';
+
+    // On prépare l’URL blob pour téléchargement “au clic”
+    resultBlobUrl = URL.createObjectURL(blob);
+    resultFilename = 'result.xlsx';
+
+    // On affiche le bouton
+    downloadWrap.classList.remove('hidden');
+    downloadLabel.textContent = 'Résultat prêt : ' + resultFilename;
+
+    logsMatch.value += '\n[100%] Terminé. Clique sur "Télécharger le résultat".';
+  } catch (e) {
+    logsMatch.value = '[ERREUR] ' + (e?.message || String(e));
+    resetDownloadUI();
+  }
+});
 </script>
 </body>
 </html>
