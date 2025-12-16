@@ -1,4 +1,4 @@
-// api/proxy.js — VERSION CORRIGÉE ET STABLE
+// api/proxy.js — VERSION CORRIGÉE ET STABLE (CORS verrouillé)
 
 export const config = { api: { bodyParser: false } };
 
@@ -15,14 +15,11 @@ function resolveUpstreamPath(req) {
     return p.startsWith("/") ? p : `/${p}`;
   }
 
-  // fallback /api/proxy/... 
+  // fallback /api/proxy/...
   const withoutPrefix = req.url.replace(/^\/api\/proxy(?:\.js)?/i, "");
-  if (!withoutPrefix || withoutPrefix === "/" || withoutPrefix === "")
-    return "/";
+  if (!withoutPrefix || withoutPrefix === "/" || withoutPrefix === "") return "/";
 
-  return withoutPrefix.startsWith("/")
-    ? withoutPrefix
-    : `/${withoutPrefix}`;
+  return withoutPrefix.startsWith("/") ? withoutPrefix : `/${withoutPrefix}`;
 }
 
 // POST /match vide = health check
@@ -33,13 +30,23 @@ function isEmptyPostMatch(req, upstreamPath) {
 }
 
 // ====================================================================
-// CORS
+// CORS (VERROUILLÉ)
 // ====================================================================
 function corsAllow(req, res) {
-  const origin = req.headers.origin || "*";
+  const allowedOrigins = new Set([
+    "https://frontend-matcher.vercel.app",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+  ]);
 
-  res.setHeader("Access-Control-Allow-Origin", origin);
-  res.setHeader("Vary", "Origin");
+  const origin = req.headers.origin;
+
+  // Autorise uniquement les origins whitelistées.
+  // Si pas d'Origin (server-to-server, curl), on ne met pas Allow-Origin.
+  if (origin && allowedOrigins.has(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+  }
 
   res.setHeader(
     "Access-Control-Allow-Headers",
@@ -61,8 +68,7 @@ export default async function handler(req, res) {
   }
 
   const API_BASE = process.env.API_BASE;
-  if (!API_BASE)
-    return res.status(500).json({ error: "API_BASE not defined" });
+  if (!API_BASE) return res.status(500).json({ error: "API_BASE not defined" });
 
   const upstreamPath = resolveUpstreamPath(req);
 
@@ -80,33 +86,33 @@ export default async function handler(req, res) {
 
   let userId = null;
 
-if (needsAuth) {
-  const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env;
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    return res.status(500).json({ error: "Supabase env missing" });
+  if (needsAuth) {
+    const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env;
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      return res.status(500).json({ error: "Supabase env missing" });
+    }
+
+    // Import Supabase uniquement quand on en a besoin (POST /match réel)
+    const { createClient } = await import("@supabase/supabase-js");
+
+    const supabaseAdmin = createClient(
+      SUPABASE_URL,
+      SUPABASE_SERVICE_ROLE_KEY,
+      { auth: { persistSession: false } }
+    );
+
+    const authz = req.headers["authorization"] || "";
+    const token = authz.startsWith("Bearer ") ? authz.slice(7) : null;
+
+    if (!token) return res.status(401).json({ error: "Unauthorized" });
+
+    const { data, error } = await supabaseAdmin.auth.getUser(token);
+    if (error || !data?.user) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+
+    userId = data.user.id;
   }
-
-  // Import Supabase uniquement quand on en a besoin (POST /match réel)
-  const { createClient } = await import("@supabase/supabase-js");
-
-  const supabaseAdmin = createClient(
-    SUPABASE_URL,
-    SUPABASE_SERVICE_ROLE_KEY,
-    { auth: { persistSession: false } }
-  );
-
-  const authz = req.headers["authorization"] || "";
-  const token = authz.startsWith("Bearer ") ? authz.slice(7) : null;
-
-  if (!token) return res.status(401).json({ error: "Unauthorized" });
-
-  const { data, error } = await supabaseAdmin.auth.getUser(token);
-  if (error || !data?.user)
-    return res.status(401).json({ error: "Invalid token" });
-
-  userId = data.user.id;
-}
-
 
   // ====================================================================
   // PREPARE HEADERS
@@ -168,7 +174,7 @@ if (needsAuth) {
   } catch (e) {
     return res.status(502).json({
       error: "Bad gateway",
-      detail: e?.message || String(e)
+      detail: e?.message || String(e),
     });
   }
 }
