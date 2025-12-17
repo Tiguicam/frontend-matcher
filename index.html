@@ -269,7 +269,8 @@
 
 <script>
 /* ===================== Supabase Auth + Gate ===================== */
-const supabase = window.supabase.createClient(
+/* IMPORTANT: on évite le nom "supabase" (collision possible avec le global du CDN) */
+const supabaseClient = window.supabase.createClient(
   window.SUPABASE_URL,
   window.SUPABASE_PUBLISHABLE_KEY,
   { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
@@ -287,27 +288,25 @@ function busy(on){ ['btnLogin','btnSignup'].forEach(id=>{const b=document.getEle
   const hash=new URLSearchParams(location.hash.slice(1));
   const access_token=hash.get('access_token'); const refresh_token=hash.get('refresh_token');
   if(access_token&&refresh_token){
-    try{ await supabase.auth.setSession({access_token,refresh_token}); }
+    try{ await supabaseClient.auth.setSession({access_token,refresh_token}); }
     catch{}
     finally{ history.replaceState(null,'',location.pathname+location.search); }
   }
 })();
 
-/* IMPORTANT: app visible même déconnecté. Le gate n’apparaît que sur action/btn */
+/* App visible même déconnecté. Le gate n’apparaît que sur action/btn */
 async function applyAuthUI(){
-  const { data:{ session } } = await supabase.auth.getSession();
+  const { data:{ session } } = await supabaseClient.auth.getSession();
   const authed = !!session;
 
   elUser.textContent = session?.user?.email ? `Connecté : ${session.user.email}` : '';
   elLogout.classList.toggle('hidden', !authed);
   elLoginOpen.classList.toggle('hidden', authed);
 
-  // ne pas afficher automatiquement l'overlay
   elGate.classList.add('hidden');
 }
 
-supabase.auth.onAuthStateChange((event, session)=>{
-  const authed = !!session;
+supabaseClient.auth.onAuthStateChange((event, session)=>{
   if(event==='SIGNED_IN'){
     elGate.classList.add('hidden');
     elLoginOpen.classList.add('hidden');
@@ -315,7 +314,7 @@ supabase.auth.onAuthStateChange((event, session)=>{
     elUser.textContent = session?.user?.email ? `Connecté : ${session.user.email}` : '';
   }
   if(event==='SIGNED_OUT'){
-    elGate.classList.add('hidden');           // <- on ne bloque plus l’app
+    elGate.classList.add('hidden');
     elLoginOpen.classList.remove('hidden');
     elLogout.classList.add('hidden');
     elUser.textContent = '';
@@ -328,9 +327,9 @@ document.getElementById('btnLogin')?.addEventListener('click', async ()=>{
   if(!email||!password) return setGateMsg('Renseignez email et mot de passe.');
   setGateMsg('Connexion en cours…'); busy(true);
   try{
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
     if(error) return setGateMsg('Erreur: '+error.message);
-    const { data:{ session } } = await supabase.auth.getSession();
+    const { data:{ session } } = await supabaseClient.auth.getSession();
     if(!session){ location.reload(); return; }
     setGateMsg('Connecté.'); await applyAuthUI();
   }catch(e){ setGateMsg('Erreur inattendue: '+(e?.message||e)); }
@@ -343,7 +342,7 @@ document.getElementById('btnSignup')?.addEventListener('click', async ()=>{
   if(!email||!password) return setGateMsg('Renseignez email et mot de passe (min. 6 caractères).');
   setGateMsg('Création du compte…'); busy(true);
   try{
-    const { error } = await supabase.auth.signUp({ email, password, options:{ emailRedirectTo: `${location.origin}/` } });
+    const { error } = await supabaseClient.auth.signUp({ email, password, options:{ emailRedirectTo: `${location.origin}/` } });
     if(error) return setGateMsg('Erreur: '+error.message);
     setGateMsg('Compte créé ✔. Vérifie ton email et clique sur le lien.');
   }catch(e){ setGateMsg('Erreur inattendue: '+(e?.message||e)); }
@@ -358,13 +357,13 @@ document.getElementById('btnGateClose')?.addEventListener('click', ()=>{
   elGate.classList.add('hidden');
 });
 elLogout.addEventListener('click', async ()=>{
-  try{ await supabase.auth.signOut(); }
+  try{ await supabaseClient.auth.signOut(); }
   finally{ await applyAuthUI(); }
 });
 
 /* helper: demander une connexion uniquement quand nécessaire */
 async function requireAuthOrGate(message){
-  const { data:{ session } } = await supabase.auth.getSession();
+  const { data:{ session } } = await supabaseClient.auth.getSession();
   if(!session){
     setGateMsg(message || 'Connecte-toi pour continuer.');
     elGate.classList.remove('hidden');
