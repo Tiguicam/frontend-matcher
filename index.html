@@ -30,9 +30,9 @@
     .hidden{display:none !important}
 
     /* Hero */
-    .hero{padding:28px 0 12px}
-    .h1{font-size:26px;font-weight:800;margin:0}
-    .sub{margin-top:6px;color:var(--muted)}
+    .hero{padding:24px 0 12px}
+    .h1{font-size:24px;font-weight:800;margin:0}
+    .sub{margin-top:6px;color:var(--muted);line-height:1.4}
 
     /* Tabs */
     .tabs{display:flex;gap:8px;border-bottom:1px solid var(--border);padding-bottom:8px;margin:18px 0}
@@ -118,48 +118,27 @@
   <!-- Main -->
   <div class="container">
     <div class="hero">
-      <h1 class="h1">Matching 404 → 200</h1>
-      <div class="sub">Onglets : Configuration, Test URL, Matching. En production, les appels passent par <code>/api/proxy</code>.</div>
+      <h1 class="h1">Redirections 404 → 200</h1>
+      <div class="sub">
+        Importez vos fichiers 404/200, appliquez vos règles (dictionnaires, traductions, regex), puis exportez un fichier de résultat prêt à l’emploi.
+      </div>
     </div>
 
     <!-- Tabs -->
     <div class="tabs">
-      <button class="tab active" data-tab="config">Configuration</button>
-      <button class="tab" data-tab="test">Test URL</button>
-      <button class="tab" data-tab="matching">Matching</button>
+      <button class="tab active" data-tab="config">Paramètres</button>
+      <button class="tab" data-tab="test">Diagnostic URL</button>
+      <button class="tab" data-tab="matching">Traitement</button>
     </div>
 
     <!-- Panel: Configuration -->
     <section id="panel-config" class="tab-panel active">
       <div class="card">
-        <div class="section-title">Santé API / Proxy</div>
-        <div class="row">
-          <div class="grow">
-            <label>URL Cloud Run (dev)</label>
-            <input id="apiBase" type="url" value="https://url-matcher-70649262164.europe-west1.run.app" />
-            <div class="sub">En production Vercel, le proxy <code>/api/proxy</code> est utilisé automatiquement.</div>
-          </div>
-        </div>
-        <div class="row" style="margin-top:10px;align-items:center">
-          <label style="display:flex;align-items:center;gap:8px">
-            <input id="useProxy" type="checkbox" />
-            Utiliser <code>/api/proxy</code> (dev uniquement)
-          </label>
-          <div style="flex:1"></div>
-          <button class="btn primary" id="btnHealth">Test de fonctionnement</button>
-          <span id="healthBadge" class="badge">en attente…</span>
-        </div>
-        <div style="margin-top:10px">
-          <label>Logs health</label>
-          <textarea id="logsHealth" readonly></textarea>
-        </div>
-      </div>
-
-      <div class="card" style="margin-top:16px">
         <div class="section-title">
           Paramètres
           <span id="prefilterBadge" class="badge info" title="Le préfiltre est actif si au moins un dictionnaire est coché dans le tableau ci-dessous.">Préfiltre : inactif</span>
         </div>
+
         <div class="row">
           <div class="grow">
             <label>Dictionnaire Excel (colonnes = noms de dicos, lignes = "clé, syn1, syn2…")</label>
@@ -170,33 +149,37 @@
             <input id="fileTrad" type="file" accept=".xlsx,.xls" />
           </div>
         </div>
+
         <div class="row" style="margin-top:10px">
           <div class="grow"><label>Parents (optionnel) – Excel avec colonne URL</label><input id="fileParents" type="file" accept=".xlsx,.xls" /></div>
         </div>
 
         <details style="margin-top:14px" open>
-          <summary>Réglages avancés (afficher/masquer)</summary>
+          <summary>Réglages avancés</summary>
+
           <div class="row" style="margin-top:10px">
             <div class="grow"><label>Stopwords (virgules)</label><input id="inpStop" type="text" /></div>
             <div class="grow"><label>Exceptions normalisation (virgules)</label><input id="inpExc" type="text" /></div>
           </div>
+
           <div class="row" style="margin-top:10px">
             <div class="grow"><label>Expressions multi-mots (virgules)</label><input id="inpMulti" type="text" /></div>
             <div class="grow"><label>Regex référence</label><input id="inpRegex" type="text" value="(?i)ref[:\- ]?([a-z0-9\-]+)" /></div>
-            <div class="grow"><label>Score minimum (UI)</label><input id="inpMin" type="number" step="0.1" value="0.5" /></div>
+            <div class="grow"><label>Score minimum</label><input id="inpMin" type="number" step="0.1" value="0.5" /></div>
           </div>
 
           <div style="margin-top:14px">
             <div class="section-title" style="margin-bottom:8px">Dictionnaires dynamiques</div>
-            <div class="help" style="margin-bottom:8px">Réglez bonus/malus et activez le préfiltre par dico.</div>
+            <div class="help" style="margin-bottom:8px">Réglez bonus/malus et activez le préfiltre par dictionnaire.</div>
+
             <div class="table-wrap">
               <table id="tblDico">
                 <thead>
                   <tr>
                     <th>Dictionnaire</th>
-                    <th style="width:130px" title="Poids positif appliqué aux tokens issus de ce dico.">Bonus</th>
-                    <th style="width:130px" title="Pénalité (valeur positive) pour les tokens hors dico.">Malus</th>
-                    <th style="width:120px" title="Active le préfiltre pour ce dico.">Actif</th>
+                    <th style="width:130px">Bonus</th>
+                    <th style="width:130px">Malus</th>
+                    <th style="width:120px">Actif</th>
                     <th style="width:140px">Entrées</th>
                   </tr>
                 </thead>
@@ -207,14 +190,14 @@
         </details>
 
         <div style="margin-top:12px"><button class="btn ghost" id="btnApply">Appliquer</button></div>
-        <div style="margin-top:12px"><label>Logs configuration</label><textarea id="logsCfg" readonly></textarea></div>
+        <div style="margin-top:12px"><label>Journal</label><textarea id="logsCfg" readonly></textarea></div>
       </div>
     </section>
 
     <!-- Panel: Test URL -->
     <section id="panel-test" class="tab-panel">
       <div class="card">
-        <div class="section-title">Test URL</div>
+        <div class="section-title">Diagnostic URL</div>
         <div class="row">
           <div class="grow"><label>URL</label><input id="testUrl" type="text" placeholder="https://www.exemple.com/produit/ref-AB1234?color=red"></div>
           <button class="btn primary" id="btnTest" style="align-self:flex-end">Analyser</button>
@@ -226,7 +209,8 @@
     <!-- Panel: Matching -->
     <section id="panel-matching" class="tab-panel">
       <div class="card">
-        <div class="section-title">Matching</div>
+        <div class="section-title">Traitement</div>
+
         <div class="row">
           <div class="grow">
             <label>Fichier 404 (onglet <code>404</code>, col <code>URL_404</code>)</label>
@@ -239,18 +223,17 @@
         </div>
 
         <div class="row" style="margin-top:12px">
-          <button class="btn ghost" id="btnEstimate">Estimation</button>
           <div style="flex:1"></div>
-          <button class="btn ghost" id="btnClear">Vider</button>
-          <button class="btn primary" id="btnRun">Lancer le matching</button>
+          <button class="btn ghost" id="btnClear">Réinitialiser</button>
+          <button class="btn primary" id="btnRun">Lancer le traitement</button>
         </div>
 
         <div style="margin-top:12px">
-          <label>Logs matching</label>
+          <label>Journal d’exécution</label>
           <textarea id="logsMatch" readonly></textarea>
         </div>
 
-        <!-- Progress "réaliste" -->
+        <!-- Progress -->
         <div id="progressWrap" class="card" style="margin-top:12px;background:#fafafa">
           <div class="row" style="align-items:center">
             <div class="grow">
@@ -271,7 +254,7 @@
           </div>
         </div>
 
-        <!-- Bouton téléchargement -->
+        <!-- Download -->
         <div id="downloadWrap" class="hidden" style="margin-top:12px; display:flex; gap:10px; align-items:center;">
           <button class="btn primary" id="btnDownload" type="button">Télécharger le résultat</button>
           <span id="downloadLabel" class="sub"></span>
@@ -374,11 +357,7 @@ function saveLocal(){localStorage.setItem('matcherFront',JSON.stringify({dicoWei
 function loadLocal(){const raw=localStorage.getItem('matcherFront');if(!raw)return;try{const obj=JSON.parse(raw);state.dicoWeights=obj.dicoWeights||{};state.cfg.stop=new Set(obj?.cfg?.stop||[]);state.cfg.exc=new Set(obj?.cfg?.exc||[]);state.cfg.multi=obj?.cfg?.multi||[];state.cfg.ref=obj?.cfg?.ref||state.cfg.ref;state.cfg.min=obj?.cfg?.min??0.5;state.translations=obj.translations||{};state.parents=obj.parents||[]}catch(e){}}
 loadLocal();
 
-const apiBase=document.getElementById('apiBase');
-const useProxy=document.getElementById('useProxy');
-const btnHealth=document.getElementById('btnHealth');
-const healthBadge=document.getElementById('healthBadge');
-const logsHealth=document.getElementById('logsHealth');
+/* DOM */
 const fileDico=document.getElementById('fileDico');
 const fileTrad=document.getElementById('fileTrad');
 const fileParents=document.getElementById('fileParents');
@@ -389,15 +368,17 @@ const inpRegex=document.getElementById('inpRegex');
 const inpMin=document.getElementById('inpMin');
 const btnApply=document.getElementById('btnApply');
 const logsCfg=document.getElementById('logsCfg');
+
 const testUrl=document.getElementById('testUrl');
 const btnTest=document.getElementById('btnTest');
 const testOut=document.getElementById('testOut');
+
 const file404=document.getElementById('file404');
 const file200=document.getElementById('file200');
-const btnEstimate=document.getElementById('btnEstimate');
 const btnRun=document.getElementById('btnRun');
 const btnClear=document.getElementById('btnClear');
 const logsMatch=document.getElementById('logsMatch');
+
 const tblDico=document.querySelector('#tblDico tbody');
 const prefilterBadge=document.getElementById('prefilterBadge');
 
@@ -436,62 +417,30 @@ btnDownload.addEventListener('click', () => {
   a.remove();
 });
 
+/* Init inputs */
 inpStop.value=[...state.cfg.stop].join(', ');
 inpExc.value=[...state.cfg.exc].join(', ');
 inpMulti.value=state.cfg.multi.join(', ');
 inpRegex.value=state.cfg.ref;
 inpMin.value=state.cfg.min;
 
-/* Prod/Custom domain: proxy forcé */
+/* URL builder:
+   - prod (Vercel): proxy
+   - local (localhost): direct Cloud Run (base ci-dessous)
+*/
+const DEV_API_BASE = "https://url-matcher-70649262164.europe-west1.run.app";
+
 function isLocalHost(){
   const h = location.hostname;
   return h === 'localhost' || h === '127.0.0.1';
 }
-function shouldUseProxy() {
-  if (!isLocalHost()) return true; // prod
-  return useProxy && useProxy.checked; // local
-}
 function buildUrl(path){
   const p = path.startsWith('/') ? path : '/' + path;
-  if (shouldUseProxy()) return location.origin + '/api/proxy?path=' + encodeURIComponent(p);
-  return apiBase.value.replace(/\/$/, '') + p;
+  if (!isLocalHost()) return location.origin + '/api/proxy?path=' + encodeURIComponent(p);
+  return DEV_API_BASE.replace(/\/$/, '') + p;
 }
 
-/* Health */
-function hlog(m){ logsHealth.value+=(logsHealth.value?'\n':'')+m; logsHealth.scrollTop=logsHealth.scrollHeight; }
-async function tryProbe(probe, timeoutMs=5000){
-  const controller=new AbortController(); const t=setTimeout(()=>controller.abort(),timeoutMs);
-  const init={method:probe.method,signal:controller.signal,headers:probe.headers||{},redirect:'manual'};
-  if('body' in probe) init.body=probe.body;
-  const url=buildUrl(probe.path); const started=Date.now();
-  try{ const resp=await fetch(url,init); const ms=Date.now()-started; const ok=probe.okStatuses.includes(resp.status)||(resp.ok&&probe.okStatuses.includes(200)); return {ok,status:resp.status,ms,url}; }
-  catch(err){ const ms=Date.now()-started; return {ok:false,error:String(err),ms,url}; }
-  finally{ clearTimeout(t); }
-}
-const HEALTH_PROBES=[
-  {name:'GET /',             path:'/',             method:'GET',     okStatuses:[200,204]},
-  {name:'HEAD /',            path:'/',             method:'HEAD',    okStatuses:[200,204]},
-  {name:'GET /openapi.json', path:'/openapi.json', method:'GET',     okStatuses:[200]},
-  {name:'OPTIONS /match',    path:'/match',        method:'OPTIONS', okStatuses:[200,204]},
-  {name:'POST /match (empty)', path:'/match',      method:'POST',    okStatuses:[200,204,400,415,422]}
-];
-btnHealth.addEventListener('click', async ()=>{
-  healthBadge.textContent='test…';
-  healthBadge.className='badge';
-  logsHealth.value='';
-  let allOk = true;
-
-  for (const probe of HEALTH_PROBES) {
-    const r = await tryProbe(probe);
-    if (r.ok) hlog(`✅ ${probe.name} → ${r.status} (${r.ms}ms) via ${r.url}`);
-    else { allOk = false; hlog(`❌ ${probe.name} → ${r.status || 'ERR'} (${r.ms}ms) via ${r.url}${r.error ? (' | ' + r.error) : ''}`); }
-  }
-
-  if (allOk) { healthBadge.textContent = 'OK'; healthBadge.className = 'badge ok'; }
-  else { healthBadge.textContent = 'ERREUR'; healthBadge.className = 'badge err'; }
-});
-
-/* =================== Fonctionnalités type moteur (UI) =================== */
+/* =================== Fonctions type moteur (UI) =================== */
 function normalizeText(s){ if(!s) return ''; return String(s).toLowerCase().replace(/\s+/g,' ').trim(); }
 function cleanAndNormalizeUrl(url){ if(!url) return ''; let u=String(url).toLowerCase(); u=u.replace(/^https?:\/\//,''); u=u.replace(/^www\./,''); u=u.replace(/[-_\/?&=]+/g,' '); return normalizeText(u); }
 function applyMultiWords(text){ let t=text; state.cfg.multi.forEach(exp=>{ if(!exp) return; const r=new RegExp(exp.replace(/[-\s]+/g,'\\s+'),'gi'); t=t.replace(r,exp.replace(/\s+/g,'-')); }); return t; }
@@ -499,7 +448,6 @@ function getTokensFromText(text){ let tokens=text.split(/\s+/).filter(Boolean); 
 function reduceByActiveDictionaries(tokens){ const active=Object.keys(state.dicos).filter(n=>(state.dicoWeights[n]||{active:true}).active); return tokens.map(tok=>{ for(const name of active){ const dict=state.dicos[name]; for(const key in dict){ if(dict[key].has(tok)||key===tok) return key; } } return tok; }); }
 function applySynonymSubstitution(rawUrl){ const clean=cleanAndNormalizeUrl(rawUrl); const mw=applyMultiWords(clean); const t1=getTokensFromText(mw); const t2=reduceByActiveDictionaries(t1); return { clean, substituted:t2.join(' '), tokens:t2 }; }
 function extractRefFromUrl(url){ try{ const m=new RegExp(state.cfg.ref).exec(url); return m?m[1]:null; }catch(e){ return null; } }
-function detectCharacteristics(substitutedText){ const hitsByDico={}; const active=Object.keys(state.dicos).filter(n=>(state.dicoWeights[n]||{active:true}).active); const tokens=substitutedText.split(/\s+/).filter(Boolean); active.forEach(name=>{ const dict=state.dicos[name]; const hits=new Set(); tokens.forEach(tok=>{ for(const key in dict){ if(dict[key].has(tok)||key===tok) hits.add(key); } }); hitsByDico[name]=[...hits]; }); return hitsByDico; }
 
 /* ===== Helper: sérialiser la config UI pour l'envoyer au backend ===== */
 function buildConfigFromUI(){
@@ -689,6 +637,7 @@ btnTest.addEventListener('click', async () => {
     });
     if(!r.ok){ throw new Error('HTTP '+r.status+' – '+await r.text()); }
     const j = await r.json();
+
     const out = [];
     out.push(`URL brute : ${j.input}`);
     out.push('URL nettoyée :');
@@ -699,6 +648,7 @@ btnTest.addEventListener('click', async () => {
     out.push(j.tokens?.length ? (' → ' + j.tokens.join(', ')) : ' → Aucun token');
     out.push(j.reference ? `Référence détectée : ${j.reference}` : 'Aucune référence détectée via la regex.');
     out.push('Caractéristiques détectées :');
+
     const dicos = Object.keys(j.dico_hits || {});
     if(!dicos.length){ out.push(' → Aucun dictionnaire.'); }
     else {
@@ -713,11 +663,10 @@ btnTest.addEventListener('click', async () => {
   }
 });
 
-/* ===================== Progress helpers (réaliste) ===================== */
+/* ===================== Progress helpers ===================== */
 let elapsedTimer = null;
 let progressTimer = null;
 let startedAt = null;
-let estSeconds = 90;
 
 function fmtElapsed(ms) {
   const s = Math.floor(ms / 1000);
@@ -740,27 +689,21 @@ function stopProgressTimers(){
   progressTimer = null;
   startedAt = null;
 }
-
 async function estimateSecondsFromFiles(){
-  // estimation simple : base + coût / ligne (à ajuster selon tes mesures)
   try{
     const wb404 = await readExcel(file404.files[0]);
     const sh404 = wb404.Sheets['404'] || wb404.Sheets[wb404.SheetNames[0]];
     const arr404 = XLSX.utils.sheet_to_json(sh404);
     const n = Math.max(1, arr404.length || 1);
-
-    const sec = Math.max(20, Math.round(10 + n * 0.06)); // 0.06s / ligne + 10s
+    const sec = Math.max(20, Math.round(10 + n * 0.06));
     return sec;
   }catch{
     return 90;
   }
 }
-
 function startFakeProgress(estimatedSec){
-  // monte vite puis ralentit, plafonne à 92% tant que l’API n’a pas répondu
   const cap = 92;
   const start = Date.now();
-
   progressTimer = setInterval(()=>{
     const t = (Date.now() - start) / 1000;
     const ratio = Math.min(1, t / estimatedSec);
@@ -771,23 +714,7 @@ function startFakeProgress(estimatedSec){
   }, 250);
 }
 
-/* Matching */
-btnEstimate.addEventListener('click',async()=>{
-  logsMatch.value='';
-  resetDownloadUI();
-  try{
-    if(!file404.files[0]||!file200.files[0]){ logsMatch.value="Charge les deux fichiers d'abord."; return; }
-    const wb404=await readExcel(file404.files[0]);
-    const sh404=wb404.Sheets['404']||wb404.Sheets[wb404.SheetNames[0]];
-    const arr404=XLSX.utils.sheet_to_json(sh404);
-    const total=arr404.length || 0;
-    const sec = Math.max(20, Math.round(10 + Math.max(1,total) * 0.06));
-    logsMatch.value=`[ESTIMATION] ~ ${Math.round(sec/60)} min (approx) — ${sec}s estimées.`;
-  }catch(e){
-    logsMatch.value='[ESTIMATION][ERREUR] '+(e?.message||String(e));
-  }
-});
-
+/* Clear */
 btnClear.addEventListener('click',()=>{
   logsMatch.value='';
   file404.value='';
@@ -801,36 +728,33 @@ btnClear.addEventListener('click',()=>{
   setStatus('info','idle');
 });
 
+/* Matching */
 btnRun.addEventListener('click', async () => {
   logsMatch.value = '';
   resetDownloadUI();
 
   if (!file404.files[0] || !file200.files[0]) {
-    logsMatch.value = "Upload les fichiers d'abord.";
+    logsMatch.value = "Veuillez importer les deux fichiers (404 et 200).";
     return;
   }
 
-  // lock UI
   btnRun.disabled = true;
   btnClear.disabled = true;
-  btnEstimate.disabled = true;
 
   try {
-    // init progress UI
     stopProgressTimers();
     setProgress(0);
     setStatus('info','en cours');
     matchMeta.textContent = 'Préparation…';
     matchElapsed.textContent = '0:00';
-    matchHint.textContent = '';
 
     startedAt = Date.now();
     elapsedTimer = setInterval(()=>{
       matchElapsed.textContent = fmtElapsed(Date.now() - startedAt);
     }, 250);
 
-    estSeconds = await estimateSecondsFromFiles();
-    matchHint.textContent = `Estimation: ~${Math.round(estSeconds)}s`;
+    const estSeconds = await estimateSecondsFromFiles();
+    matchHint.textContent = `Estimation : ~${Math.round(estSeconds)}s`;
     startFakeProgress(estSeconds);
 
     const form = new FormData();
@@ -847,7 +771,6 @@ btnRun.addEventListener('click', async () => {
     const headers = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    // on pousse un peu le visuel pendant l’envoi (sans “vraie” mesure)
     setProgress(Math.max(8, parseInt(matchBar.style.width || '0', 10)));
     logsMatch.value += '\n[20%] Envoi vers l’API…';
 
@@ -861,22 +784,19 @@ btnRun.addEventListener('click', async () => {
     }
 
     const blob = await r.blob();
-
     logsMatch.value += '\n[90%] Réception du résultat…';
 
-    // stop fake progress, set 100
     stopProgressTimers();
     setProgress(100);
     setStatus('ok','terminé');
     matchMeta.textContent = 'Terminé. Résultat prêt.';
 
-    // préparation téléchargement
     resultBlobUrl = URL.createObjectURL(blob);
     resultFilename = 'result.xlsx';
     downloadWrap.classList.remove('hidden');
     downloadLabel.textContent = 'Résultat prêt : ' + resultFilename;
 
-    logsMatch.value += '\n[100%] Terminé. Clique sur "Télécharger le résultat".';
+    logsMatch.value += '\n[100%] Terminé. Cliquez sur "Télécharger le résultat".';
 
   } catch (e) {
     stopProgressTimers();
@@ -886,10 +806,8 @@ btnRun.addEventListener('click', async () => {
     logsMatch.value = '[ERREUR] ' + (e?.message || String(e));
     resetDownloadUI();
   } finally {
-    // unlock UI
     btnRun.disabled = false;
     btnClear.disabled = false;
-    btnEstimate.disabled = false;
   }
 });
 </script>
