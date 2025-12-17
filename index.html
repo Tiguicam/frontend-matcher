@@ -267,6 +267,23 @@
     <div class="sub" style="margin:24px 0 40px">© Tigui Camara</div>
   </div>
 
+  <!-- Run Summary Modal -->
+  <div id="runSummaryModal" class="hidden" style="position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.45)">
+    <div class="card" style="width:min(620px, calc(100% - 28px));">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <div class="section-title" style="margin:0;font-size:18px">Récap du run</div>
+        <button id="btnRunSummaryClose" class="btn ghost" type="button">Fermer</button>
+      </div>
+
+      <div id="runSummaryContent" class="sub" style="margin-top:10px;white-space:pre-wrap"></div>
+
+      <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end">
+        <button id="btnRunSummaryDownload" class="btn primary" type="button">Télécharger le résultat</button>
+        <button id="btnRunSummaryOk" class="btn ghost" type="button">OK</button>
+      </div>
+    </div>
+  </div>
+
 <script>
 /* ===================== Supabase Auth + Gate ===================== */
 /* IMPORTANT: on évite le nom "supabase" (collision possible avec le global du CDN) */
@@ -704,6 +721,91 @@ btnTest.addEventListener('click', async () => {
   }
 });
 
+/* ===================== Run Summary Modal ===================== */
+const runSummaryModal = document.getElementById('runSummaryModal');
+const runSummaryContent = document.getElementById('runSummaryContent');
+const btnRunSummaryClose = document.getElementById('btnRunSummaryClose');
+const btnRunSummaryOk = document.getElementById('btnRunSummaryOk');
+const btnRunSummaryDownload = document.getElementById('btnRunSummaryDownload');
+
+function openRunSummaryModal(text){
+  if(runSummaryContent) runSummaryContent.textContent = text || '';
+  runSummaryModal?.classList.remove('hidden');
+}
+function closeRunSummaryModal(){
+  runSummaryModal?.classList.add('hidden');
+}
+btnRunSummaryClose?.addEventListener('click', closeRunSummaryModal);
+btnRunSummaryOk?.addEventListener('click', closeRunSummaryModal);
+runSummaryModal?.addEventListener('click', (e)=>{
+  if(e.target === runSummaryModal) closeRunSummaryModal();
+});
+
+function toNumberSafe(v){
+  const n = Number(String(v ?? '').replace(',', '.'));
+  return Number.isFinite(n) ? n : NaN;
+}
+
+async function buildBottom10SummaryTextFromBlob(blob){
+  const ab = await blob.arrayBuffer();
+  const wb = XLSX.read(ab, { type: 'array' });
+  const sh = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(sh, { defval: "" });
+
+  const total = rows.length;
+  const scoreKey = "similarity_top1";
+  const url404Key = "URL_404";
+  const url200Key = "URL_200_top1";
+
+  const scored = rows
+    .map((r, i) => ({
+      i,
+      score: toNumberSafe(r[scoreKey]),
+      url404: String(r[url404Key] ?? ''),
+      url200: String(r[url200Key] ?? '')
+    }))
+    .filter(x => Number.isFinite(x.score));
+
+  scored.sort((a,b)=> b.score - a.score); // DESC
+
+  const nScored = scored.length;
+  const k = Math.max(1, Math.floor(nScored * 0.10)); // 10% du bas
+  const bottom = scored.slice(-k);
+  const threshold = bottom.length ? bottom[0].score : null;
+
+  const pctReview = total ? Math.round((bottom.length / total) * 100) : 0;
+  const thrTxt = (threshold == null) ? 'n/a' : String(Math.round(threshold * 100) / 100);
+
+  const worst5 = bottom.slice().sort((a,b)=> a.score - b.score).slice(0, 5);
+
+  let txt =
+    `URLs traitées : ${total.toLocaleString('fr-FR')}\n` +
+    `Scores exploitables : ${nScored.toLocaleString('fr-FR')}\n` +
+    `À vérifier (10% scores les plus bas) : ${bottom.length.toLocaleString('fr-FR')} (${pctReview}%)\n` +
+    `Seuil (score max dans les 10% les plus bas) : ${thrTxt}\n`;
+
+  if(worst5.length){
+    txt += `\nTop 5 à vérifier (pires scores) :\n`;
+    worst5.forEach((x, idx)=>{
+      const s = String(Math.round(x.score * 100) / 100);
+      txt += `${idx+1}. score=${s} | 404=${x.url404}${x.url200 ? ` | 200=${x.url200}` : ''}\n`;
+    });
+  }
+
+  return txt.trimEnd();
+}
+
+btnRunSummaryDownload?.addEventListener('click', () => {
+  if (!resultBlobUrl) return;
+  const a = document.createElement('a');
+  a.href = resultBlobUrl;
+  a.download = resultFilename || 'result.xlsx';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+});
+/* =================== Fin Run Summary Modal =================== */
+
 /* ===================== Progress helpers ===================== */
 let elapsedTimer = null;
 let progressTimer = null;
@@ -767,6 +869,7 @@ btnClear.addEventListener('click',()=>{
   matchElapsed.textContent='0:00';
   matchHint.textContent='';
   setStatus('info','idle');
+  closeRunSummaryModal();
 });
 
 /* Matching (BLOQUÉ si pas connecté) */
@@ -776,6 +879,7 @@ btnRun.addEventListener('click', async () => {
 
   logsMatch.value = '';
   resetDownloadUI();
+  closeRunSummaryModal();
 
   if (!file404.files[0] || !file200.files[0]) {
     logsMatch.value = "Veuillez importer les deux fichiers (404 et 200).";
@@ -839,6 +943,14 @@ btnRun.addEventListener('click', async () => {
     downloadLabel.textContent = 'Résultat prêt : ' + resultFilename;
 
     logsMatch.value += '\n[100%] Terminé. Cliquez sur "Télécharger le résultat".';
+
+    // POPUP recap fin de run
+    try{
+      const recap = await buildBottom10SummaryTextFromBlob(blob);
+      openRunSummaryModal(recap);
+    }catch(e){
+      // on n'empêche pas le téléchargement si le parsing échoue
+    }
 
   } catch (e) {
     stopProgressTimers();
