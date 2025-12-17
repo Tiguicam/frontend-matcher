@@ -102,14 +102,15 @@
   <!-- Auth Gate -->
   <div id="gate" class="hidden">
     <div class="card">
-      <div class="section-title" style="font-size:18px">Connexion requise</div>
+      <div class="section-title" style="font-size:18px">Connexion</div>
       <div class="row" style="margin-top:6px">
         <div class="grow"><label>Email</label><input id="authEmail" type="email" placeholder="you@domain.tld"></div>
         <div class="grow"><label>Mot de passe</label><input id="authPassword" type="password" placeholder="••••••••"></div>
       </div>
-      <div style="margin-top:10px;display:flex;gap:8px">
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn primary" id="btnLogin">Se connecter</button>
         <button class="btn ghost" id="btnSignup">Créer un compte</button>
+        <button class="btn ghost" id="btnGateClose" type="button">Fermer</button>
       </div>
       <div id="authStatus" class="sub" style="margin-top:10px"></div>
     </div>
@@ -285,21 +286,40 @@ function busy(on){ ['btnLogin','btnSignup'].forEach(id=>{const b=document.getEle
 (async function bootstrapFromHash(){
   const hash=new URLSearchParams(location.hash.slice(1));
   const access_token=hash.get('access_token'); const refresh_token=hash.get('refresh_token');
-  if(access_token&&refresh_token){ try{ await supabase.auth.setSession({access_token,refresh_token}); }catch{} finally{ history.replaceState(null,'',location.pathname+location.search);} }
+  if(access_token&&refresh_token){
+    try{ await supabase.auth.setSession({access_token,refresh_token}); }
+    catch{}
+    finally{ history.replaceState(null,'',location.pathname+location.search); }
+  }
 })();
 
+/* IMPORTANT: app visible même déconnecté. Le gate n’apparaît que sur action/btn */
 async function applyAuthUI(){
   const { data:{ session } } = await supabase.auth.getSession();
   const authed = !!session;
+
   elUser.textContent = session?.user?.email ? `Connecté : ${session.user.email}` : '';
   elLogout.classList.toggle('hidden', !authed);
   elLoginOpen.classList.toggle('hidden', authed);
-  elGate.classList.toggle('hidden', authed);
+
+  // ne pas afficher automatiquement l'overlay
+  elGate.classList.add('hidden');
 }
 
 supabase.auth.onAuthStateChange((event, session)=>{
-  if(event==='SIGNED_IN'){ elGate.classList.add('hidden'); elLoginOpen.classList.add('hidden'); elLogout.classList.remove('hidden'); elUser.textContent=session?.user?.email?`Connecté : ${session.user.email}`:''; }
-  if(event==='SIGNED_OUT'){ elGate.classList.remove('hidden'); elLoginOpen.classList.remove('hidden'); elLogout.classList.add('hidden'); elUser.textContent=''; }
+  const authed = !!session;
+  if(event==='SIGNED_IN'){
+    elGate.classList.add('hidden');
+    elLoginOpen.classList.add('hidden');
+    elLogout.classList.remove('hidden');
+    elUser.textContent = session?.user?.email ? `Connecté : ${session.user.email}` : '';
+  }
+  if(event==='SIGNED_OUT'){
+    elGate.classList.add('hidden');           // <- on ne bloque plus l’app
+    elLoginOpen.classList.remove('hidden');
+    elLogout.classList.add('hidden');
+    elUser.textContent = '';
+  }
 });
 
 document.getElementById('btnLogin')?.addEventListener('click', async ()=>{
@@ -313,7 +333,8 @@ document.getElementById('btnLogin')?.addEventListener('click', async ()=>{
     const { data:{ session } } = await supabase.auth.getSession();
     if(!session){ location.reload(); return; }
     setGateMsg('Connecté.'); await applyAuthUI();
-  }catch(e){ setGateMsg('Erreur inattendue: '+(e?.message||e)); } finally{ busy(false); }
+  }catch(e){ setGateMsg('Erreur inattendue: '+(e?.message||e)); }
+  finally{ busy(false); }
 });
 
 document.getElementById('btnSignup')?.addEventListener('click', async ()=>{
@@ -325,11 +346,32 @@ document.getElementById('btnSignup')?.addEventListener('click', async ()=>{
     const { error } = await supabase.auth.signUp({ email, password, options:{ emailRedirectTo: `${location.origin}/` } });
     if(error) return setGateMsg('Erreur: '+error.message);
     setGateMsg('Compte créé ✔. Vérifie ton email et clique sur le lien.');
-  }catch(e){ setGateMsg('Erreur inattendue: '+(e?.message||e)); } finally{ busy(false); }
+  }catch(e){ setGateMsg('Erreur inattendue: '+(e?.message||e)); }
+  finally{ busy(false); }
 });
 
-elLoginOpen.addEventListener('click', ()=>{ elGate.classList.remove('hidden'); });
-elLogout.addEventListener('click', async ()=>{ try{ await supabase.auth.signOut(); }finally{ await applyAuthUI(); } });
+elLoginOpen.addEventListener('click', ()=>{
+  setGateMsg('');
+  elGate.classList.remove('hidden');
+});
+document.getElementById('btnGateClose')?.addEventListener('click', ()=>{
+  elGate.classList.add('hidden');
+});
+elLogout.addEventListener('click', async ()=>{
+  try{ await supabase.auth.signOut(); }
+  finally{ await applyAuthUI(); }
+});
+
+/* helper: demander une connexion uniquement quand nécessaire */
+async function requireAuthOrGate(message){
+  const { data:{ session } } = await supabase.auth.getSession();
+  if(!session){
+    setGateMsg(message || 'Connecte-toi pour continuer.');
+    elGate.classList.remove('hidden');
+    return null;
+  }
+  return session;
+}
 
 applyAuthUI();
 /* =================== Fin Supabase Auth + Gate =================== */
@@ -624,7 +666,7 @@ fileParents.addEventListener('change',async()=>{
   }
 });
 
-/* Test URL */
+/* Test URL (PAS BLOQUÉ PAR AUTH) */
 btnTest.addEventListener('click', async () => {
   const url = testUrl.value.trim();
   if(!url){ testOut.value = 'Veuillez saisir une URL.'; return; }
@@ -728,8 +770,11 @@ btnClear.addEventListener('click',()=>{
   setStatus('info','idle');
 });
 
-/* Matching */
+/* Matching (BLOQUÉ si pas connecté) */
 btnRun.addEventListener('click', async () => {
+  const session = await requireAuthOrGate('Connecte-toi pour lancer le matching.');
+  if(!session) return;
+
   logsMatch.value = '';
   resetDownloadUI();
 
@@ -765,9 +810,7 @@ btnRun.addEventListener('click', async () => {
     logsMatch.value = '[0%] Upload en cours…';
     matchMeta.textContent = 'Upload en cours…';
 
-    const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token || null;
-
     const headers = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
