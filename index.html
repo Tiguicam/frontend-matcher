@@ -72,6 +72,94 @@
     details{background:#fafafa;border:1px solid var(--border);border-radius:10px;padding:10px}
     summary{cursor:pointer;font-weight:600}
     .help{font-size:12px;color:var(--muted)}
+
+
+    /* ================== Run Summary (PRO) ================== */
+#runSummaryModal.hidden{display:none !important;}
+#runSummaryModal{position:fixed;inset:0;z-index:80;}
+
+.rs-backdrop{position:absolute;inset:0;background:rgba(15,23,42,.45);}
+
+.rs-modal{
+  position:relative;
+  width:min(760px, calc(100% - 28px));
+  margin:60px auto;
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:16px;
+  box-shadow:0 30px 80px #00000033;
+  overflow:hidden;
+}
+
+.rs-header{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+  padding:16px 16px;
+  border-bottom:1px solid var(--border);
+  background:rgba(255,255,255,.9);
+}
+
+.rs-title{font-weight:800;font-size:18px;margin:0;color:var(--text)}
+.rs-subtitle{margin-top:4px;color:var(--muted);font-size:13px;line-height:1.35}
+
+.rs-body{padding:16px;display:grid;gap:12px;}
+
+.rs-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
+@media (max-width:720px){ .rs-kpis{grid-template-columns:1fr;} }
+
+.rs-kpi{
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:12px;
+  background:#fafafa;
+}
+.rs-kpi .label{font-size:12px;color:var(--muted);margin-bottom:6px}
+.rs-kpi .value{font-size:20px;font-weight:800;color:var(--text);line-height:1}
+.rs-kpi .hint{margin-top:6px;font-size:12px;color:var(--muted)}
+
+.rs-callout{
+  border:1px solid #bfdbfe;
+  background:#eff6ff;
+  color:#1e3a8a;
+  border-radius:12px;
+  padding:12px;
+  font-size:13px;
+  line-height:1.35;
+}
+
+.rs-table{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0;
+  border:1px solid var(--border);
+  border-radius:12px;
+  overflow:hidden;
+}
+.rs-table th, .rs-table td{
+  padding:10px;
+  border-bottom:1px solid var(--border);
+  vertical-align:top;
+}
+.rs-table th{
+  font-size:12px;
+  color:var(--muted);
+  font-weight:700;
+  background:#fafafa;
+}
+.rs-table tr:last-child td{border-bottom:none;}
+.rs-url{
+  word-break:break-word;
+  color:var(--text);
+  font-size:12px;
+  line-height:1.35;
+}
+
+.rs-footer{
+  display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;
+  padding:14px 16px;
+  border-top:1px solid var(--border);
+  background:#fff;
+}
+
   </style>
 
   <!-- libs -->
@@ -268,21 +356,28 @@
   </div>
 
   <!-- Run Summary Modal -->
-  <div id="runSummaryModal" class="hidden" style="position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.45)">
-    <div class="card" style="width:min(620px, calc(100% - 28px));">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
-        <div class="section-title" style="margin:0;font-size:18px">Récap du run</div>
-        <button id="btnRunSummaryClose" class="btn ghost" type="button">Fermer</button>
-      </div>
+  <!-- Run Summary Modal (PRO) -->
+<div id="runSummaryModal" class="hidden">
+  <div class="rs-backdrop" id="runSummaryBackdrop"></div>
 
-      <div id="runSummaryContent" class="sub" style="margin-top:10px;white-space:pre-wrap"></div>
-
-      <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end">
-        <button id="btnRunSummaryDownload" class="btn primary" type="button">Télécharger le résultat</button>
-        <button id="btnRunSummaryOk" class="btn ghost" type="button">OK</button>
+  <div class="rs-modal" role="dialog" aria-modal="true" aria-labelledby="rsTitle">
+    <div class="rs-header">
+      <div>
+        <div id="rsTitle" class="rs-title">Récap du run</div>
+        <div id="rsSubtitle" class="rs-subtitle"></div>
       </div>
+      <button id="btnRunSummaryClose" class="btn ghost" type="button">Fermer</button>
+    </div>
+
+    <div class="rs-body" id="runSummaryContent"></div>
+
+    <div class="rs-footer">
+      <button id="btnRunSummaryDownload" class="btn primary" type="button">Télécharger le résultat</button>
+      <button id="btnRunSummaryOk" class="btn ghost" type="button">OK</button>
     </div>
   </div>
+</div>
+
 
 <script>
 /* ===================== Supabase Auth + Gate ===================== */
@@ -722,77 +817,154 @@ btnTest.addEventListener('click', async () => {
 });
 
 /* ===================== Run Summary Modal ===================== */
+/* ===================== Run Summary Modal (PRO) ===================== */
 const runSummaryModal = document.getElementById('runSummaryModal');
 const runSummaryContent = document.getElementById('runSummaryContent');
+const rsSubtitle = document.getElementById('rsSubtitle');
 const btnRunSummaryClose = document.getElementById('btnRunSummaryClose');
 const btnRunSummaryOk = document.getElementById('btnRunSummaryOk');
 const btnRunSummaryDownload = document.getElementById('btnRunSummaryDownload');
+const runSummaryBackdrop = document.getElementById('runSummaryBackdrop');
 
-function openRunSummaryModal(text){
-  if(runSummaryContent) runSummaryContent.textContent = text || '';
+function escapeHtml(s){
+  return String(s ?? '')
+    .replaceAll('&','&amp;')
+    .replaceAll('<','&lt;')
+    .replaceAll('>','&gt;')
+    .replaceAll('"','&quot;')
+    .replaceAll("'",'&#039;');
+}
+
+function openRunSummaryModal(){
   runSummaryModal?.classList.remove('hidden');
 }
 function closeRunSummaryModal(){
   runSummaryModal?.classList.add('hidden');
 }
+
 btnRunSummaryClose?.addEventListener('click', closeRunSummaryModal);
 btnRunSummaryOk?.addEventListener('click', closeRunSummaryModal);
-runSummaryModal?.addEventListener('click', (e)=>{
-  if(e.target === runSummaryModal) closeRunSummaryModal();
-});
+runSummaryBackdrop?.addEventListener('click', closeRunSummaryModal);
 
 function toNumberSafe(v){
   const n = Number(String(v ?? '').replace(',', '.'));
   return Number.isFinite(n) ? n : NaN;
 }
 
-async function buildBottom10SummaryTextFromBlob(blob){
+async function buildRunSummaryFromBlob(blob){
   const ab = await blob.arrayBuffer();
   const wb = XLSX.read(ab, { type: 'array' });
   const sh = wb.Sheets[wb.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json(sh, { defval: "" });
 
   const total = rows.length;
+
   const scoreKey = "similarity_top1";
   const url404Key = "URL_404";
   const url200Key = "URL_200_top1";
 
+  // scores exploitables
   const scored = rows
-    .map((r, i) => ({
-      i,
+    .map((r) => ({
       score: toNumberSafe(r[scoreKey]),
       url404: String(r[url404Key] ?? ''),
       url200: String(r[url200Key] ?? '')
     }))
     .filter(x => Number.isFinite(x.score));
 
-  scored.sort((a,b)=> b.score - a.score); // DESC
+  scored.sort((a,b)=> b.score - a.score); // tri DESC
 
   const nScored = scored.length;
-  const k = Math.max(1, Math.floor(nScored * 0.10)); // 10% du bas
-  const bottom = scored.slice(-k);
-  const threshold = bottom.length ? bottom[0].score : null;
 
-  const pctReview = total ? Math.round((bottom.length / total) * 100) : 0;
-  const thrTxt = (threshold == null) ? 'n/a' : String(Math.round(threshold * 100) / 100);
+  // “bottom 10%” mais on ne l’affiche pas comme ça
+  const k = Math.max(1, Math.floor(nScored * 0.10));
+  const startIndex = Math.max(0, nScored - k);
+  const bottom = scored.slice(startIndex);
+
+  // seuil = score à la frontière (le score du 1er élément du bottom)
+  const threshold = (nScored > 0) ? scored[startIndex]?.score : null;
+
+  // Excel: header ligne 1, data ligne 2.
+  // Si tu tries par score décroissant, le 1er élément du bottom est à la "ligne data" startIndex+1
+  // donc ligne Excel = (startIndex+1) + 1
+  const startLineExcel = (startIndex + 1) + 1;
 
   const worst5 = bottom.slice().sort((a,b)=> a.score - b.score).slice(0, 5);
 
-  let txt =
-    `URLs traitées : ${total.toLocaleString('fr-FR')}\n` +
-    `Scores exploitables : ${nScored.toLocaleString('fr-FR')}\n` +
-    `À vérifier (10% scores les plus bas) : ${bottom.length.toLocaleString('fr-FR')} (${pctReview}%)\n` +
-    `Seuil (score max dans les 10% les plus bas) : ${thrTxt}\n`;
+  return { total, nScored, k, threshold, startLineExcel, worst5 };
 
-  if(worst5.length){
-    txt += `\nTop 5 à vérifier (pires scores) :\n`;
-    worst5.forEach((x, idx)=>{
-      const s = String(Math.round(x.score * 100) / 100);
-      txt += `${idx+1}. score=${s} | 404=${x.url404}${x.url200 ? ` | 200=${x.url200}` : ''}\n`;
-    });
+}
+
+function renderRunSummary(summary){
+  const { total, nScored, k, threshold, startLineExcel, worst5 } = summary;
+
+  if(rsSubtitle){
+    const thrTxt = (threshold == null) ? 'n/a' : (Math.round(threshold * 100) / 100);
+    rsSubtitle.textContent = `Seuil de vérif (score ≤ ${thrTxt}) · basé sur les scores.`;
   }
 
-  return txt.trimEnd();
+  const thrTxt = (threshold == null) ? 'n/a' : (Math.round(threshold * 100) / 100);
+
+  const tableRows = worst5.map((x, idx) => {
+    const s = Math.round(x.score * 100) / 100;
+    return `
+      <tr>
+        <td>${idx + 1}</td>
+        <td><b>${s}</b></td>
+        <td class="rs-url">${escapeHtml(x.url404)}</td>
+        <td class="rs-url">${escapeHtml(x.url200)}</td>
+      </tr>
+    `;
+  }).join('');
+
+  runSummaryContent.innerHTML = `
+    <div class="rs-kpis">
+      <div class="rs-kpi">
+        <div class="label">URLs traitées</div>
+        <div class="value">${Number(total).toLocaleString('fr-FR')}</div>
+        <div class="hint">Total lignes (hors en-tête)</div>
+      </div>
+
+      <div class="rs-kpi">
+        <div class="label">Scores exploitables</div>
+        <div class="value">${Number(nScored).toLocaleString('fr-FR')}</div>
+        <div class="hint">Basé sur “similarity_top1”</div>
+      </div>
+
+      <div class="rs-kpi">
+        <div class="label">URLs à vérifier</div>
+        <div class="value">${Number(k).toLocaleString('fr-FR')}</div>
+        <div class="hint">Score ≤ ${thrTxt}</div>
+      </div>
+    </div>
+
+    <div class="rs-callout">
+      <b>URLs à vérifier à partir de la ligne ${Number(startLineExcel).toLocaleString('fr-FR')}</b> (dans Excel <b>après</b> tri de la colonne <b>similarity_top1</b> par ordre décroissant).
+    </div>
+
+    <div class="card" style="padding:0;border-radius:12px;box-shadow:none">
+      <div style="padding:12px 12px 0 12px;font-weight:800">Top 5 à vérifier</div>
+      <div style="padding:10px 12px 12px 12px;color:var(--muted);font-size:12px">
+        Les plus faibles scores (échantillon pour contrôle rapide).
+      </div>
+
+      <div style="padding:0 12px 12px 12px">
+        <table class="rs-table">
+          <thead>
+            <tr>
+              <th style="width:55px">#</th>
+              <th style="width:90px">Score</th>
+              <th>URL 404</th>
+              <th>URL 200</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${tableRows || `<tr><td colspan="4" style="color:var(--muted);padding:12px">Aucune donnée.</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
 }
 
 btnRunSummaryDownload?.addEventListener('click', () => {
@@ -804,6 +976,8 @@ btnRunSummaryDownload?.addEventListener('click', () => {
   a.click();
   a.remove();
 });
+/* =================== Fin Run Summary Modal (PRO) =================== */
+
 /* =================== Fin Run Summary Modal =================== */
 
 /* ===================== Progress helpers ===================== */
@@ -946,8 +1120,10 @@ btnRun.addEventListener('click', async () => {
 
     // POPUP recap fin de run
     try{
-      const recap = await buildBottom10SummaryTextFromBlob(blob);
-      openRunSummaryModal(recap);
+      const summary = await buildRunSummaryFromBlob(blob);
+      renderRunSummary(summary);
+      openRunSummaryModal();
+
     }catch(e){
       // on n'empêche pas le téléchargement si le parsing échoue
     }
