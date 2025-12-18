@@ -1020,7 +1020,7 @@ function buildConfigFromUI(){
 
 /* =================== Dico table rendering + badge =================== */
 function updatePrefilterBadge(){
-  const active=Object.keys(state.dicoWeights).filter(n=> (state.dicoWeights[n]||{}{}).active);
+  const active = Object.keys(state.dicoWeights).filter(n => (state.dicoWeights[n] || {}).active);
   if(active.length>0){
     prefilterBadge.textContent='Préfiltre : actif';
     prefilterBadge.className='badge ok';
