@@ -27,6 +27,7 @@
     .btn.primary:hover{background:var(--accent-600)}
     .btn.ghost{background:#fff;border:1px solid var(--border);color:var(--text)}
     .btn.ghost:hover{background:#fafafa}
+    .btn.mini{padding:8px 10px;border-radius:10px;font-size:13px}
     .hidden{display:none !important}
 
     /* Hero */
@@ -35,7 +36,7 @@
     .sub{margin-top:6px;color:var(--muted);line-height:1.4}
 
     /* Tabs */
-    .tabs{display:flex;gap:8px;border-bottom:1px solid var(--border);padding-bottom:8px;margin:18px 0}
+    .tabs{display:flex;gap:8px;border-bottom:1px solid var(--border);padding-bottom:8px;margin:18px 0;flex-wrap:wrap}
     .tab{padding:8px 12px;border-radius:10px;background:var(--chip);color:#1e3a8a;cursor:pointer;border:1px solid var(--border)}
     .tab.active{background:var(--accent);color:#fff}
     .tab-panel{display:none}
@@ -61,7 +62,7 @@
     #gate{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#eef2f7;z-index:50}
     #gate .card{width:520px}
 
-    /* Table dictionnaires */
+    /* Table dictionnaires + tables */
     table{width:100%;border-collapse:collapse}
     th,td{padding:10px;border-bottom:1px solid var(--border);text-align:left}
     th{font-size:13px;color:var(--muted);font-weight:600}
@@ -73,93 +74,81 @@
     summary{cursor:pointer;font-weight:600}
     .help{font-size:12px;color:var(--muted)}
 
-
     /* ================== Run Summary (PRO) ================== */
-#runSummaryModal.hidden{display:none !important;}
-#runSummaryModal{position:fixed;inset:0;z-index:80;}
-
-.rs-backdrop{position:absolute;inset:0;background:rgba(15,23,42,.45);}
-
-.rs-modal{
-  position:relative;
-  width:min(760px, calc(100% - 28px));
-  margin:60px auto;
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:16px;
-  box-shadow:0 30px 80px #00000033;
-  overflow:hidden;
-}
-
-.rs-header{
-  display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
-  padding:16px 16px;
-  border-bottom:1px solid var(--border);
-  background:rgba(255,255,255,.9);
-}
-
-.rs-title{font-weight:800;font-size:18px;margin:0;color:var(--text)}
-.rs-subtitle{margin-top:4px;color:var(--muted);font-size:13px;line-height:1.35}
-
-.rs-body{padding:16px;display:grid;gap:12px;}
-
-.rs-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
-@media (max-width:720px){ .rs-kpis{grid-template-columns:1fr;} }
-
-.rs-kpi{
-  border:1px solid var(--border);
-  border-radius:12px;
-  padding:12px;
-  background:#fafafa;
-}
-.rs-kpi .label{font-size:12px;color:var(--muted);margin-bottom:6px}
-.rs-kpi .value{font-size:20px;font-weight:800;color:var(--text);line-height:1}
-.rs-kpi .hint{margin-top:6px;font-size:12px;color:var(--muted)}
-
-.rs-callout{
-  border:1px solid #bfdbfe;
-  background:#eff6ff;
-  color:#1e3a8a;
-  border-radius:12px;
-  padding:12px;
-  font-size:13px;
-  line-height:1.35;
-}
-
-.rs-table{
-  width:100%;
-  border-collapse:separate;
-  border-spacing:0;
-  border:1px solid var(--border);
-  border-radius:12px;
-  overflow:hidden;
-}
-.rs-table th, .rs-table td{
-  padding:10px;
-  border-bottom:1px solid var(--border);
-  vertical-align:top;
-}
-.rs-table th{
-  font-size:12px;
-  color:var(--muted);
-  font-weight:700;
-  background:#fafafa;
-}
-.rs-table tr:last-child td{border-bottom:none;}
-.rs-url{
-  word-break:break-word;
-  color:var(--text);
-  font-size:12px;
-  line-height:1.35;
-}
-
-.rs-footer{
-  display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;
-  padding:14px 16px;
-  border-top:1px solid var(--border);
-  background:#fff;
-}
-
+    #runSummaryModal.hidden{display:none !important;}
+    #runSummaryModal{position:fixed;inset:0;z-index:80;}
+    .rs-backdrop{position:absolute;inset:0;background:rgba(15,23,42,.45);}
+    .rs-modal{
+      position:relative;
+      width:min(760px, calc(100% - 28px));
+      margin:60px auto;
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:16px;
+      box-shadow:0 30px 80px #00000033;
+      overflow:hidden;
+    }
+    .rs-header{
+      display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+      padding:16px 16px;
+      border-bottom:1px solid var(--border);
+      background:rgba(255,255,255,.9);
+    }
+    .rs-title{font-weight:800;font-size:18px;margin:0;color:var(--text)}
+    .rs-subtitle{margin-top:4px;color:var(--muted);font-size:13px;line-height:1.35}
+    .rs-body{padding:16px;display:grid;gap:12px;}
+    .rs-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
+    @media (max-width:720px){ .rs-kpis{grid-template-columns:1fr;} }
+    .rs-kpi{
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:12px;
+      background:#fafafa;
+    }
+    .rs-kpi .label{font-size:12px;color:var(--muted);margin-bottom:6px}
+    .rs-kpi .value{font-size:20px;font-weight:800;color:var(--text);line-height:1}
+    .rs-kpi .hint{margin-top:6px;font-size:12px;color:var(--muted)}
+    .rs-callout{
+      border:1px solid #bfdbfe;
+      background:#eff6ff;
+      color:#1e3a8a;
+      border-radius:12px;
+      padding:12px;
+      font-size:13px;
+      line-height:1.35;
+    }
+    .rs-table{
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0;
+      border:1px solid var(--border);
+      border-radius:12px;
+      overflow:hidden;
+    }
+    .rs-table th, .rs-table td{
+      padding:10px;
+      border-bottom:1px solid var(--border);
+      vertical-align:top;
+    }
+    .rs-table th{
+      font-size:12px;
+      color:var(--muted);
+      font-weight:700;
+      background:#fafafa;
+    }
+    .rs-table tr:last-child td{border-bottom:none;}
+    .rs-url{
+      word-break:break-word;
+      color:var(--text);
+      font-size:12px;
+      line-height:1.35;
+    }
+    .rs-footer{
+      display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;
+      padding:14px 16px;
+      border-top:1px solid var(--border);
+      background:#fff;
+    }
   </style>
 
   <!-- libs -->
@@ -218,6 +207,7 @@
       <button class="tab active" data-tab="config">Paramètres</button>
       <button class="tab" data-tab="test">Diagnostic URL</button>
       <button class="tab" data-tab="matching">Traitement</button>
+      <button class="tab" data-tab="history">Historique</button>
     </div>
 
     <!-- Panel: Configuration -->
@@ -352,32 +342,57 @@
       </div>
     </section>
 
+    <!-- Panel: Historique -->
+    <section id="panel-history" class="tab-panel">
+      <div class="card">
+        <div class="section-title" style="justify-content:space-between;align-items:center;">
+          <span>Historique</span>
+          <button class="btn ghost mini" id="btnHistoryRefresh" type="button">Rafraîchir</button>
+        </div>
+        <div class="sub">Chaque run est stocké dans Storage. Tu peux retélécharger le résultat et (si présents) les fichiers importés.</div>
+
+        <div style="margin-top:12px;overflow:auto">
+          <table id="tblHistory">
+            <thead>
+              <tr>
+                <th style="width:220px">Date</th>
+                <th>Run</th>
+                <th style="width:360px">Fichiers</th>
+                <th style="width:280px">Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div id="historyStatus" class="sub" style="margin-top:10px"></div>
+      </div>
+    </section>
+
     <div class="sub" style="margin:24px 0 40px">© Tigui Camara</div>
   </div>
 
-  <!-- Run Summary Modal -->
   <!-- Run Summary Modal (PRO) -->
-<div id="runSummaryModal" class="hidden">
-  <div class="rs-backdrop" id="runSummaryBackdrop"></div>
+  <div id="runSummaryModal" class="hidden">
+    <div class="rs-backdrop" id="runSummaryBackdrop"></div>
 
-  <div class="rs-modal" role="dialog" aria-modal="true" aria-labelledby="rsTitle">
-    <div class="rs-header">
-      <div>
-        <div id="rsTitle" class="rs-title">Récap du run</div>
-        <div id="rsSubtitle" class="rs-subtitle"></div>
+    <div class="rs-modal" role="dialog" aria-modal="true" aria-labelledby="rsTitle">
+      <div class="rs-header">
+        <div>
+          <div id="rsTitle" class="rs-title">Récap du run</div>
+          <div id="rsSubtitle" class="rs-subtitle"></div>
+        </div>
+        <button id="btnRunSummaryClose" class="btn ghost" type="button">Fermer</button>
       </div>
-      <button id="btnRunSummaryClose" class="btn ghost" type="button">Fermer</button>
-    </div>
 
-    <div class="rs-body" id="runSummaryContent"></div>
+      <div class="rs-body" id="runSummaryContent"></div>
 
-    <div class="rs-footer">
-      <button id="btnRunSummaryDownload" class="btn primary" type="button">Télécharger le résultat</button>
-      <button id="btnRunSummaryOk" class="btn ghost" type="button">OK</button>
+      <div class="rs-footer">
+        <button id="btnRunSummaryDownload" class="btn primary" type="button">Télécharger le résultat</button>
+        <button id="btnRunSummaryOk" class="btn ghost" type="button">OK</button>
+      </div>
     </div>
   </div>
-</div>
-
 
 <script>
 /* ===================== Supabase Auth + Gate ===================== */
@@ -406,6 +421,17 @@ function busy(on){ ['btnLogin','btnSignup'].forEach(id=>{const b=document.getEle
   }
 })();
 
+/* helper: demander une connexion uniquement quand nécessaire */
+async function requireAuthOrGate(message){
+  const { data:{ session } } = await supabaseClient.auth.getSession();
+  if(!session){
+    setGateMsg(message || 'Connecte-toi pour continuer.');
+    elGate.classList.remove('hidden');
+    return null;
+  }
+  return session;
+}
+
 /* App visible même déconnecté. Le gate n’apparaît que sur action/btn */
 async function applyAuthUI(){
   const { data:{ session } } = await supabaseClient.auth.getSession();
@@ -416,6 +442,13 @@ async function applyAuthUI(){
   elLoginOpen.classList.toggle('hidden', authed);
 
   elGate.classList.add('hidden');
+
+  // Si connecté: rafraîchir l'historique
+  if(authed){
+    loadHistory().catch(()=>{});
+  }else{
+    renderHistoryEmpty('Connecte-toi pour voir ton historique.');
+  }
 }
 
 supabaseClient.auth.onAuthStateChange((event, session)=>{
@@ -424,12 +457,14 @@ supabaseClient.auth.onAuthStateChange((event, session)=>{
     elLoginOpen.classList.add('hidden');
     elLogout.classList.remove('hidden');
     elUser.textContent = session?.user?.email ? `Connecté : ${session.user.email}` : '';
+    loadHistory().catch(()=>{});
   }
   if(event==='SIGNED_OUT'){
     elGate.classList.add('hidden');
     elLoginOpen.classList.remove('hidden');
     elLogout.classList.add('hidden');
     elUser.textContent = '';
+    renderHistoryEmpty('Connecte-toi pour voir ton historique.');
   }
 });
 
@@ -473,17 +508,6 @@ elLogout.addEventListener('click', async ()=>{
   finally{ await applyAuthUI(); }
 });
 
-/* helper: demander une connexion uniquement quand nécessaire */
-async function requireAuthOrGate(message){
-  const { data:{ session } } = await supabaseClient.auth.getSession();
-  if(!session){
-    setGateMsg(message || 'Connecte-toi pour continuer.');
-    elGate.classList.remove('hidden');
-    return null;
-  }
-  return session;
-}
-
 applyAuthUI();
 /* =================== Fin Supabase Auth + Gate =================== */
 
@@ -493,7 +517,8 @@ const tabs = document.querySelectorAll('.tab');
 const panels = {
   config: document.getElementById('panel-config'),
   test: document.getElementById('panel-test'),
-  matching: document.getElementById('panel-matching')
+  matching: document.getElementById('panel-matching'),
+  history: document.getElementById('panel-history')
 };
 tabs.forEach(t=>{
   t.addEventListener('click',()=>{
@@ -501,6 +526,10 @@ tabs.forEach(t=>{
     t.classList.add('active');
     Object.values(panels).forEach(p=>p.classList.remove('active'));
     panels[t.dataset.tab].classList.add('active');
+
+    if(t.dataset.tab === 'history'){
+      loadHistory().catch(()=>{});
+    }
   });
 });
 
@@ -542,7 +571,7 @@ const matchStatus = document.getElementById('matchStatus');
 const matchElapsed = document.getElementById('matchElapsed');
 const matchHint = document.getElementById('matchHint');
 
-/* Téléchargement */
+/* Téléchargement immédiat (blob local) */
 const downloadWrap = document.getElementById('downloadWrap');
 const btnDownload = document.getElementById('btnDownload');
 const downloadLabel = document.getElementById('downloadLabel');
@@ -592,6 +621,257 @@ function buildUrl(path){
   if (!isLocalHost()) return location.origin + '/api/proxy?path=' + encodeURIComponent(p);
   return DEV_API_BASE.replace(/\/$/, '') + p;
 }
+
+/* =================== Supabase Storage helpers (HISTORIQUE) =================== */
+const STORAGE_BUCKET = 'matcher-results';
+
+function tsForRunId(){
+  // YYYY-MM-DD_HH-MM-SS
+  const iso = new Date().toISOString(); // 2025-12-18T12:34:56.789Z
+  return iso.slice(0,19).replace('T','_').replace(/:/g,'-');
+}
+function rand4(){
+  return Math.random().toString(16).slice(2,6);
+}
+function makeRunId(){
+  return `${tsForRunId()}_${rand4()}`;
+}
+function excelContentType(){
+  return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+}
+function extFromFile(file){
+  const n = (file?.name || '').toLowerCase();
+  if(n.endsWith('.xlsx')) return 'xlsx';
+  if(n.endsWith('.xls')) return 'xls';
+  return 'xlsx';
+}
+function prettyRunDate(runId){
+  // attend: 2025-12-18_12-34-56_abcd
+  const parts = String(runId || '').split('_');
+  if(parts.length < 2) return runId;
+  const d = parts[0];
+  const t = parts[1].replace(/-/g,':');
+  return `${d} ${t}`;
+}
+async function storageSignedDownload(path, suggestedName){
+  const { data, error } = await supabaseClient.storage
+    .from(STORAGE_BUCKET)
+    .createSignedUrl(path, 60);
+  if(error) throw error;
+
+  const a = document.createElement('a');
+  a.href = data.signedUrl;
+  a.download = suggestedName || path.split('/').pop();
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+async function uploadRunFolder({ userId, runId, resultBlob, dicoFile, tradFile, parentsFile }){
+  const base = `${userId}/runs/${runId}`;
+
+  // 1) résultat
+  const up1 = await supabaseClient.storage
+    .from(STORAGE_BUCKET)
+    .upload(`${base}/result.xlsx`, resultBlob, { contentType: excelContentType(), upsert: false });
+
+  if(up1.error) throw up1.error;
+
+  // 2) imports (optionnels)
+  const uploads = [];
+
+  if(dicoFile){
+    const ext = extFromFile(dicoFile);
+    uploads.push(
+      supabaseClient.storage.from(STORAGE_BUCKET).upload(
+        `${base}/dico.${ext}`, dicoFile,
+        { contentType: dicoFile.type || excelContentType(), upsert: false }
+      )
+    );
+  }
+  if(tradFile){
+    const ext = extFromFile(tradFile);
+    uploads.push(
+      supabaseClient.storage.from(STORAGE_BUCKET).upload(
+        `${base}/trad.${ext}`, tradFile,
+        { contentType: tradFile.type || excelContentType(), upsert: false }
+      )
+    );
+  }
+  if(parentsFile){
+    const ext = extFromFile(parentsFile);
+    uploads.push(
+      supabaseClient.storage.from(STORAGE_BUCKET).upload(
+        `${base}/parents.${ext}`, parentsFile,
+        { contentType: parentsFile.type || excelContentType(), upsert: false }
+      )
+    );
+  }
+
+  if(uploads.length){
+    const results = await Promise.all(uploads);
+    const err = results.find(r => r?.error)?.error;
+    if(err) throw err;
+  }
+
+  return base;
+}
+
+/* =================== Historique UI =================== */
+const tblHistory = document.getElementById('tblHistory');
+const tblHistoryBody = tblHistory?.querySelector('tbody');
+const historyStatus = document.getElementById('historyStatus');
+const btnHistoryRefresh = document.getElementById('btnHistoryRefresh');
+
+function renderHistoryEmpty(message){
+  if(tblHistoryBody){
+    tblHistoryBody.innerHTML = `
+      <tr>
+        <td colspan="4" style="color:var(--muted)">${message || 'Aucun élément.'}</td>
+      </tr>
+    `;
+  }
+  if(historyStatus) historyStatus.textContent = '';
+}
+
+function badgeForFile(name){
+  const n = String(name||'').toLowerCase();
+  if(n.startsWith('result')) return `<span class="badge ok">result</span>`;
+  if(n.startsWith('dico')) return `<span class="badge info">dico</span>`;
+  if(n.startsWith('trad')) return `<span class="badge info">trad</span>`;
+  if(n.startsWith('parents')) return `<span class="badge info">parents</span>`;
+  return `<span class="badge info">${name}</span>`;
+}
+
+function makeActionBtn(label, path, filename){
+  return `
+    <button class="btn ghost mini" type="button"
+      data-download="1"
+      data-path="${encodeURIComponent(path)}"
+      data-filename="${encodeURIComponent(filename || '')}"
+      style="margin-right:6px;margin-top:6px">
+      ${label}
+    </button>
+  `;
+}
+
+async function loadHistory(){
+  const { data:{ session } } = await supabaseClient.auth.getSession();
+  if(!session){
+    renderHistoryEmpty('Connecte-toi pour voir ton historique.');
+    return;
+  }
+
+  const userId = session.user.id;
+  if(historyStatus) historyStatus.textContent = 'Chargement…';
+  if(!tblHistoryBody) return;
+
+  // 1) liste les "runs" (dossiers)
+  const { data: items, error } = await supabaseClient.storage
+    .from(STORAGE_BUCKET)
+    .list(`${userId}/runs`, { limit: 100, sortBy: { column: 'name', order: 'desc' } });
+
+  if(error){
+    renderHistoryEmpty('Erreur Storage: ' + error.message);
+    if(historyStatus) historyStatus.textContent = '';
+    return;
+  }
+
+  const folders = (items || []).filter(it => {
+    // Supabase renvoie généralement les dossiers avec id=null
+    if(it?.id === null) return true;
+    // fallback: si pas d'id et pas de metadata
+    if(it?.id == null && it?.metadata == null) return true;
+    return false;
+  });
+
+  if(!folders.length){
+    renderHistoryEmpty('Aucun run pour l’instant. Lance un traitement, puis reviens ici.');
+    if(historyStatus) historyStatus.textContent = '';
+    return;
+  }
+
+  // 2) pour chaque run, liste les fichiers dans le dossier
+  // Concurrency simple (évite trop de requêtes simultanées)
+  const maxConcurrent = 6;
+  const runNames = folders.map(f => f.name).filter(Boolean);
+
+  async function listFilesInRun(runId){
+    const { data, error } = await supabaseClient.storage
+      .from(STORAGE_BUCKET)
+      .list(`${userId}/runs/${runId}`, { limit: 50, sortBy: { column: 'name', order: 'asc' } });
+    if(error) return { runId, files: [], error };
+    const files = (data || []).filter(x => x?.id !== null); // fichiers = id non null
+    return { runId, files, error: null };
+  }
+
+  const results = [];
+  for(let i=0;i<runNames.length;i+=maxConcurrent){
+    const slice = runNames.slice(i, i+maxConcurrent);
+    const chunk = await Promise.all(slice.map(listFilesInRun));
+    results.push(...chunk);
+  }
+
+  // 3) render
+  tblHistoryBody.innerHTML = '';
+  results.forEach(r => {
+    const runId = r.runId;
+    const files = r.files || [];
+    const fileNames = files.map(f => f.name);
+    const base = `${userId}/runs/${runId}`;
+
+    const filesBadges = fileNames.length
+      ? fileNames.map(badgeForFile).join(' ')
+      : `<span class="badge err">vide</span>`;
+
+    // Actions: résultat + dico/trad/parents si présents
+    let actions = '';
+    if(fileNames.some(n => n.toLowerCase().startsWith('result'))){
+      actions += makeActionBtn('Télécharger résultat', `${base}/result.xlsx`, 'result.xlsx');
+    } else {
+      actions += `<span class="badge err" style="margin-top:6px;display:inline-block">result manquant</span>`;
+    }
+
+    const dico = fileNames.find(n => n.toLowerCase().startsWith('dico.'));
+    const trad = fileNames.find(n => n.toLowerCase().startsWith('trad.'));
+    const parents = fileNames.find(n => n.toLowerCase().startsWith('parents.'));
+
+    if(dico) actions += makeActionBtn('Dico', `${base}/${dico}`, dico);
+    if(trad) actions += makeActionBtn('Trad', `${base}/${trad}`, trad);
+    if(parents) actions += makeActionBtn('Parents', `${base}/${parents}`, parents);
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${prettyRunDate(runId)}</td>
+      <td style="font-size:12px;color:var(--muted)">${runId}</td>
+      <td>${filesBadges}</td>
+      <td>${actions}</td>
+    `;
+    tblHistoryBody.appendChild(tr);
+  });
+
+  if(historyStatus) historyStatus.textContent = `Runs: ${results.length}`;
+}
+
+// Download delegation
+tblHistoryBody?.addEventListener('click', async (e)=>{
+  const btn = e.target.closest('button[data-download="1"]');
+  if(!btn) return;
+  const session = await requireAuthOrGate('Connecte-toi pour télécharger.');
+  if(!session) return;
+
+  const path = decodeURIComponent(btn.getAttribute('data-path') || '');
+  const fname = decodeURIComponent(btn.getAttribute('data-filename') || '') || path.split('/').pop();
+  try{
+    await storageSignedDownload(path, fname);
+  }catch(err){
+    alert('Impossible de télécharger : ' + (err?.message || String(err)));
+  }
+});
+
+btnHistoryRefresh?.addEventListener('click', ()=>{
+  loadHistory().catch(()=>{});
+});
 
 /* =================== Fonctions type moteur (UI) =================== */
 function normalizeText(s){ if(!s) return ''; return String(s).toLowerCase().replace(/\s+/g,' ').trim(); }
@@ -816,7 +1096,6 @@ btnTest.addEventListener('click', async () => {
   }
 });
 
-/* ===================== Run Summary Modal ===================== */
 /* ===================== Run Summary Modal (PRO) ===================== */
 const runSummaryModal = document.getElementById('runSummaryModal');
 const runSummaryContent = document.getElementById('runSummaryContent');
@@ -863,7 +1142,6 @@ async function buildRunSummaryFromBlob(blob){
   const url404Key = "URL_404";
   const url200Key = "URL_200_top1";
 
-  // scores exploitables
   const scored = rows
     .map((r) => ({
       score: toNumberSafe(r[scoreKey]),
@@ -872,27 +1150,19 @@ async function buildRunSummaryFromBlob(blob){
     }))
     .filter(x => Number.isFinite(x.score));
 
-  scored.sort((a,b)=> b.score - a.score); // tri DESC
+  scored.sort((a,b)=> b.score - a.score);
 
   const nScored = scored.length;
-
-  // “bottom 10%” mais on ne l’affiche pas comme ça
   const k = Math.max(1, Math.floor(nScored * 0.10));
   const startIndex = Math.max(0, nScored - k);
   const bottom = scored.slice(startIndex);
 
-  // seuil = score à la frontière (le score du 1er élément du bottom)
   const threshold = (nScored > 0) ? scored[startIndex]?.score : null;
-
-  // Excel: header ligne 1, data ligne 2.
-  // Si tu tries par score décroissant, le 1er élément du bottom est à la "ligne data" startIndex+1
-  // donc ligne Excel = (startIndex+1) + 1
   const startLineExcel = (startIndex + 1) + 1;
 
   const worst5 = bottom.slice().sort((a,b)=> a.score - b.score).slice(0, 5);
 
   return { total, nScored, k, threshold, startLineExcel, worst5 };
-
 }
 
 function renderRunSummary(summary){
@@ -976,9 +1246,6 @@ btnRunSummaryDownload?.addEventListener('click', () => {
   a.click();
   a.remove();
 });
-/* =================== Fin Run Summary Modal (PRO) =================== */
-
-/* =================== Fin Run Summary Modal =================== */
 
 /* ===================== Progress helpers ===================== */
 let elapsedTimer = null;
@@ -1111,19 +1378,39 @@ btnRun.addEventListener('click', async () => {
     setStatus('ok','terminé');
     matchMeta.textContent = 'Terminé. Résultat prêt.';
 
+    // Téléchargement immédiat (local)
     resultBlobUrl = URL.createObjectURL(blob);
     resultFilename = 'result.xlsx';
     downloadWrap.classList.remove('hidden');
     downloadLabel.textContent = 'Résultat prêt : ' + resultFilename;
 
-    logsMatch.value += '\n[100%] Terminé. Cliquez sur "Télécharger le résultat".';
+    logsMatch.value += '\n[95%] Sauvegarde dans ton historique (Storage)…';
+
+    // Sauvegarde dans Storage (historique multi-fichiers)
+    const runId = makeRunId();
+    try{
+      await uploadRunFolder({
+        userId: session.user.id,
+        runId,
+        resultBlob: blob,
+        dicoFile: fileDico?.files?.[0] || null,
+        tradFile: fileTrad?.files?.[0] || null,
+        parentsFile: fileParents?.files?.[0] || null
+      });
+
+      logsMatch.value += `\n[100%] Sauvegardé ✔ (run: ${runId})`;
+      // Refresh historique
+      loadHistory().catch(()=>{});
+    }catch(storageErr){
+      // On n'empêche pas l'utilisateur de télécharger si Storage échoue
+      logsMatch.value += '\n[WARN] Stockage historique non fait : ' + (storageErr?.message || String(storageErr));
+    }
 
     // POPUP recap fin de run
     try{
       const summary = await buildRunSummaryFromBlob(blob);
       renderRunSummary(summary);
       openRunSummaryModal();
-
     }catch(e){
       // on n'empêche pas le téléchargement si le parsing échoue
     }
