@@ -359,9 +359,10 @@
             <thead>
               <tr>
                 <th style="width:220px">Date</th>
+                <th style="width:260px">Nom</th>
                 <th>Run</th>
                 <th style="width:360px">Fichiers</th>
-                <th style="width:280px">Actions</th>
+                <th style="width:340px">Actions</th>
               </tr>
             </thead>
             <tbody></tbody>
@@ -726,7 +727,7 @@ function renderHistoryEmpty(message){
   if(tblHistoryBody){
     tblHistoryBody.innerHTML = `
       <tr>
-        <td colspan="4" style="color:var(--muted)">${message || 'Aucun élément.'}</td>
+        <td colspan="5" style="color:var(--muted)">${message || 'Aucun élément.'}</td>
       </tr>
     `;
   }
@@ -739,6 +740,7 @@ function badgeForFile(name){
   if(n.startsWith('dico')) return `<span class="badge info">dico</span>`;
   if(n.startsWith('trad')) return `<span class="badge info">trad</span>`;
   if(n.startsWith('parents')) return `<span class="badge info">parents</span>`;
+  if(n.startsWith('meta')) return `<span class="badge info">meta</span>`;
   return `<span class="badge info">${name}</span>`;
 }
 
@@ -752,6 +754,68 @@ function makeActionBtn(label, path, filename){
       ${label}
     </button>
   `;
+}
+
+async function readRunMeta(userId, runId){
+  const path = `${userId}/runs/${runId}/meta.json`;
+  try{
+    const { data, error } = await supabaseClient.storage.from(STORAGE_BUCKET).download(path);
+    if(error || !data) return null;
+    const txt = await data.text();
+    const j = JSON.parse(txt || '{}');
+    return j && typeof j === 'object' ? j : null;
+  }catch{
+    return null;
+  }
+}
+
+async function upsertRunMeta(userId, runId, patch){
+  const path = `${userId}/runs/${runId}/meta.json`;
+
+  let current = {};
+  try{
+    const { data, error } = await supabaseClient.storage.from(STORAGE_BUCKET).download(path);
+    if(!error && data){
+      const txt = await data.text();
+      current = JSON.parse(txt || '{}') || {};
+    }
+  }catch{}
+
+  const meta = {
+    run_id: runId,
+    created_at: current.created_at || new Date().toISOString(),
+    ...current,
+    ...patch
+  };
+
+  const metaBlob = new Blob([JSON.stringify(meta, null, 2)], { type: 'application/json' });
+
+  const { error } = await supabaseClient.storage
+    .from(STORAGE_BUCKET)
+    .upload(path, metaBlob, { contentType:'application/json', upsert:true });
+
+  if(error) throw error;
+}
+
+async function deleteRunFolder(userId, runId){
+  const prefix = `${userId}/runs/${runId}`;
+
+  // liste des fichiers (niveau 1 dans le dossier run)
+  const { data, error } = await supabaseClient.storage
+    .from(STORAGE_BUCKET)
+    .list(prefix, { limit: 100, sortBy: { column: 'name', order: 'asc' } });
+
+  if(error) throw error;
+
+  const files = (data || []).filter(f => f?.name && f.id !== null);
+  const paths = files.map(f => `${prefix}/${f.name}`);
+
+  if(paths.length){
+    const { error: delErr } = await supabaseClient.storage
+      .from(STORAGE_BUCKET)
+      .remove(paths);
+    if(delErr) throw delErr;
+  }
 }
 
 async function loadHistory(){
@@ -781,61 +845,85 @@ async function loadHistory(){
     return false;
   });
 
-  if(!folders.length){
+  const runNames = folders.map(f => f.name).filter(Boolean);
+
+  if(!runNames.length){
     renderHistoryEmpty('Aucun run pour l’instant. Lance un traitement, puis reviens ici.');
     if(historyStatus) historyStatus.textContent = '';
     return;
   }
 
   const maxConcurrent = 6;
-  const runNames = folders.map(f => f.name).filter(Boolean);
 
-  async function listFilesInRun(runId){
+  async function listFilesAndMeta(runId){
     const { data, error } = await supabaseClient.storage
       .from(STORAGE_BUCKET)
       .list(`${userId}/runs/${runId}`, { limit: 50, sortBy: { column: 'name', order: 'asc' } });
-    if(error) return { runId, files: [], error };
-    const files = (data || []).filter(x => x?.id !== null);
-    return { runId, files, error: null };
+
+    const files = (!error && data) ? (data || []).filter(x => x?.id !== null) : [];
+    const meta = await readRunMeta(userId, runId);
+    return { runId, files, meta, error };
   }
 
   const results = [];
   for(let i=0;i<runNames.length;i+=maxConcurrent){
     const slice = runNames.slice(i, i+maxConcurrent);
-    const chunk = await Promise.all(slice.map(listFilesInRun));
+    const chunk = await Promise.all(slice.map(listFilesAndMeta));
     results.push(...chunk);
   }
 
   tblHistoryBody.innerHTML = '';
+
   results.forEach(r => {
     const runId = r.runId;
     const files = r.files || [];
     const fileNames = files.map(f => f.name);
     const base = `${userId}/runs/${runId}`;
 
+    const label = (r.meta?.name || '').trim() || '—';
+
     const filesBadges = fileNames.length
       ? fileNames.map(badgeForFile).join(' ')
       : `<span class="badge err">vide</span>`;
 
     let actions = '';
-    if(fileNames.some(n => n.toLowerCase().startsWith('result'))){
+
+    if(fileNames.some(n => String(n).toLowerCase().startsWith('result'))){
       actions += makeActionBtn('Télécharger résultat', `${base}/result.xlsx`, 'result.xlsx');
     } else {
       actions += `<span class="badge err" style="margin-top:6px;display:inline-block">result manquant</span>`;
     }
 
-    const dico = fileNames.find(n => n.toLowerCase().startsWith('dico.'));
-    const trad = fileNames.find(n => n.toLowerCase().startsWith('trad.'));
-    const parents = fileNames.find(n => n.toLowerCase().startsWith('parents.'));
+    const dico = fileNames.find(n => String(n).toLowerCase().startsWith('dico.'));
+    const trad = fileNames.find(n => String(n).toLowerCase().startsWith('trad.'));
+    const parents = fileNames.find(n => String(n).toLowerCase().startsWith('parents.'));
 
     if(dico) actions += makeActionBtn('Dico', `${base}/${dico}`, dico);
     if(trad) actions += makeActionBtn('Trad', `${base}/${trad}`, trad);
     if(parents) actions += makeActionBtn('Parents', `${base}/${parents}`, parents);
 
+    // Renommer + Supprimer
+    actions += `
+      <button class="btn ghost mini" type="button"
+        data-rename-run="1"
+        data-runid="${encodeURIComponent(runId)}"
+        data-currentname="${encodeURIComponent(label)}"
+        style="margin-right:6px;margin-top:6px">
+        Renommer
+      </button>
+      <button class="btn ghost mini" type="button"
+        data-delete-run="1"
+        data-runid="${encodeURIComponent(runId)}"
+        style="margin-top:6px">
+        Supprimer
+      </button>
+    `;
+
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${prettyRunDate(runId)}</td>
-      <td style="font-size:12px;color:var(--muted)">${runId}</td>
+      <td>${escapeHtml(label)}</td>
+      <td style="font-size:12px;color:var(--muted)">${escapeHtml(runId)}</td>
       <td>${filesBadges}</td>
       <td>${actions}</td>
     `;
@@ -846,18 +934,62 @@ async function loadHistory(){
 }
 
 tblHistoryBody?.addEventListener('click', async (e)=>{
-  const btn = e.target.closest('button[data-download="1"]');
-  if(!btn) return;
+  // Download
+  const dl = e.target.closest('button[data-download="1"]');
+  if(dl){
+    const session = await requireAuthOrGate('Connecte-toi pour télécharger.');
+    if(!session) return;
 
-  const session = await requireAuthOrGate('Connecte-toi pour télécharger.');
-  if(!session) return;
+    const path = decodeURIComponent(dl.getAttribute('data-path') || '');
+    const fname = decodeURIComponent(dl.getAttribute('data-filename') || '') || path.split('/').pop();
+    try{
+      await storageSignedDownload(path, fname);
+    }catch(err){
+      alert('Impossible de télécharger : ' + (err?.message || String(err)));
+    }
+    return;
+  }
 
-  const path = decodeURIComponent(btn.getAttribute('data-path') || '');
-  const fname = decodeURIComponent(btn.getAttribute('data-filename') || '') || path.split('/').pop();
-  try{
-    await storageSignedDownload(path, fname);
-  }catch(err){
-    alert('Impossible de télécharger : ' + (err?.message || String(err)));
+  // Rename
+  const rn = e.target.closest('button[data-rename-run="1"]');
+  if(rn){
+    const session = await requireAuthOrGate('Connecte-toi pour renommer.');
+    if(!session) return;
+
+    const runId = decodeURIComponent(rn.getAttribute('data-runid') || '');
+    const currentName = decodeURIComponent(rn.getAttribute('data-currentname') || '') || '';
+    const newName = prompt('Nom du run :', (currentName === '—' ? '' : currentName));
+    if(newName == null) return;
+
+    try{
+      await upsertRunMeta(session.user.id, runId, { name: newName.trim() || null });
+      await loadHistory();
+    }catch(err){
+      alert('Renommage impossible : ' + (err?.message || String(err)));
+    }
+    return;
+  }
+
+  // Delete
+  const del = e.target.closest('button[data-delete-run="1"]');
+  if(del){
+    const session = await requireAuthOrGate('Connecte-toi pour supprimer.');
+    if(!session) return;
+
+    const runId = decodeURIComponent(del.getAttribute('data-runid') || '');
+    const ok = confirm(`Supprimer ce run ?\n\n${runId}\n\nCela supprime les fichiers du Storage.`);
+    if(!ok) return;
+
+    try{
+      del.disabled = true;
+      await deleteRunFolder(session.user.id, runId);
+      await loadHistory();
+    }catch(err){
+      alert('Suppression impossible : ' + (err?.message || String(err)));
+    }finally{
+      del.disabled = false;
+    }
+    return;
   }
 });
 
@@ -925,7 +1057,7 @@ function renderDicoTable(){
     const entries=Object.keys(dict).length;
     const tr=document.createElement('tr');
     tr.innerHTML=`
-      <td>${name}</td>
+      <td>${escapeHtml(name)}</td>
       <td><input type="number" step="0.1" value="${w.bonus}" data-k="bonus" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;background:#fff"></td>
       <td><input type="number" step="0.1" value="${w.malus}" data-k="malus" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;background:#fff"></td>
       <td><input class="switch" type="checkbox" ${w.active?'checked':''} data-k="active"></td>
