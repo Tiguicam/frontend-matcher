@@ -299,6 +299,25 @@
             <div class="grow"><label>Score minimum</label><input id="inpMin" type="number" step="0.1" value="0.5" /></div>
           </div>
 
+          <!-- NOUVEAU : scoring token + poids sémantique -->
+          <div class="row" style="margin-top:10px">
+            <div class="grow">
+              <label>Poids sémantique</label>
+              <input id="inpSemanticWeight" type="number" step="1" value="80" />
+              <div class="help" style="margin-top:6px">Impact des embeddings (FAISS) dans le score final.</div>
+            </div>
+            <div class="grow">
+              <label>Bonus tokens identiques</label>
+              <input id="inpTokenBonus" type="number" step="1" value="5" />
+              <div class="help" style="margin-top:6px">Ajout par token présent à la fois dans 404 et 200.</div>
+            </div>
+            <div class="grow">
+              <label>Malus tokens en trop</label>
+              <input id="inpTokenMalus" type="number" step="1" value="-10" />
+              <div class="help" style="margin-top:6px">Pénalité par token présent dans 200 mais absent de 404 (valeur négative attendue).</div>
+            </div>
+          </div>
+
           <div style="margin-top:14px">
             <div class="section-title" style="margin-bottom:8px">Dictionnaires dynamiques</div>
             <div class="help" style="margin-bottom:10px">Bonus/malus + activation du préfiltre par dictionnaire.</div>
@@ -643,13 +662,34 @@ const state={
   dicoWeights:{},
   translations:{},
   parents:[],
-  cfg:{stop:new Set(),exc:new Set(),multi:[],ref:'(?i)ref[:\\- ]?([a-z0-9\\-]+)',min:0.5}
+  cfg:{
+    stop:new Set(),
+    exc:new Set(),
+    multi:[],
+    ref:'(?i)ref[:\\- ]?([a-z0-9\\-]+)',
+    min:0.5,
+
+    // NOUVEAU : paramètres scoring
+    semanticWeight: 80,
+    tokenBonus: 5,
+    tokenMalus: -10
+  }
 };
 
 function saveLocal(){
   localStorage.setItem('matcherFront', JSON.stringify({
     dicoWeights:state.dicoWeights,
-    cfg:{stop:[...state.cfg.stop],exc:[...state.cfg.exc],multi:state.cfg.multi,ref:state.cfg.ref,min:state.cfg.min},
+    cfg:{
+      stop:[...state.cfg.stop],
+      exc:[...state.cfg.exc],
+      multi:state.cfg.multi,
+      ref:state.cfg.ref,
+      min:state.cfg.min,
+
+      semanticWeight: state.cfg.semanticWeight,
+      tokenBonus: state.cfg.tokenBonus,
+      tokenMalus: state.cfg.tokenMalus
+    },
     translations:state.translations,
     parents:state.parents
   }));
@@ -665,6 +705,11 @@ function loadLocal(){
     state.cfg.multi=obj?.cfg?.multi||[];
     state.cfg.ref=obj?.cfg?.ref||state.cfg.ref;
     state.cfg.min=obj?.cfg?.min??0.5;
+
+    state.cfg.semanticWeight = Number(obj?.cfg?.semanticWeight ?? 80);
+    state.cfg.tokenBonus = Number(obj?.cfg?.tokenBonus ?? 5);
+    state.cfg.tokenMalus = Number(obj?.cfg?.tokenMalus ?? -10);
+
     state.translations=obj.translations||{};
     state.parents=obj.parents||[];
   }catch{}
@@ -686,6 +731,11 @@ const inpExc=document.getElementById('inpExc');
 const inpMulti=document.getElementById('inpMulti');
 const inpRegex=document.getElementById('inpRegex');
 const inpMin=document.getElementById('inpMin');
+
+const inpSemanticWeight=document.getElementById('inpSemanticWeight');
+const inpTokenBonus=document.getElementById('inpTokenBonus');
+const inpTokenMalus=document.getElementById('inpTokenMalus');
+
 const btnApply=document.getElementById('btnApply');
 const cfgStatus=document.getElementById('cfgStatus');
 
@@ -751,12 +801,27 @@ inpMulti.value=state.cfg.multi.join(', ');
 inpRegex.value=state.cfg.ref;
 inpMin.value=state.cfg.min;
 
+inpSemanticWeight.value = String(state.cfg.semanticWeight ?? 80);
+inpTokenBonus.value = String(state.cfg.tokenBonus ?? 5);
+inpTokenMalus.value = String(state.cfg.tokenMalus ?? -10);
+
 btnApply.addEventListener('click',()=>{
   state.cfg.stop=new Set(inpStop.value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean));
   state.cfg.exc=new Set(inpExc.value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean));
   state.cfg.multi=inpMulti.value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
   state.cfg.ref=inpRegex.value.trim()||state.cfg.ref;
   state.cfg.min=Number(inpMin.value)||0.5;
+
+  // NOUVEAU : scoring
+  state.cfg.semanticWeight = Number(inpSemanticWeight.value);
+  if(!Number.isFinite(state.cfg.semanticWeight)) state.cfg.semanticWeight = 80;
+
+  state.cfg.tokenBonus = Number(inpTokenBonus.value);
+  if(!Number.isFinite(state.cfg.tokenBonus)) state.cfg.tokenBonus = 5;
+
+  state.cfg.tokenMalus = Number(inpTokenMalus.value);
+  if(!Number.isFinite(state.cfg.tokenMalus)) state.cfg.tokenMalus = -10;
+
   saveLocal();
 
   cfgStatus.classList.remove('hidden');
@@ -943,14 +1008,19 @@ function buildConfigFromUI(){
     malus,
     prefilter,
     scoreMin: state.cfg.min,
-    parents: state.parents || []
+    parents: state.parents || [],
+
+    // NOUVEAU : paramètres scoring
+    embeddingWeight: state.cfg.semanticWeight,          // "Poids sémantique"
+    tokenBonusIdentical: state.cfg.tokenBonus,          // bonus tokens identiques
+    tokenPenaltyExtra: state.cfg.tokenMalus             // malus tokens en trop (valeur négative)
   };
 }
 
 
 /* =================== Dico table rendering + badge =================== */
 function updatePrefilterBadge(){
-  const active=Object.keys(state.dicoWeights).filter(n=> (state.dicoWeights[n]||{}).active);
+  const active=Object.keys(state.dicoWeights).filter(n=> (state.dicoWeights[n]||{}{}).active);
   if(active.length>0){
     prefilterBadge.textContent='Préfiltre : actif';
     prefilterBadge.className='badge ok';
@@ -1132,6 +1202,26 @@ file200.addEventListener('change', async ()=>{
 
 
 /* =================== Diagnostic URL =================== */
+function formatDictHits(hits){
+  if(!hits || typeof hits !== 'object') return null;
+
+  const lines = [];
+  Object.entries(hits).forEach(([dicoName, v])=>{
+    if(v == null) return;
+    if(Array.isArray(v)){
+      if(v.length) lines.push(`Dico ${dicoName} : ${v.join(', ')}`);
+    } else if(typeof v === 'string'){
+      const s = v.trim();
+      if(s) lines.push(`Dico ${dicoName} : ${s}`);
+    } else if(typeof v === 'object'){
+      // au cas où backend renvoie {key:true,...}
+      const keys = Object.keys(v).filter(k => !!v[k]);
+      if(keys.length) lines.push(`Dico ${dicoName} : ${keys.join(', ')}`);
+    }
+  });
+  return lines.length ? lines : null;
+}
+
 btnTest.addEventListener('click', async () => {
   const url = testUrl.value.trim();
   if(!url){ testOut.value = 'Veuillez saisir une URL.'; return; }
@@ -1153,6 +1243,18 @@ btnTest.addEventListener('click', async () => {
     out.push(`Après synonymes : ${j.substituted}`);
     out.push(`Tokens : ${j.tokens?.length ? j.tokens.join(', ') : 'Aucun'}`);
     out.push(j.reference ? `Référence détectée : ${j.reference}` : 'Aucune référence détectée (regex).');
+
+    // NOUVEAU : remontée détection dicos (si backend renvoie l'info)
+    const hits = j.dict_hits || j.dico_hits || j.characteristics || j.dictionaries || null;
+    const lines = formatDictHits(hits);
+    if(lines){
+      out.push('');
+      out.push('Détection dictionnaires :');
+      lines.forEach(x=> out.push(' - ' + x));
+    } else {
+      out.push('');
+      out.push('Détection dictionnaires : aucun mot détecté (ou backend non configuré pour le renvoyer).');
+    }
 
     testOut.value = out.join('\n');
   }catch(e){
