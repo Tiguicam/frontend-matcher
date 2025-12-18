@@ -171,6 +171,10 @@
       <div class="actions">
         <span id="currentUser" class="user"></span>
         <button id="btnLoginOpen" class="btn primary">Se connecter</button>
+
+        <!-- Historique en haut à droite (uniquement connecté) -->
+        <button id="btnHistoryTop" class="btn ghost hidden">Historique</button>
+
         <button id="btnLogout" class="btn ghost hidden">Se déconnecter</button>
       </div>
     </div>
@@ -202,12 +206,11 @@
       </div>
     </div>
 
-    <!-- Tabs -->
+    <!-- Tabs (Historique supprimé ici : uniquement bouton en topbar) -->
     <div class="tabs">
       <button class="tab active" data-tab="config">Paramètres</button>
       <button class="tab" data-tab="test">Diagnostic URL</button>
       <button class="tab" data-tab="matching">Traitement</button>
-      <button class="tab" data-tab="history">Historique</button>
     </div>
 
     <!-- Panel: Configuration -->
@@ -342,7 +345,7 @@
       </div>
     </section>
 
-    <!-- Panel: Historique -->
+    <!-- Panel: Historique (accessible via bouton topbar) -->
     <section id="panel-history" class="tab-panel">
       <div class="card">
         <div class="section-title" style="justify-content:space-between;align-items:center;">
@@ -396,7 +399,6 @@
 
 <script>
 /* ===================== Supabase Auth + Gate ===================== */
-/* IMPORTANT: on évite le nom "supabase" (collision possible avec le global du CDN) */
 const supabaseClient = window.supabase.createClient(
   window.SUPABASE_URL,
   window.SUPABASE_PUBLISHABLE_KEY,
@@ -407,6 +409,7 @@ const elGate = document.getElementById('gate');
 const elLoginOpen = document.getElementById('btnLoginOpen');
 const elLogout = document.getElementById('btnLogout');
 const elUser = document.getElementById('currentUser');
+const elHistoryTop = document.getElementById('btnHistoryTop');
 
 function setGateMsg(msg){ const el=document.getElementById('authStatus'); if(el) el.textContent=msg||''; }
 function busy(on){ ['btnLogin','btnSignup'].forEach(id=>{const b=document.getElementById(id); if(b) b.disabled=!!on; }); }
@@ -421,7 +424,6 @@ function busy(on){ ['btnLogin','btnSignup'].forEach(id=>{const b=document.getEle
   }
 })();
 
-/* helper: demander une connexion uniquement quand nécessaire */
 async function requireAuthOrGate(message){
   const { data:{ session } } = await supabaseClient.auth.getSession();
   if(!session){
@@ -432,7 +434,6 @@ async function requireAuthOrGate(message){
   return session;
 }
 
-/* App visible même déconnecté. Le gate n’apparaît que sur action/btn */
 async function applyAuthUI(){
   const { data:{ session } } = await supabaseClient.auth.getSession();
   const authed = !!session;
@@ -440,13 +441,11 @@ async function applyAuthUI(){
   elUser.textContent = session?.user?.email ? `Connecté : ${session.user.email}` : '';
   elLogout.classList.toggle('hidden', !authed);
   elLoginOpen.classList.toggle('hidden', authed);
+  elHistoryTop.classList.toggle('hidden', !authed);
 
   elGate.classList.add('hidden');
 
-  // Si connecté: rafraîchir l'historique
-  if(authed){
-    loadHistory().catch(()=>{});
-  }else{
+  if(!authed){
     renderHistoryEmpty('Connecte-toi pour voir ton historique.');
   }
 }
@@ -456,13 +455,14 @@ supabaseClient.auth.onAuthStateChange((event, session)=>{
     elGate.classList.add('hidden');
     elLoginOpen.classList.add('hidden');
     elLogout.classList.remove('hidden');
+    elHistoryTop.classList.remove('hidden');
     elUser.textContent = session?.user?.email ? `Connecté : ${session.user.email}` : '';
-    loadHistory().catch(()=>{});
   }
   if(event==='SIGNED_OUT'){
     elGate.classList.add('hidden');
     elLoginOpen.classList.remove('hidden');
     elLogout.classList.add('hidden');
+    elHistoryTop.classList.add('hidden');
     elUser.textContent = '';
     renderHistoryEmpty('Connecte-toi pour voir ton historique.');
   }
@@ -512,7 +512,7 @@ applyAuthUI();
 /* =================== Fin Supabase Auth + Gate =================== */
 
 
-/* =================== Tabs =================== */
+/* =================== Tabs & Panels =================== */
 const tabs = document.querySelectorAll('.tab');
 const panels = {
   config: document.getElementById('panel-config'),
@@ -520,17 +520,30 @@ const panels = {
   matching: document.getElementById('panel-matching'),
   history: document.getElementById('panel-history')
 };
-tabs.forEach(t=>{
-  t.addEventListener('click',()=>{
-    tabs.forEach(x=>x.classList.remove('active'));
-    t.classList.add('active');
-    Object.values(panels).forEach(p=>p.classList.remove('active'));
-    panels[t.dataset.tab].classList.add('active');
 
-    if(t.dataset.tab === 'history'){
-      loadHistory().catch(()=>{});
-    }
-  });
+function openPanel(name){
+  Object.values(panels).forEach(p=>p.classList.remove('active'));
+  if(panels[name]) panels[name].classList.add('active');
+
+  // highlight uniquement si on a un tab pour ce panel
+  tabs.forEach(x=>x.classList.remove('active'));
+  const btn = document.querySelector(`.tab[data-tab="${name}"]`);
+  if(btn) btn.classList.add('active');
+
+  if(name === 'history'){
+    loadHistory().catch(()=>{});
+  }
+}
+
+tabs.forEach(t=>{
+  t.addEventListener('click',()=>openPanel(t.dataset.tab));
+});
+
+// Bouton topbar Historique (seulement connecté)
+elHistoryTop?.addEventListener('click', async ()=>{
+  const session = await requireAuthOrGate('Connecte-toi pour accéder à ton historique.');
+  if(!session) return;
+  openPanel('history');
 });
 
 /* =================== App / UI =================== */
@@ -606,12 +619,8 @@ inpMulti.value=state.cfg.multi.join(', ');
 inpRegex.value=state.cfg.ref;
 inpMin.value=state.cfg.min;
 
-/* URL builder:
-   - prod (Vercel): proxy
-   - local (localhost): direct Cloud Run (base ci-dessous)
-*/
+/* URL builder */
 const DEV_API_BASE = "https://url-matcher-70649262164.europe-west1.run.app";
-
 function isLocalHost(){
   const h = location.hostname;
   return h === 'localhost' || h === '127.0.0.1';
@@ -622,23 +631,16 @@ function buildUrl(path){
   return DEV_API_BASE.replace(/\/$/, '') + p;
 }
 
-/* =================== Supabase Storage helpers (HISTORIQUE) =================== */
+/* =================== Supabase Storage helpers =================== */
 const STORAGE_BUCKET = 'matcher-results';
 
 function tsForRunId(){
-  // YYYY-MM-DD_HH-MM-SS
-  const iso = new Date().toISOString(); // 2025-12-18T12:34:56.789Z
+  const iso = new Date().toISOString();
   return iso.slice(0,19).replace('T','_').replace(/:/g,'-');
 }
-function rand4(){
-  return Math.random().toString(16).slice(2,6);
-}
-function makeRunId(){
-  return `${tsForRunId()}_${rand4()}`;
-}
-function excelContentType(){
-  return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-}
+function rand4(){ return Math.random().toString(16).slice(2,6); }
+function makeRunId(){ return `${tsForRunId()}_${rand4()}`; }
+function excelContentType(){ return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'; }
 function extFromFile(file){
   const n = (file?.name || '').toLowerCase();
   if(n.endsWith('.xlsx')) return 'xlsx';
@@ -646,7 +648,6 @@ function extFromFile(file){
   return 'xlsx';
 }
 function prettyRunDate(runId){
-  // attend: 2025-12-18_12-34-56_abcd
   const parts = String(runId || '').split('_');
   if(parts.length < 2) return runId;
   const d = parts[0];
@@ -670,14 +671,12 @@ async function storageSignedDownload(path, suggestedName){
 async function uploadRunFolder({ userId, runId, resultBlob, dicoFile, tradFile, parentsFile }){
   const base = `${userId}/runs/${runId}`;
 
-  // 1) résultat
   const up1 = await supabaseClient.storage
     .from(STORAGE_BUCKET)
     .upload(`${base}/result.xlsx`, resultBlob, { contentType: excelContentType(), upsert: false });
 
   if(up1.error) throw up1.error;
 
-  // 2) imports (optionnels)
   const uploads = [];
 
   if(dicoFile){
@@ -766,7 +765,6 @@ async function loadHistory(){
   if(historyStatus) historyStatus.textContent = 'Chargement…';
   if(!tblHistoryBody) return;
 
-  // 1) liste les "runs" (dossiers)
   const { data: items, error } = await supabaseClient.storage
     .from(STORAGE_BUCKET)
     .list(`${userId}/runs`, { limit: 100, sortBy: { column: 'name', order: 'desc' } });
@@ -778,9 +776,7 @@ async function loadHistory(){
   }
 
   const folders = (items || []).filter(it => {
-    // Supabase renvoie généralement les dossiers avec id=null
     if(it?.id === null) return true;
-    // fallback: si pas d'id et pas de metadata
     if(it?.id == null && it?.metadata == null) return true;
     return false;
   });
@@ -791,8 +787,6 @@ async function loadHistory(){
     return;
   }
 
-  // 2) pour chaque run, liste les fichiers dans le dossier
-  // Concurrency simple (évite trop de requêtes simultanées)
   const maxConcurrent = 6;
   const runNames = folders.map(f => f.name).filter(Boolean);
 
@@ -801,7 +795,7 @@ async function loadHistory(){
       .from(STORAGE_BUCKET)
       .list(`${userId}/runs/${runId}`, { limit: 50, sortBy: { column: 'name', order: 'asc' } });
     if(error) return { runId, files: [], error };
-    const files = (data || []).filter(x => x?.id !== null); // fichiers = id non null
+    const files = (data || []).filter(x => x?.id !== null);
     return { runId, files, error: null };
   }
 
@@ -812,7 +806,6 @@ async function loadHistory(){
     results.push(...chunk);
   }
 
-  // 3) render
   tblHistoryBody.innerHTML = '';
   results.forEach(r => {
     const runId = r.runId;
@@ -824,7 +817,6 @@ async function loadHistory(){
       ? fileNames.map(badgeForFile).join(' ')
       : `<span class="badge err">vide</span>`;
 
-    // Actions: résultat + dico/trad/parents si présents
     let actions = '';
     if(fileNames.some(n => n.toLowerCase().startsWith('result'))){
       actions += makeActionBtn('Télécharger résultat', `${base}/result.xlsx`, 'result.xlsx');
@@ -853,10 +845,10 @@ async function loadHistory(){
   if(historyStatus) historyStatus.textContent = `Runs: ${results.length}`;
 }
 
-// Download delegation
 tblHistoryBody?.addEventListener('click', async (e)=>{
   const btn = e.target.closest('button[data-download="1"]');
   if(!btn) return;
+
   const session = await requireAuthOrGate('Connecte-toi pour télécharger.');
   if(!session) return;
 
@@ -869,20 +861,16 @@ tblHistoryBody?.addEventListener('click', async (e)=>{
   }
 });
 
-btnHistoryRefresh?.addEventListener('click', ()=>{
-  loadHistory().catch(()=>{});
-});
+btnHistoryRefresh?.addEventListener('click', ()=> loadHistory().catch(()=>{}));
 
-/* =================== Fonctions type moteur (UI) =================== */
+/* =================== Moteur / UI functions =================== */
 function normalizeText(s){ if(!s) return ''; return String(s).toLowerCase().replace(/\s+/g,' ').trim(); }
 function cleanAndNormalizeUrl(url){ if(!url) return ''; let u=String(url).toLowerCase(); u=u.replace(/^https?:\/\//,''); u=u.replace(/^www\./,''); u=u.replace(/[-_\/?&=]+/g,' '); return normalizeText(u); }
 function applyMultiWords(text){ let t=text; state.cfg.multi.forEach(exp=>{ if(!exp) return; const r=new RegExp(exp.replace(/[-\s]+/g,'\\s+'),'gi'); t=t.replace(r,exp.replace(/\s+/g,'-')); }); return t; }
 function getTokensFromText(text){ let tokens=text.split(/\s+/).filter(Boolean); tokens=tokens.filter(tok=>!state.cfg.stop.has(tok)); tokens=tokens.map(tok=>state.translations[tok]||tok); return tokens; }
 function reduceByActiveDictionaries(tokens){ const active=Object.keys(state.dicos).filter(n=>(state.dicoWeights[n]||{active:true}).active); return tokens.map(tok=>{ for(const name of active){ const dict=state.dicos[name]; for(const key in dict){ if(dict[key].has(tok)||key===tok) return key; } } return tok; }); }
 function applySynonymSubstitution(rawUrl){ const clean=cleanAndNormalizeUrl(rawUrl); const mw=applyMultiWords(clean); const t1=getTokensFromText(mw); const t2=reduceByActiveDictionaries(t1); return { clean, substituted:t2.join(' '), tokens:t2 }; }
-function extractRefFromUrl(url){ try{ const m=new RegExp(state.cfg.ref).exec(url); return m?m[1]:null; }catch(e){ return null; } }
 
-/* ===== Helper: sérialiser la config UI pour l'envoyer au backend ===== */
 function buildConfigFromUI(){
   const dictionaries = Object.entries(state.dicos).map(([name, dict]) => ({
     name,
@@ -1080,16 +1068,6 @@ btnTest.addEventListener('click', async () => {
     out.push('Tokens :');
     out.push(j.tokens?.length ? (' → ' + j.tokens.join(', ')) : ' → Aucun token');
     out.push(j.reference ? `Référence détectée : ${j.reference}` : 'Aucune référence détectée via la regex.');
-    out.push('Caractéristiques détectées :');
-
-    const dicos = Object.keys(j.dico_hits || {});
-    if(!dicos.length){ out.push(' → Aucun dictionnaire.'); }
-    else {
-      dicos.forEach(name => {
-        const keys = j.dico_hits[name] || [];
-        out.push(keys.length ? ` [${name}] → ${keys.join(', ')}` : ` [${name}] → aucune`);
-      });
-    }
     testOut.value = out.join('\n');
   }catch(e){
     testOut.value = '[ERREUR] ' + (e?.message || String(e));
@@ -1113,14 +1091,8 @@ function escapeHtml(s){
     .replaceAll('"','&quot;')
     .replaceAll("'",'&#039;');
 }
-
-function openRunSummaryModal(){
-  runSummaryModal?.classList.remove('hidden');
-}
-function closeRunSummaryModal(){
-  runSummaryModal?.classList.add('hidden');
-}
-
+function openRunSummaryModal(){ runSummaryModal?.classList.remove('hidden'); }
+function closeRunSummaryModal(){ runSummaryModal?.classList.add('hidden'); }
 btnRunSummaryClose?.addEventListener('click', closeRunSummaryModal);
 btnRunSummaryOk?.addEventListener('click', closeRunSummaryModal);
 runSummaryBackdrop?.addEventListener('click', closeRunSummaryModal);
@@ -1129,7 +1101,6 @@ function toNumberSafe(v){
   const n = Number(String(v ?? '').replace(',', '.'));
   return Number.isFinite(n) ? n : NaN;
 }
-
 async function buildRunSummaryFromBlob(blob){
   const ab = await blob.arrayBuffer();
   const wb = XLSX.read(ab, { type: 'array' });
@@ -1137,7 +1108,6 @@ async function buildRunSummaryFromBlob(blob){
   const rows = XLSX.utils.sheet_to_json(sh, { defval: "" });
 
   const total = rows.length;
-
   const scoreKey = "similarity_top1";
   const url404Key = "URL_404";
   const url200Key = "URL_200_top1";
@@ -1159,22 +1129,17 @@ async function buildRunSummaryFromBlob(blob){
 
   const threshold = (nScored > 0) ? scored[startIndex]?.score : null;
   const startLineExcel = (startIndex + 1) + 1;
-
   const worst5 = bottom.slice().sort((a,b)=> a.score - b.score).slice(0, 5);
 
   return { total, nScored, k, threshold, startLineExcel, worst5 };
 }
-
 function renderRunSummary(summary){
   const { total, nScored, k, threshold, startLineExcel, worst5 } = summary;
-
   if(rsSubtitle){
     const thrTxt = (threshold == null) ? 'n/a' : (Math.round(threshold * 100) / 100);
     rsSubtitle.textContent = `Seuil de vérif (score ≤ ${thrTxt}) · basé sur les scores.`;
   }
-
   const thrTxt = (threshold == null) ? 'n/a' : (Math.round(threshold * 100) / 100);
-
   const tableRows = worst5.map((x, idx) => {
     const s = Math.round(x.score * 100) / 100;
     return `
@@ -1194,13 +1159,11 @@ function renderRunSummary(summary){
         <div class="value">${Number(total).toLocaleString('fr-FR')}</div>
         <div class="hint">Total lignes (hors en-tête)</div>
       </div>
-
       <div class="rs-kpi">
         <div class="label">Scores exploitables</div>
         <div class="value">${Number(nScored).toLocaleString('fr-FR')}</div>
         <div class="hint">Basé sur “similarity_top1”</div>
       </div>
-
       <div class="rs-kpi">
         <div class="label">URLs à vérifier</div>
         <div class="value">${Number(k).toLocaleString('fr-FR')}</div>
@@ -1209,7 +1172,8 @@ function renderRunSummary(summary){
     </div>
 
     <div class="rs-callout">
-      <b>URLs à vérifier à partir de la ligne ${Number(startLineExcel).toLocaleString('fr-FR')}</b> (dans Excel <b>après</b> tri de la colonne <b>similarity_top1</b> par ordre décroissant).
+      <b>URLs à vérifier à partir de la ligne ${Number(startLineExcel).toLocaleString('fr-FR')}</b>
+      (dans Excel <b>après</b> tri de <b>similarity_top1</b> par ordre décroissant).
     </div>
 
     <div class="card" style="padding:0;border-radius:12px;box-shadow:none">
@@ -1386,7 +1350,6 @@ btnRun.addEventListener('click', async () => {
 
     logsMatch.value += '\n[95%] Sauvegarde dans ton historique (Storage)…';
 
-    // Sauvegarde dans Storage (historique multi-fichiers)
     const runId = makeRunId();
     try{
       await uploadRunFolder({
@@ -1399,10 +1362,7 @@ btnRun.addEventListener('click', async () => {
       });
 
       logsMatch.value += `\n[100%] Sauvegardé ✔ (run: ${runId})`;
-      // Refresh historique
-      loadHistory().catch(()=>{});
     }catch(storageErr){
-      // On n'empêche pas l'utilisateur de télécharger si Storage échoue
       logsMatch.value += '\n[WARN] Stockage historique non fait : ' + (storageErr?.message || String(storageErr));
     }
 
@@ -1411,9 +1371,7 @@ btnRun.addEventListener('click', async () => {
       const summary = await buildRunSummaryFromBlob(blob);
       renderRunSummary(summary);
       openRunSummaryModal();
-    }catch(e){
-      // on n'empêche pas le téléchargement si le parsing échoue
-    }
+    }catch(e){}
 
   } catch (e) {
     stopProgressTimers();
