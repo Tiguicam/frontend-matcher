@@ -110,6 +110,13 @@
     summary{cursor:pointer;font-weight:900}
     .help{font-size:12px;color:var(--muted)}
 
+    /* Progress bar */
+    #progressBar{
+      background: var(--accent);
+      border-radius: 999px;
+      transition: width .25s ease;
+    }
+
     /* Auth Gate */
     #gate{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.25);z-index:80}
     #gate .card{width:min(520px, calc(100% - 24px));box-shadow:0 30px 80px #00000033}
@@ -134,17 +141,24 @@
     #runSummaryModal.hidden{display:none !important;}
     #runSummaryModal{position:fixed;inset:0;z-index:85;}
     .rs-backdrop{position:absolute;inset:0;background:rgba(15,23,42,.45);}
+
+    /* IMPORTANT: modal scrollable (pour voir le bas) */
     .rs-modal{
       position:relative;
       width:min(760px, calc(100% - 28px));
-      margin:60px auto;
+      margin:40px auto;
       background:var(--card);
       border:1px solid var(--border);
       border-radius:16px;
       box-shadow:0 30px 80px #00000033;
       overflow:hidden;
+
+      display:flex;
+      flex-direction:column;
+      max-height: calc(100vh - 80px);
     }
     .rs-header{
+      flex:0 0 auto;
       display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
       padding:16px 16px;
       border-bottom:1px solid var(--border);
@@ -152,9 +166,20 @@
     }
     .rs-title{font-weight:900;font-size:18px;margin:0;color:var(--text)}
     .rs-subtitle{margin-top:4px;color:var(--muted);font-size:13px;line-height:1.35}
-    .rs-body{padding:16px;display:grid;gap:12px;}
+
+    .rs-body{
+      flex:1 1 auto;
+      padding:16px;
+      display:grid;
+      gap:12px;
+      overflow:auto; /* <- scroll interne */
+    }
+
     .rs-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
-    @media (max-width:720px){ .rs-kpis{grid-template-columns:1fr;} }
+    @media (max-width:720px){
+      .rs-kpis{grid-template-columns:1fr;}
+      .rs-modal{ margin:16px auto; max-height: calc(100vh - 32px); }
+    }
     .rs-kpi{border:1px solid var(--border);border-radius:12px;padding:12px;background:#fafafa;}
     .rs-kpi .label{font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:900}
     .rs-kpi .value{font-size:20px;font-weight:900;color:var(--text);line-height:1}
@@ -165,7 +190,12 @@
     .rs-table th{font-size:12px;color:var(--muted);font-weight:900;background:#fafafa;}
     .rs-table tr:last-child td{border-bottom:none;}
     .rs-url{word-break:break-word;color:var(--text);font-size:12px;line-height:1.35;}
-    .rs-footer{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;padding:14px 16px;border-top:1px solid var(--border);background:#fff;}
+
+    .rs-footer{
+      flex:0 0 auto;
+      display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;
+      padding:14px 16px;border-top:1px solid var(--border);background:#fff;
+    }
 
     /* Footer */
     .footer{margin:22px 0 0;color:var(--muted);font-size:12px}
@@ -388,6 +418,23 @@
           <span id="runStatus" class="badge info hidden"></span>
           <button class="btn ghost" id="btnClear">Réinitialiser</button>
           <button class="btn primary" id="btnRun">Lancer</button>
+        </div>
+
+        <!-- Progress (barre + temps + estimation) -->
+        <div id="progressWrap" class="hidden" style="margin-top:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px">
+            <span id="progressLabel" class="sub" style="margin:0">Traitement…</span>
+            <span id="progressPct" class="badge info">0%</span>
+          </div>
+
+          <div style="height:10px;background:#eef2ff;border:1px solid var(--border);border-radius:999px;overflow:hidden">
+            <div id="progressBar" style="height:100%;width:0%"></div>
+          </div>
+
+          <div class="help" style="margin-top:8px;display:flex;gap:12px;flex-wrap:wrap">
+            <span>Temps écoulé : <b id="elapsedTxt">0s</b></span>
+            <span>Estimation : <b id="etaTxt">—</b></span>
+          </div>
         </div>
 
         <!-- Download immédiat (local) -->
@@ -759,6 +806,14 @@ const downloadWrap = document.getElementById('downloadWrap');
 const btnDownload = document.getElementById('btnDownload');
 const downloadLabel = document.getElementById('downloadLabel');
 
+/* Progress DOM */
+const progressWrap = document.getElementById('progressWrap');
+const progressLabel = document.getElementById('progressLabel');
+const progressPct = document.getElementById('progressPct');
+const progressBar = document.getElementById('progressBar');
+const elapsedTxt = document.getElementById('elapsedTxt');
+const etaTxt = document.getElementById('etaTxt');
+
 let resultBlobUrl = null;
 let resultFilename = 'result.xlsx';
 
@@ -793,6 +848,113 @@ btnDownload.addEventListener('click', () => {
   a.remove();
 });
 
+/* =================== Progress (fake + elapsed + ETA) =================== */
+let progressTimer = null;
+let fakeProgressTimer = null;
+let runStartTs = 0;
+
+function fmtSeconds(totalSec){
+  const s = Math.max(0, Math.floor(totalSec));
+  if(s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m}m ${r}s`;
+}
+
+function loadAvgRunSeconds(){
+  try{
+    const raw = localStorage.getItem('matcherAvgRunSeconds');
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }catch{ return null; }
+}
+function saveRunSeconds(seconds){
+  const sec = Number(seconds);
+  if(!Number.isFinite(sec) || sec <= 0) return;
+
+  const old = loadAvgRunSeconds();
+  const next = old == null ? sec : (old * 0.7 + sec * 0.3);
+  try{ localStorage.setItem('matcherAvgRunSeconds', String(next)); }catch{}
+}
+
+function uiProgressShow(){
+  if(!progressWrap) return;
+  progressWrap.classList.remove('hidden');
+  if(progressLabel) progressLabel.textContent = 'Traitement…';
+  if(progressPct){ progressPct.className = 'badge info'; progressPct.textContent = '0%'; }
+  if(progressBar) progressBar.style.width = '0%';
+  if(elapsedTxt) elapsedTxt.textContent = '0s';
+  if(etaTxt) etaTxt.textContent = '—';
+}
+
+function uiProgressHide(){
+  if(!progressWrap) return;
+  progressWrap.classList.add('hidden');
+  if(progressBar) progressBar.style.width = '0%';
+  if(progressPct) progressPct.textContent = '0%';
+  if(elapsedTxt) elapsedTxt.textContent = '0s';
+  if(etaTxt) etaTxt.textContent = '—';
+}
+
+function setProgress(p){
+  const pct = Math.max(0, Math.min(100, Math.floor(p)));
+  if(progressBar) progressBar.style.width = pct + '%';
+  if(progressPct) progressPct.textContent = pct + '%';
+}
+
+function startElapsedTimer(){
+  runStartTs = Date.now();
+  const avg = loadAvgRunSeconds();
+
+  stopElapsedTimer();
+  progressTimer = setInterval(()=>{
+    const elapsedSec = (Date.now() - runStartTs) / 1000;
+    if(elapsedTxt) elapsedTxt.textContent = fmtSeconds(elapsedSec);
+
+    if(avg != null){
+      const remaining = Math.max(0, avg - elapsedSec);
+      etaTxt.textContent = fmtSeconds(remaining);
+    } else {
+      etaTxt.textContent = 'calcul…';
+    }
+  }, 250);
+}
+
+function stopElapsedTimer(){
+  if(progressTimer){ clearInterval(progressTimer); progressTimer = null; }
+}
+
+function startFakeProgress(){
+  stopFakeProgress();
+  let p = 0;
+  setProgress(0);
+
+  fakeProgressTimer = setInterval(()=>{
+    if(p < 70) p += 2 + Math.random() * 2;
+    else if(p < 88) p += 0.6 + Math.random() * 0.8;
+    else if(p < 90) p += 0.2 + Math.random() * 0.3;
+    else p = 90;
+
+    setProgress(p);
+  }, 250);
+}
+
+function stopFakeProgress(){
+  if(fakeProgressTimer){ clearInterval(fakeProgressTimer); fakeProgressTimer = null; }
+}
+
+function finishProgressOK(){
+  stopFakeProgress();
+  setProgress(100);
+  if(progressPct){ progressPct.className = 'badge ok'; progressPct.textContent = '100%'; }
+  if(progressLabel) progressLabel.textContent = 'Terminé';
+}
+
+function finishProgressError(){
+  stopFakeProgress();
+  if(progressPct){ progressPct.className = 'badge err'; progressPct.textContent = 'Erreur'; }
+  if(progressLabel) progressLabel.textContent = 'Erreur';
+}
 
 /* =================== Init inputs =================== */
 inpStop.value=[...state.cfg.stop].join(', ');
@@ -931,7 +1093,6 @@ async function validate200File(file){
 
 async function validateTradFile(file){
   const wb = await readExcel(file);
-  // On accepte si AU MOINS une sheet contient SOURCE + TRANSLATION
   for(const name of wb.SheetNames){
     const sh = wb.Sheets[name];
     const cols = sheetColumnsAsSet(sh);
@@ -947,7 +1108,6 @@ async function validateTradFile(file){
 
 async function validateParentsFile(file){
   const wb = await readExcel(file);
-  // On accepte si au moins un onglet contient URL
   for(const name of wb.SheetNames){
     const sh = wb.Sheets[name];
     const cols = sheetColumnsAsSet(sh);
@@ -963,7 +1123,6 @@ async function validateParentsFile(file){
 
 async function validateDicoFile(file){
   const wb = await readExcel(file);
-  // Format “header:1” sur chaque sheet : la ligne 1 contient les noms de dicos
   let totalHeaders = 0;
   for(const name of wb.SheetNames){
     const sh = wb.Sheets[name];
@@ -1011,9 +1170,9 @@ function buildConfigFromUI(){
     parents: state.parents || [],
 
     // NOUVEAU : paramètres scoring
-    embeddingWeight: state.cfg.semanticWeight,          // "Poids sémantique"
-    tokenBonusIdentical: state.cfg.tokenBonus,          // bonus tokens identiques
-    tokenPenaltyExtra: state.cfg.tokenMalus             // malus tokens en trop (valeur négative)
+    embeddingWeight: state.cfg.semanticWeight,
+    tokenBonusIdentical: state.cfg.tokenBonus,
+    tokenPenaltyExtra: state.cfg.tokenMalus
   };
 }
 
@@ -1214,7 +1373,6 @@ function formatDictHits(hits){
       const s = v.trim();
       if(s) lines.push(`Dico ${dicoName} : ${s}`);
     } else if(typeof v === 'object'){
-      // au cas où backend renvoie {key:true,...}
       const keys = Object.keys(v).filter(k => !!v[k]);
       if(keys.length) lines.push(`Dico ${dicoName} : ${keys.join(', ')}`);
     }
@@ -1244,7 +1402,6 @@ btnTest.addEventListener('click', async () => {
     out.push(`Tokens : ${j.tokens?.length ? j.tokens.join(', ') : 'Aucun'}`);
     out.push(j.reference ? `Référence détectée : ${j.reference}` : 'Aucune référence détectée (regex).');
 
-    // NOUVEAU : remontée détection dicos (si backend renvoie l'info)
     const hits = j.dict_hits || j.dico_hits || j.characteristics || j.dictionaries || null;
     const lines = formatDictHits(hits);
     if(lines){
@@ -1444,7 +1601,6 @@ async function uploadOne(path, fileOrBlob, contentType){
 }
 
 async function overwriteJson(path, obj){
-  // Pas d'UPDATE policy : on fait delete puis insert
   try{
     await supabaseClient.storage.from(STORAGE_BUCKET).remove([path]);
   }catch{}
@@ -1470,7 +1626,6 @@ async function uploadRunFolder({ userId, runId, resultBlob, dicoFile, tradFile, 
     await uploadOne(`${base}/parents.${ext}`, parentsFile, parentsFile.type || excelContentType());
   }
 
-  // meta par défaut
   await overwriteJson(`${base}/meta.json`, {
     name: '',
     created_at: new Date().toISOString()
@@ -1547,11 +1702,10 @@ async function loadHistory(){
       .from(STORAGE_BUCKET)
       .list(`${userId}/runs/${runId}`, { limit: 60, sortBy: { column: 'name', order: 'asc' } });
     if(error) return { runId, files: [], metaName: '', error };
-    const files = (data || []).filter(x => x?.id !== null); // files only
+    const files = (data || []).filter(x => x?.id !== null);
     return { runId, files, metaName:'', error:null };
   }
 
-  // List files with concurrency
   const maxConcurrent = 6;
   const listed = [];
   for(let i=0;i<runIds.length;i+=maxConcurrent){
@@ -1560,7 +1714,6 @@ async function loadHistory(){
     listed.push(...res);
   }
 
-  // Fetch meta names when meta.json exists
   async function fetchMetaName(basePath){
     const { data: signed, error } = await supabaseClient.storage.from(STORAGE_BUCKET).createSignedUrl(basePath, 60);
     if(error) return '';
@@ -1593,7 +1746,6 @@ async function loadHistory(){
       ? fileNames.filter(n=>String(n).toLowerCase()!=='meta.json').map(badgeForFile).join(' ')
       : `<span class="badge err">vide</span>`;
 
-    // Actions
     let actions = '';
     if(fileNames.some(n => n.toLowerCase().startsWith('result'))){
       actions += makeActionBtn('Télécharger résultat', { action:'download', path:`${base}/result.xlsx`, filename:'result.xlsx' });
@@ -1682,7 +1834,6 @@ tblHistoryBody?.addEventListener('click', async (e)=>{
     if(!yes) return;
 
     try{
-      // list files then remove
       const { data, error } = await supabaseClient.storage
         .from(STORAGE_BUCKET)
         .list(`${base}`, { limit: 100, sortBy: { column: 'name', order: 'asc' } });
@@ -1711,6 +1862,10 @@ btnClear.addEventListener('click',()=>{
   resetDownloadUI();
   clearRunStatus();
   closeRunSummaryModal();
+
+  stopFakeProgress();
+  stopElapsedTimer();
+  uiProgressHide();
 });
 
 btnRun.addEventListener('click', async () => {
@@ -1726,7 +1881,6 @@ btnRun.addEventListener('click', async () => {
     return;
   }
 
-  // Validation “au cas où”
   try{
     const ok404 = await validate404File(file404.files[0]);
     if(!ok404) { file404.value=''; f404Status.textContent=''; return; }
@@ -1744,6 +1898,11 @@ btnRun.addEventListener('click', async () => {
   btnRun.textContent = 'Traitement…';
   setRunStatus('info', 'Traitement en cours…');
 
+  // Start progress UI
+  uiProgressShow();
+  startElapsedTimer();
+  startFakeProgress();
+
   try{
     const form = new FormData();
     form.append('file404', file404.files[0]);
@@ -1758,6 +1917,11 @@ btnRun.addEventListener('click', async () => {
     if (!r.ok) throw new Error('HTTP ' + r.status + ' – ' + await r.text());
 
     const blob = await r.blob();
+
+    // end progress OK + store run duration
+    const elapsedSec = (Date.now() - runStartTs) / 1000;
+    saveRunSeconds(elapsedSec);
+    finishProgressOK();
 
     // download immédiat
     resultBlobUrl = URL.createObjectURL(blob);
@@ -1801,11 +1965,14 @@ btnRun.addEventListener('click', async () => {
     }catch{}
 
   }catch(e){
+    finishProgressError();
     clearRunStatus();
     setRunStatus('err', 'Erreur');
     showAlert({ title:'Erreur pendant le traitement', subtitle:'API /match', html: escapeHtml(e?.message || String(e)) });
     resetDownloadUI();
   }finally{
+    stopFakeProgress();
+    stopElapsedTimer();
     btnRun.disabled = false;
     btnClear.disabled = false;
     btnRun.textContent = oldBtnText;
