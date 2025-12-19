@@ -993,18 +993,25 @@ btnApply.addEventListener('click',()=>{
 });
 
 
-/* =================== URL builder (proxy Vercel / local) =================== */
-const DEV_API_BASE = "https://url-matcher-70649262164.europe-west1.run.app";
+/* =================== URL builder (Cloud Run direct) =================== */
+
+// URL Cloud Run (prod)
+const PROD_API_BASE = "https://url-matcher-70649262164.europe-west1.run.app";
+
+// URL utilisée en local (tu peux garder la même)
+const DEV_API_BASE  = "https://url-matcher-70649262164.europe-west1.run.app";
 
 function isLocalHost(){
   const h = location.hostname;
   return h === 'localhost' || h === '127.0.0.1';
 }
+
 function buildUrl(path){
   const p = path.startsWith('/') ? path : '/' + path;
-  if (!isLocalHost()) return location.origin + '/api/proxy?path=' + encodeURIComponent(p);
-  return DEV_API_BASE.replace(/\/$/, '') + p;
+  const base = isLocalHost() ? DEV_API_BASE : PROD_API_BASE;
+  return base.replace(/\/$/, '') + p;
 }
+
 
 
 /* =================== Excel helpers + validation =================== */
