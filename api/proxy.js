@@ -110,6 +110,11 @@ export default async function handler(req, res) {
 
   const upstreamPath = resolveUpstreamPath(req);
 
+// ✅ DEBUG HEADERS (temporaire)
+  res.setHeader("X-Proxy-UpstreamPath", upstreamPath);
+  res.setHeader("X-Proxy-Has-Auth", String(Boolean(req.headers.authorization)));
+  res.setHeader("X-Proxy-Version", "proxy-v3-auth-forward");
+
   const url =
     API_BASE.replace(/\/$/, "") +
     (upstreamPath.startsWith("/") ? upstreamPath : "/" + upstreamPath);
