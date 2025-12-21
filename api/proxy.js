@@ -120,7 +120,7 @@ export default async function handler(req, res) {
   const headers = {};
   for (const [k, v] of Object.entries(req.headers)) {
     const key = k.toLowerCase();
-    if (["host", "content-length", "authorization"].includes(key)) continue;
+    if (["host", "content-length"].includes(key)) continue;
     headers[key] = v;
   }
 
