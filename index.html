@@ -1400,7 +1400,7 @@ btnTest.addEventListener('click', async () => {
     // ✅ Récupère la session Supabase et le token
     const { data: { session } } = await supabaseClient.auth.getSession();
     const token = session?.access_token;
-    if (!token) throw new Error("Non authentifié : token Supabase manquant.");
+    if (!token) throw new Error("Non authentifié : Connectez-vous pour tester une url.");
 
     const r = await fetch(buildUrl('/debug-url'), {
       method: 'POST',
