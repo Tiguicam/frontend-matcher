@@ -117,10 +117,6 @@
       transition: width .25s ease;
     }
 
-    /* Auth Gate */
-    #gate{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.25);z-index:80}
-    #gate .card{width:min(520px, calc(100% - 24px));box-shadow:0 30px 80px #00000033}
-
     /* Modal (alerts + confirm + rename) */
     #modal.hidden{display:none !important;}
     #modal{position:fixed;inset:0;z-index:90}
@@ -221,40 +217,12 @@
 
       <div class="actions">
         <span id="currentUser" class="user"></span>
-        <button id="btnLoginOpen" class="btn primary">Se connecter</button>
 
         <!-- Historique en haut à droite (uniquement connecté) -->
         <button id="btnHistoryTop" class="btn ghost hidden">Historique</button>
 
         <button id="btnLogout" class="btn ghost hidden">Se déconnecter</button>
       </div>
-    </div>
-  </div>
-
-  <!-- Auth Gate -->
-  <div id="gate" class="hidden">
-    <div class="card">
-      <div class="section-title" style="font-size:18px;margin-bottom:6px">Connexion</div>
-      <div class="sub">Connecte-toi pour lancer un matching et accéder à ton historique.</div>
-
-      <div class="row" style="margin-top:12px">
-        <div class="grow">
-          <label>Email</label>
-          <input id="authEmail" type="email" placeholder="you@domain.tld">
-        </div>
-        <div class="grow">
-          <label>Mot de passe</label>
-          <input id="authPassword" type="password" placeholder="••••••••">
-        </div>
-      </div>
-
-      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
-        <button class="btn primary" id="btnLogin">Se connecter</button>
-        <button class="btn ghost" id="btnSignup">Créer un compte</button>
-        <button class="btn ghost" id="btnGateClose" type="button">Fermer</button>
-      </div>
-
-      <div id="authStatus" class="sub" style="margin-top:10px"></div>
     </div>
   </div>
 
@@ -500,112 +468,43 @@
   </div>
 
 <script>
-/* ===================== Supabase Auth + Client ===================== */
+/* ===================== Supabase Client + Guard ===================== */
 const supabaseClient = window.supabase.createClient(
   window.SUPABASE_URL,
   window.SUPABASE_PUBLISHABLE_KEY,
   { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
 );
 
-const elGate = document.getElementById('gate');
-const elLoginOpen = document.getElementById('btnLoginOpen');
 const elLogout = document.getElementById('btnLogout');
 const elUser = document.getElementById('currentUser');
 const elHistoryTop = document.getElementById('btnHistoryTop');
 
-function setGateMsg(msg){ const el=document.getElementById('authStatus'); if(el) el.textContent=msg||''; }
-function busyAuth(on){ ['btnLogin','btnSignup'].forEach(id=>{const b=document.getElementById(id); if(b) b.disabled=!!on; }); }
-
-(async function bootstrapFromHash(){
-  const hash=new URLSearchParams(location.hash.slice(1));
-  const access_token=hash.get('access_token'); const refresh_token=hash.get('refresh_token');
-  if(access_token&&refresh_token){
-    try{ await supabaseClient.auth.setSession({access_token,refresh_token}); }
-    catch{}
-    finally{ history.replaceState(null,'',location.pathname+location.search); }
-  }
-})();
-
-async function requireAuthOrGate(message){
+async function requireAuthOrRedirect(){
   const { data:{ session } } = await supabaseClient.auth.getSession();
   if(!session){
-    setGateMsg(message || 'Connecte-toi pour continuer.');
-    elGate.classList.remove('hidden');
+    window.location.href = './login.html';
     return null;
   }
   return session;
 }
 
-async function applyAuthUI(){
+(async function guard(){
   const { data:{ session } } = await supabaseClient.auth.getSession();
-  const authed = !!session;
-
-  elUser.textContent = session?.user?.email ? session.user.email : '';
-  elLogout.classList.toggle('hidden', !authed);
-  elLoginOpen.classList.toggle('hidden', authed);
-  elHistoryTop.classList.toggle('hidden', !authed);
-
-  elGate.classList.add('hidden');
-
-  if(!authed) renderHistoryEmpty('Connecte-toi pour voir ton historique.');
-}
-
-supabaseClient.auth.onAuthStateChange(async (event, session)=>{
-  if(event==='SIGNED_IN'){
-    elGate.classList.add('hidden');
-    elLoginOpen.classList.add('hidden');
-    elLogout.classList.remove('hidden');
-    elHistoryTop.classList.remove('hidden');
-    elUser.textContent = session?.user?.email ? session.user.email : '';
+  if(!session){
+    window.location.href = './login.html';
+    return;
   }
-  if(event==='SIGNED_OUT'){
-    elGate.classList.add('hidden');
-    elLoginOpen.classList.remove('hidden');
-    elLogout.classList.add('hidden');
-    elHistoryTop.classList.add('hidden');
-    elUser.textContent = '';
-    renderHistoryEmpty('Connecte-toi pour voir ton historique.');
-  }
-});
 
-document.getElementById('btnLogin')?.addEventListener('click', async ()=>{
-  const email=document.getElementById('authEmail').value.trim();
-  const password=document.getElementById('authPassword').value;
-  if(!email||!password) return setGateMsg('Renseigne email et mot de passe.');
-  setGateMsg('Connexion…'); busyAuth(true);
-  try{
-    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-    if(error) return setGateMsg('Erreur: '+error.message);
-    setGateMsg('Connecté.'); await applyAuthUI();
-  }catch(e){ setGateMsg('Erreur inattendue: '+(e?.message||e)); }
-  finally{ busyAuth(false); }
-});
+  if(elUser) elUser.textContent = session.user?.email || '';
+  if(elLogout) elLogout.classList.remove('hidden');
+  if(elHistoryTop) elHistoryTop.classList.remove('hidden');
+})();
 
-document.getElementById('btnSignup')?.addEventListener('click', async ()=>{
-  const email=document.getElementById('authEmail').value.trim();
-  const password=document.getElementById('authPassword').value;
-  if(!email||!password) return setGateMsg('Renseigne email et mot de passe (min. 6 caractères).');
-  setGateMsg('Création du compte…'); busyAuth(true);
-  try{
-    const { error } = await supabaseClient.auth.signUp({ email, password, options:{ emailRedirectTo: `${location.origin}/` } });
-    if(error) return setGateMsg('Erreur: '+error.message);
-    setGateMsg('Compte créé. Vérifie ton email.');
-  }catch(e){ setGateMsg('Erreur inattendue: '+(e?.message||e)); }
-  finally{ busyAuth(false); }
-});
-
-elLoginOpen.addEventListener('click', ()=>{
-  setGateMsg('');
-  elGate.classList.remove('hidden');
-});
-document.getElementById('btnGateClose')?.addEventListener('click', ()=> elGate.classList.add('hidden'));
-elLogout.addEventListener('click', async ()=>{
+elLogout?.addEventListener('click', async ()=>{
   try{ await supabaseClient.auth.signOut(); }
-  finally{ await applyAuthUI(); }
+  finally{ window.location.href = './login.html'; }
 });
-
-applyAuthUI();
-/* =================== Fin Auth =================== */
+/* =================== Fin Guard =================== */
 
 
 /* =================== Tabs & Panels =================== */
@@ -631,7 +530,7 @@ function openPanel(name){
 tabs.forEach(t=> t.addEventListener('click',()=>openPanel(t.dataset.tab)));
 
 elHistoryTop?.addEventListener('click', async ()=>{
-  const session = await requireAuthOrGate('Connecte-toi pour accéder à ton historique.');
+  const session = await requireAuthOrRedirect();
   if(!session) return;
   openPanel('history');
 });
@@ -1398,12 +1297,12 @@ btnTest.addEventListener('click', async () => {
     return;
   }
 
+  const session = await requireAuthOrRedirect();
+  if(!session) return;
+
   try {
     const payload = { url, config: buildConfigFromUI() };
-
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    const token = session?.access_token;
-    if (!token) throw new Error("Non authentifié : Connectez-vous pour tester une url.");
+    const token = session.access_token;
 
     const r = await fetch(buildUrl('/debug-url'), {
       method: 'POST',
@@ -1703,11 +1602,8 @@ function markDirty(runId, isDirty){
 }
 
 async function loadHistory(){
-  const { data:{ session } } = await supabaseClient.auth.getSession();
-  if(!session){
-    renderHistoryEmpty('Connecte-toi pour voir ton historique.');
-    return;
-  }
+  const session = await requireAuthOrRedirect();
+  if(!session) return;
 
   const userId = session.user.id;
   if(historyStatus) historyStatus.textContent = 'Chargement…';
@@ -1783,16 +1679,16 @@ async function loadHistory(){
 
     let actions = '';
     if(fileNames.some(n => n.toLowerCase().startsWith('result'))){
-      actions += makeActionBtn('Télécharger résultat', { action:'download', path:`${base}/result.xlsx`, filename:'result.xlsx' });
+      actions += makeActionBtn('Télécharger résultat', { action:'download', path:`${base}/result.xlsx`, filename:'result.xlsx', runid: runId });
     }
 
     const dico = fileNames.find(n => n.toLowerCase().startsWith('dico.'));
     const trad = fileNames.find(n => n.toLowerCase().startsWith('trad.'));
     const parents = fileNames.find(n => n.toLowerCase().startsWith('parents.'));
 
-    if(dico) actions += makeActionBtn('Dico', { action:'download', path:`${base}/${dico}`, filename:dico });
-    if(trad) actions += makeActionBtn('Trad', { action:'download', path:`${base}/${trad}`, filename:trad });
-    if(parents) actions += makeActionBtn('Parents', { action:'download', path:`${base}/${parents}`, filename:parents });
+    if(dico) actions += makeActionBtn('Dico', { action:'download', path:`${base}/${dico}`, filename:dico, runid: runId });
+    if(trad) actions += makeActionBtn('Trad', { action:'download', path:`${base}/${trad}`, filename:trad, runid: runId });
+    if(parents) actions += makeActionBtn('Parents', { action:'download', path:`${base}/${parents}`, filename:parents, runid: runId });
 
     actions += makeActionBtn('Supprimer', { action:'deleteRun', runid: runId }, 'danger');
 
@@ -1844,7 +1740,7 @@ tblHistoryBody?.addEventListener('click', async (e)=>{
   const action = decodeURIComponent(btn.getAttribute('data-action') || '');
   const runId = decodeURIComponent(btn.getAttribute('data-runid') || '');
 
-  const session = await requireAuthOrGate('Connecte-toi pour accéder à ton historique.');
+  const session = await requireAuthOrRedirect();
   if(!session) return;
 
   const userId = session.user.id;
@@ -1923,7 +1819,7 @@ btnClear.addEventListener('click',()=>{
 });
 
 btnRun.addEventListener('click', async () => {
-  const session = await requireAuthOrGate('Connecte-toi pour lancer le matching.');
+  const session = await requireAuthOrRedirect();
   if(!session) return;
 
   resetDownloadUI();
