@@ -326,10 +326,9 @@
           <div class="row" style="margin-top:10px">
             <div class="grow"><label>Expressions multi-mots (virgules)</label><input id="inpMulti" type="text" /></div>
             <div class="grow"><label>Regex référence</label><input id="inpRegex" type="text" value="(?i)ref[:\\- ]?([a-z0-9\\-]+)" /></div>
-            <div class="grow"><label>Score minimum</label><input id="inpMin" type="number" step="0.1" value="0.5" /></div>
           </div>
 
-          <!-- NOUVEAU : scoring token + poids sémantique -->
+          <!-- Scoring token + poids sémantique -->
           <div class="row" style="margin-top:10px">
             <div class="grow">
               <label>Poids sémantique</label>
@@ -714,9 +713,8 @@ const state={
     exc:new Set(),
     multi:[],
     ref:'(?i)ref[:\\- ]?([a-z0-9\\-]+)',
-    min:0.5,
 
-    // NOUVEAU : paramètres scoring
+    // paramètres scoring
     semanticWeight: 80,
     tokenBonus: 5,
     tokenMalus: -10
@@ -731,7 +729,6 @@ function saveLocal(){
       exc:[...state.cfg.exc],
       multi:state.cfg.multi,
       ref:state.cfg.ref,
-      min:state.cfg.min,
 
       semanticWeight: state.cfg.semanticWeight,
       tokenBonus: state.cfg.tokenBonus,
@@ -751,7 +748,6 @@ function loadLocal(){
     state.cfg.exc=new Set(obj?.cfg?.exc||[]);
     state.cfg.multi=obj?.cfg?.multi||[];
     state.cfg.ref=obj?.cfg?.ref||state.cfg.ref;
-    state.cfg.min=obj?.cfg?.min??0.5;
 
     state.cfg.semanticWeight = Number(obj?.cfg?.semanticWeight ?? 80);
     state.cfg.tokenBonus = Number(obj?.cfg?.tokenBonus ?? 5);
@@ -777,7 +773,6 @@ const inpStop=document.getElementById('inpStop');
 const inpExc=document.getElementById('inpExc');
 const inpMulti=document.getElementById('inpMulti');
 const inpRegex=document.getElementById('inpRegex');
-const inpMin=document.getElementById('inpMin');
 
 const inpSemanticWeight=document.getElementById('inpSemanticWeight');
 const inpTokenBonus=document.getElementById('inpTokenBonus');
@@ -847,6 +842,18 @@ btnDownload.addEventListener('click', () => {
   a.click();
   a.remove();
 });
+
+/* =================== Force re-import same file (reset on click) =================== */
+function enableFileReimport(inputEl){
+  if(!inputEl) return;
+  // Reset avant ouverture du sélecteur -> le même fichier déclenche toujours "change"
+  inputEl.addEventListener('click', ()=>{ inputEl.value=''; });
+}
+enableFileReimport(fileDico);
+enableFileReimport(fileTrad);
+enableFileReimport(fileParents);
+enableFileReimport(file404);
+enableFileReimport(file200);
 
 /* =================== Progress (fake + elapsed + ETA) =================== */
 let progressTimer = null;
@@ -961,7 +968,6 @@ inpStop.value=[...state.cfg.stop].join(', ');
 inpExc.value=[...state.cfg.exc].join(', ');
 inpMulti.value=state.cfg.multi.join(', ');
 inpRegex.value=state.cfg.ref;
-inpMin.value=state.cfg.min;
 
 inpSemanticWeight.value = String(state.cfg.semanticWeight ?? 80);
 inpTokenBonus.value = String(state.cfg.tokenBonus ?? 5);
@@ -972,9 +978,8 @@ btnApply.addEventListener('click',()=>{
   state.cfg.exc=new Set(inpExc.value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean));
   state.cfg.multi=inpMulti.value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
   state.cfg.ref=inpRegex.value.trim()||state.cfg.ref;
-  state.cfg.min=Number(inpMin.value)||0.5;
 
-  // NOUVEAU : scoring
+  // scoring
   state.cfg.semanticWeight = Number(inpSemanticWeight.value);
   if(!Number.isFinite(state.cfg.semanticWeight)) state.cfg.semanticWeight = 80;
 
@@ -1173,10 +1178,9 @@ function buildConfigFromUI(){
     bonus,
     malus,
     prefilter,
-    scoreMin: state.cfg.min,
     parents: state.parents || [],
 
-    // NOUVEAU : paramètres scoring
+    // paramètres scoring
     embeddingWeight: state.cfg.semanticWeight,
     tokenBonusIdentical: state.cfg.tokenBonus,
     tokenPenaltyExtra: state.cfg.tokenMalus
@@ -1397,7 +1401,6 @@ btnTest.addEventListener('click', async () => {
   try {
     const payload = { url, config: buildConfigFromUI() };
 
-    // ✅ Récupère la session Supabase et le token
     const { data: { session } } = await supabaseClient.auth.getSession();
     const token = session?.access_token;
     if (!token) throw new Error("Non authentifié : Connectez-vous pour tester une url.");
@@ -1689,6 +1692,16 @@ function makeActionBtn(label, attrs = {}, kind='ghost'){
   return `<button class="btn ${kind} mini" type="button" ${data} style="margin-right:6px;margin-top:6px">${escapeHtml(label)}</button>`;
 }
 
+/* Dirty tracking for run names */
+const dirtyRunName = new Set();
+function markDirty(runId, isDirty){
+  if(isDirty) dirtyRunName.add(runId);
+  else dirtyRunName.delete(runId);
+
+  const btn = tblHistoryBody?.querySelector(`button[data-action="saveName"][data-runid="${CSS.escape(runId)}"]`);
+  if(btn) btn.classList.toggle('hidden', !dirtyRunName.has(runId));
+}
+
 async function loadHistory(){
   const { data:{ session } } = await supabaseClient.auth.getSession();
   if(!session){
@@ -1793,6 +1806,7 @@ async function loadHistory(){
           style="width:100%;background:#fff"
           data-action="nameInput"
           data-runid="${escapeHtml(runId)}"
+          data-initial="${escapeHtml(r.metaName || '')}"
         >
         <div style="margin-top:8px">
           ${makeActionBtn('Enregistrer', { action:'saveName', runid: runId }, 'ghost')}
@@ -1803,12 +1817,25 @@ async function loadHistory(){
       <td>${actions}</td>
     `;
     tblHistoryBody.appendChild(tr);
+
+    // Hide save by default (only show if dirty)
+    markDirty(runId, false);
   });
 
   if(historyStatus) historyStatus.textContent = `Runs: ${listed.length}`;
 }
 
 btnHistoryRefresh?.addEventListener('click', ()=> loadHistory().catch(()=>{}));
+
+/* Show/hide save button when user edits the input */
+tblHistoryBody?.addEventListener('input', (e)=>{
+  const input = e.target.closest('input[data-action="nameInput"]');
+  if(!input) return;
+  const runId = String(input.getAttribute('data-runid') || '');
+  const initial = String(input.getAttribute('data-initial') || '');
+  const current = String(input.value || '');
+  markDirty(runId, current.trim() !== initial.trim());
+});
 
 tblHistoryBody?.addEventListener('click', async (e)=>{
   const btn = e.target.closest('button');
@@ -1838,8 +1865,13 @@ tblHistoryBody?.addEventListener('click', async (e)=>{
     const name = (input?.value || '').trim();
     try{
       await overwriteJson(`${base}/meta.json`, { name, updated_at: new Date().toISOString() });
+
+      // Update "initial" so it's considered saved; hide the button.
+      if(input){
+        input.setAttribute('data-initial', name);
+      }
+      markDirty(runId, false);
       showAlert({ title:'OK', subtitle:'Nom enregistré', html:`<div>Le run a été renommé.</div>` });
-      loadHistory().catch(()=>{});
     }catch(err){
       showAlert({ title:'Erreur', subtitle:'Impossible d’enregistrer le nom', html: escapeHtml(err?.message || String(err)) });
     }
@@ -1920,7 +1952,6 @@ btnRun.addEventListener('click', async () => {
   btnRun.textContent = 'Traitement…';
   setRunStatus('info', 'Traitement en cours…');
 
-  // Start progress UI
   uiProgressShow();
   startElapsedTimer();
   startFakeProgress();
@@ -1940,18 +1971,15 @@ btnRun.addEventListener('click', async () => {
 
     const blob = await r.blob();
 
-    // end progress OK + store run duration
     const elapsedSec = (Date.now() - runStartTs) / 1000;
     saveRunSeconds(elapsedSec);
     finishProgressOK();
 
-    // download immédiat
     resultBlobUrl = URL.createObjectURL(blob);
     resultFilename = 'result.xlsx';
     downloadWrap.classList.remove('hidden');
     downloadLabel.textContent = 'Résultat prêt';
 
-    // Sauvegarde Storage
     setRunStatus('info', 'Sauvegarde dans l’historique…');
 
     const runId = makeRunId();
@@ -1964,7 +1992,6 @@ btnRun.addEventListener('click', async () => {
       parentsFile: fileParents?.files?.[0] || null
     });
 
-    // Nom optionnel
     const pretty = prettyRunDate(runId);
     const name = await showPrompt({
       title:'Nom du run',
@@ -1979,7 +2006,6 @@ btnRun.addEventListener('click', async () => {
 
     setRunStatus('ok', 'Terminé (run enregistré)');
 
-    // Récap (popup)
     try{
       const summary = await buildRunSummaryFromBlob(blob);
       renderRunSummary(summary);
