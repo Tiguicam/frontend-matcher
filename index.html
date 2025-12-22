@@ -330,6 +330,7 @@
           </div>
 
           <!-- NOUVEAU : scoring token + poids sémantique -->
+          <!-- Scoring token + poids sémantique -->
           <div class="row" style="margin-top:10px">
             <div class="grow">
               <label>Poids sémantique</label>
@@ -717,6 +718,7 @@ const state={
     min:0.5,
 
     // NOUVEAU : paramètres scoring
+    // paramètres scoring
     semanticWeight: 80,
     tokenBonus: 5,
     tokenMalus: -10
@@ -848,6 +850,18 @@ btnDownload.addEventListener('click', () => {
   a.remove();
 });
 
+/* =================== Force re-import same file (reset on click) =================== */
+function enableFileReimport(inputEl){
+  if(!inputEl) return;
+  // Reset avant ouverture du sélecteur -> le même fichier déclenche toujours "change"
+  inputEl.addEventListener('click', ()=>{ inputEl.value=''; });
+}
+enableFileReimport(fileDico);
+enableFileReimport(fileTrad);
+enableFileReimport(fileParents);
+enableFileReimport(file404);
+enableFileReimport(file200);
+
 /* =================== Progress (fake + elapsed + ETA) =================== */
 let progressTimer = null;
 let fakeProgressTimer = null;
@@ -975,6 +989,7 @@ btnApply.addEventListener('click',()=>{
   state.cfg.min=Number(inpMin.value)||0.5;
 
   // NOUVEAU : scoring
+  // scoring
   state.cfg.semanticWeight = Number(inpSemanticWeight.value);
   if(!Number.isFinite(state.cfg.semanticWeight)) state.cfg.semanticWeight = 80;
 
@@ -1177,6 +1192,7 @@ function buildConfigFromUI(){
     parents: state.parents || [],
 
     // NOUVEAU : paramètres scoring
+    // paramètres scoring
     embeddingWeight: state.cfg.semanticWeight,
     tokenBonusIdentical: state.cfg.tokenBonus,
     tokenPenaltyExtra: state.cfg.tokenMalus
@@ -1689,6 +1705,16 @@ function makeActionBtn(label, attrs = {}, kind='ghost'){
   return `<button class="btn ${kind} mini" type="button" ${data} style="margin-right:6px;margin-top:6px">${escapeHtml(label)}</button>`;
 }
 
+/* Dirty tracking for run names */
+const dirtyRunName = new Set();
+function markDirty(runId, isDirty){
+  if(isDirty) dirtyRunName.add(runId);
+  else dirtyRunName.delete(runId);
+
+  const btn = tblHistoryBody?.querySelector(`button[data-action="saveName"][data-runid="${CSS.escape(runId)}"]`);
+  if(btn) btn.classList.toggle('hidden', !dirtyRunName.has(runId));
+}
+
 async function loadHistory(){
   const { data:{ session } } = await supabaseClient.auth.getSession();
   if(!session){
@@ -1793,6 +1819,7 @@ async function loadHistory(){
           style="width:100%;background:#fff"
           data-action="nameInput"
           data-runid="${escapeHtml(runId)}"
+          data-initial="${escapeHtml(r.metaName || '')}"
         >
         <div style="margin-top:8px">
           ${makeActionBtn('Enregistrer', { action:'saveName', runid: runId }, 'ghost')}
@@ -1803,12 +1830,25 @@ async function loadHistory(){
       <td>${actions}</td>
     `;
     tblHistoryBody.appendChild(tr);
+
+    // Hide save by default (only show if dirty)
+    markDirty(runId, false);
   });
 
   if(historyStatus) historyStatus.textContent = `Runs: ${listed.length}`;
 }
 
 btnHistoryRefresh?.addEventListener('click', ()=> loadHistory().catch(()=>{}));
+
+/* Show/hide save button when user edits the input */
+tblHistoryBody?.addEventListener('input', (e)=>{
+  const input = e.target.closest('input[data-action="nameInput"]');
+  if(!input) return;
+  const runId = String(input.getAttribute('data-runid') || '');
+  const initial = String(input.getAttribute('data-initial') || '');
+  const current = String(input.value || '');
+  markDirty(runId, current.trim() !== initial.trim());
+});
 
 tblHistoryBody?.addEventListener('click', async (e)=>{
   const btn = e.target.closest('button');
@@ -1838,6 +1878,12 @@ tblHistoryBody?.addEventListener('click', async (e)=>{
     const name = (input?.value || '').trim();
     try{
       await overwriteJson(`${base}/meta.json`, { name, updated_at: new Date().toISOString() });
+
+      // Update "initial" so it's considered saved; hide the button.
+      if(input){
+        input.setAttribute('data-initial', name);
+      }
+      markDirty(runId, false);
       showAlert({ title:'OK', subtitle:'Nom enregistré', html:`<div>Le run a été renommé.</div>` });
       loadHistory().catch(()=>{});
     }catch(err){
