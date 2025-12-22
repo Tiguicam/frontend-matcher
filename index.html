@@ -117,6 +117,10 @@
       transition: width .25s ease;
     }
 
+    /* Auth Gate */
+    #gate{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.25);z-index:80}
+    #gate .card{width:min(520px, calc(100% - 24px));box-shadow:0 30px 80px #00000033}
+
     /* Modal (alerts + confirm + rename) */
     #modal.hidden{display:none !important;}
     #modal{position:fixed;inset:0;z-index:90}
@@ -217,12 +221,40 @@
 
       <div class="actions">
         <span id="currentUser" class="user"></span>
+        <button id="btnLoginOpen" class="btn primary">Se connecter</button>
 
         <!-- Historique en haut à droite (uniquement connecté) -->
         <button id="btnHistoryTop" class="btn ghost hidden">Historique</button>
 
         <button id="btnLogout" class="btn ghost hidden">Se déconnecter</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Auth Gate -->
+  <div id="gate" class="hidden">
+    <div class="card">
+      <div class="section-title" style="font-size:18px;margin-bottom:6px">Connexion</div>
+      <div class="sub">Connecte-toi pour lancer un matching et accéder à ton historique.</div>
+
+      <div class="row" style="margin-top:12px">
+        <div class="grow">
+          <label>Email</label>
+          <input id="authEmail" type="email" placeholder="you@domain.tld">
+        </div>
+        <div class="grow">
+          <label>Mot de passe</label>
+          <input id="authPassword" type="password" placeholder="••••••••">
+        </div>
+      </div>
+
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn primary" id="btnLogin">Se connecter</button>
+        <button class="btn ghost" id="btnSignup">Créer un compte</button>
+        <button class="btn ghost" id="btnGateClose" type="button">Fermer</button>
+      </div>
+
+      <div id="authStatus" class="sub" style="margin-top:10px"></div>
     </div>
   </div>
 
@@ -468,43 +500,112 @@
   </div>
 
 <script>
-/* ===================== Supabase Client + Guard ===================== */
+/* ===================== Supabase Auth + Client ===================== */
 const supabaseClient = window.supabase.createClient(
   window.SUPABASE_URL,
   window.SUPABASE_PUBLISHABLE_KEY,
   { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
 );
 
+const elGate = document.getElementById('gate');
+const elLoginOpen = document.getElementById('btnLoginOpen');
 const elLogout = document.getElementById('btnLogout');
 const elUser = document.getElementById('currentUser');
 const elHistoryTop = document.getElementById('btnHistoryTop');
 
-async function requireAuthOrRedirect(){
+function setGateMsg(msg){ const el=document.getElementById('authStatus'); if(el) el.textContent=msg||''; }
+function busyAuth(on){ ['btnLogin','btnSignup'].forEach(id=>{const b=document.getElementById(id); if(b) b.disabled=!!on; }); }
+
+(async function bootstrapFromHash(){
+  const hash=new URLSearchParams(location.hash.slice(1));
+  const access_token=hash.get('access_token'); const refresh_token=hash.get('refresh_token');
+  if(access_token&&refresh_token){
+    try{ await supabaseClient.auth.setSession({access_token,refresh_token}); }
+    catch{}
+    finally{ history.replaceState(null,'',location.pathname+location.search); }
+  }
+})();
+
+async function requireAuthOrGate(message){
   const { data:{ session } } = await supabaseClient.auth.getSession();
   if(!session){
-    window.location.href = './login.html';
+    setGateMsg(message || 'Connecte-toi pour continuer.');
+    elGate.classList.remove('hidden');
     return null;
   }
   return session;
 }
 
-(async function guard(){
+async function applyAuthUI(){
   const { data:{ session } } = await supabaseClient.auth.getSession();
-  if(!session){
-    window.location.href = './login.html';
-    return;
+  const authed = !!session;
+
+  elUser.textContent = session?.user?.email ? session.user.email : '';
+  elLogout.classList.toggle('hidden', !authed);
+  elLoginOpen.classList.toggle('hidden', authed);
+  elHistoryTop.classList.toggle('hidden', !authed);
+
+  elGate.classList.add('hidden');
+
+  if(!authed) renderHistoryEmpty('Connecte-toi pour voir ton historique.');
+}
+
+supabaseClient.auth.onAuthStateChange(async (event, session)=>{
+  if(event==='SIGNED_IN'){
+    elGate.classList.add('hidden');
+    elLoginOpen.classList.add('hidden');
+    elLogout.classList.remove('hidden');
+    elHistoryTop.classList.remove('hidden');
+    elUser.textContent = session?.user?.email ? session.user.email : '';
   }
-
-  if(elUser) elUser.textContent = session.user?.email || '';
-  if(elLogout) elLogout.classList.remove('hidden');
-  if(elHistoryTop) elHistoryTop.classList.remove('hidden');
-})();
-
-elLogout?.addEventListener('click', async ()=>{
-  try{ await supabaseClient.auth.signOut(); }
-  finally{ window.location.href = './login.html'; }
+  if(event==='SIGNED_OUT'){
+    elGate.classList.add('hidden');
+    elLoginOpen.classList.remove('hidden');
+    elLogout.classList.add('hidden');
+    elHistoryTop.classList.add('hidden');
+    elUser.textContent = '';
+    renderHistoryEmpty('Connecte-toi pour voir ton historique.');
+  }
 });
-/* =================== Fin Guard =================== */
+
+document.getElementById('btnLogin')?.addEventListener('click', async ()=>{
+  const email=document.getElementById('authEmail').value.trim();
+  const password=document.getElementById('authPassword').value;
+  if(!email||!password) return setGateMsg('Renseigne email et mot de passe.');
+  setGateMsg('Connexion…'); busyAuth(true);
+  try{
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if(error) return setGateMsg('Erreur: '+error.message);
+    setGateMsg('Connecté.'); await applyAuthUI();
+  }catch(e){ setGateMsg('Erreur inattendue: '+(e?.message||e)); }
+  finally{ busyAuth(false); }
+});
+
+document.getElementById('btnSignup')?.addEventListener('click', async ()=>{
+  const email=document.getElementById('authEmail').value.trim();
+  const password=document.getElementById('authPassword').value;
+  if(!email||!password) return setGateMsg('Renseigne email et mot de passe (min. 6 caractères).');
+  setGateMsg('Création du compte…'); busyAuth(true);
+  try{
+    const { error } = await supabaseClient.auth.signUp({ email, password, options:{ emailRedirectTo: `${location.origin}/` } });
+    if(error) return setGateMsg('Erreur: '+error.message);
+    setGateMsg('Compte créé. Vérifie ton email.');
+  }catch(e){ setGateMsg('Erreur inattendue: '+(e?.message||e)); }
+  finally{ busyAuth(false); }
+});
+
+elLoginOpen.addEventListener('click', ()=>{
+  setGateMsg('');
+  elGate.classList.remove('hidden');
+});
+document.getElementById('btnGateClose')?.addEventListener('click', ()=> elGate.classList.add('hidden'));
+elLogout.addEventListener('click', async ()=>{
+  try{ await supabaseClient.auth.signOut(); }
+  finally{ await applyAuthUI(); }
+});
+
+applyAuthUI();
+/* =================== Fin Auth =================== */
 
 
 /* =================== Tabs & Panels =================== */
@@ -530,7 +631,7 @@ function openPanel(name){
 tabs.forEach(t=> t.addEventListener('click',()=>openPanel(t.dataset.tab)));
 
 elHistoryTop?.addEventListener('click', async ()=>{
-  const session = await requireAuthOrRedirect();
+  const session = await requireAuthOrGate('Connecte-toi pour accéder à ton historique.');
   if(!session) return;
   openPanel('history');
 });
@@ -1297,12 +1398,12 @@ btnTest.addEventListener('click', async () => {
     return;
   }
 
-  const session = await requireAuthOrRedirect();
-  if(!session) return;
-
   try {
     const payload = { url, config: buildConfigFromUI() };
-    const token = session.access_token;
+
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    const token = session?.access_token;
+    if (!token) throw new Error("Non authentifié : Connectez-vous pour tester une url.");
 
     const r = await fetch(buildUrl('/debug-url'), {
       method: 'POST',
@@ -1602,8 +1703,11 @@ function markDirty(runId, isDirty){
 }
 
 async function loadHistory(){
-  const session = await requireAuthOrRedirect();
-  if(!session) return;
+  const { data:{ session } } = await supabaseClient.auth.getSession();
+  if(!session){
+    renderHistoryEmpty('Connecte-toi pour voir ton historique.');
+    return;
+  }
 
   const userId = session.user.id;
   if(historyStatus) historyStatus.textContent = 'Chargement…';
@@ -1679,16 +1783,16 @@ async function loadHistory(){
 
     let actions = '';
     if(fileNames.some(n => n.toLowerCase().startsWith('result'))){
-      actions += makeActionBtn('Télécharger résultat', { action:'download', path:`${base}/result.xlsx`, filename:'result.xlsx', runid: runId });
+      actions += makeActionBtn('Télécharger résultat', { action:'download', path:`${base}/result.xlsx`, filename:'result.xlsx' });
     }
 
     const dico = fileNames.find(n => n.toLowerCase().startsWith('dico.'));
     const trad = fileNames.find(n => n.toLowerCase().startsWith('trad.'));
     const parents = fileNames.find(n => n.toLowerCase().startsWith('parents.'));
 
-    if(dico) actions += makeActionBtn('Dico', { action:'download', path:`${base}/${dico}`, filename:dico, runid: runId });
-    if(trad) actions += makeActionBtn('Trad', { action:'download', path:`${base}/${trad}`, filename:trad, runid: runId });
-    if(parents) actions += makeActionBtn('Parents', { action:'download', path:`${base}/${parents}`, filename:parents, runid: runId });
+    if(dico) actions += makeActionBtn('Dico', { action:'download', path:`${base}/${dico}`, filename:dico });
+    if(trad) actions += makeActionBtn('Trad', { action:'download', path:`${base}/${trad}`, filename:trad });
+    if(parents) actions += makeActionBtn('Parents', { action:'download', path:`${base}/${parents}`, filename:parents });
 
     actions += makeActionBtn('Supprimer', { action:'deleteRun', runid: runId }, 'danger');
 
@@ -1740,7 +1844,7 @@ tblHistoryBody?.addEventListener('click', async (e)=>{
   const action = decodeURIComponent(btn.getAttribute('data-action') || '');
   const runId = decodeURIComponent(btn.getAttribute('data-runid') || '');
 
-  const session = await requireAuthOrRedirect();
+  const session = await requireAuthOrGate('Connecte-toi pour accéder à ton historique.');
   if(!session) return;
 
   const userId = session.user.id;
@@ -1819,7 +1923,7 @@ btnClear.addEventListener('click',()=>{
 });
 
 btnRun.addEventListener('click', async () => {
-  const session = await requireAuthOrRedirect();
+  const session = await requireAuthOrGate('Connecte-toi pour lancer le matching.');
   if(!session) return;
 
   resetDownloadUI();
