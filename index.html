@@ -585,11 +585,13 @@ async function applyAuthUI(){
   elLoginOpen.classList.toggle('hidden', authed);
   elHistoryTop.classList.toggle('hidden', !authed);
 
-  if(!authed) renderHistoryEmpty('Connecte-toi pour voir ton historique.');
+  // IMPORTANT : ne pas appeler renderHistoryEmpty ici (évite TDZ / crash)
+  // L'historique est géré quand on ouvre l'onglet / via loadHistory()
 
-  // Route toujours en dernier (évite des états UI transitoires)
+  // Route toujours en dernier
   route().catch(()=>{});
 }
+
 
 
 supabaseClient.auth.onAuthStateChange(async (event, session)=>{
