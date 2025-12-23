@@ -274,6 +274,8 @@
     </div>
   </div>
 
+<div id="appShell">
+
   <!-- Main -->
   <div class="container page">
 
@@ -514,6 +516,42 @@ const elLoginOpen = document.getElementById('btnLoginOpen');
 const elLogout = document.getElementById('btnLogout');
 const elUser = document.getElementById('currentUser');
 const elHistoryTop = document.getElementById('btnHistoryTop');
+const appShell = document.getElementById('appShell');
+
+function isLoginRoute(){
+  return location.pathname === '/login';
+}
+
+async function route(){
+  const { data:{ session } } = await supabaseClient.auth.getSession();
+  const authed = !!session;
+
+  // /login : on affiche uniquement la connexion
+  if (isLoginRoute()){
+    if (authed){
+      window.location.replace('/');
+      return;
+    }
+    setGateMsg('');
+    elGate.classList.remove('hidden');
+    appShell?.classList.add('hidden');
+
+    // Sur la page login, le bouton Fermer n'a pas de sens
+    document.getElementById('btnGateClose')?.classList.add('hidden');
+    return;
+  }
+
+  // Pages app : on exige une session
+  if (!authed){
+    window.location.replace('/login');
+    return;
+  }
+
+  appShell?.classList.remove('hidden');
+  elGate.classList.add('hidden');
+  document.getElementById('btnGateClose')?.classList.remove('hidden');
+}
+
 
 function setGateMsg(msg){ const el=document.getElementById('authStatus'); if(el) el.textContent=msg||''; }
 function busyAuth(on){ ['btnLogin','btnSignup'].forEach(id=>{const b=document.getElementById(id); if(b) b.disabled=!!on; }); }
@@ -547,28 +585,19 @@ async function applyAuthUI(){
   elLoginOpen.classList.toggle('hidden', authed);
   elHistoryTop.classList.toggle('hidden', !authed);
 
-  elGate.classList.add('hidden');
-
   if(!authed) renderHistoryEmpty('Connecte-toi pour voir ton historique.');
+
+  // Route toujours en dernier (évite des états UI transitoires)
+  route().catch(()=>{});
 }
 
+
 supabaseClient.auth.onAuthStateChange(async (event, session)=>{
-  if(event==='SIGNED_IN'){
-    elGate.classList.add('hidden');
-    elLoginOpen.classList.add('hidden');
-    elLogout.classList.remove('hidden');
-    elHistoryTop.classList.remove('hidden');
-    elUser.textContent = session?.user?.email ? session.user.email : '';
-  }
-  if(event==='SIGNED_OUT'){
-    elGate.classList.add('hidden');
-    elLoginOpen.classList.remove('hidden');
-    elLogout.classList.add('hidden');
-    elHistoryTop.classList.add('hidden');
-    elUser.textContent = '';
-    renderHistoryEmpty('Connecte-toi pour voir ton historique.');
+  if(event === 'SIGNED_IN' || event === 'SIGNED_OUT'){
+    await applyAuthUI();
   }
 });
+
 
 document.getElementById('btnLogin')?.addEventListener('click', async ()=>{
   const email=document.getElementById('authEmail').value.trim();
@@ -589,7 +618,8 @@ document.getElementById('btnSignup')?.addEventListener('click', async ()=>{
   if(!email||!password) return setGateMsg('Renseigne email et mot de passe (min. 6 caractères).');
   setGateMsg('Création du compte…'); busyAuth(true);
   try{
-    const { error } = await supabaseClient.auth.signUp({ email, password, options:{ emailRedirectTo: `${location.origin}/` } });
+    const { error } = await supabaseClient.auth.signUp({ email, password, options:{ emailRedirectTo: `${location.origin}/login`
+ } });
     if(error) return setGateMsg('Erreur: '+error.message);
     setGateMsg('Compte créé. Vérifie ton email.');
   }catch(e){ setGateMsg('Erreur inattendue: '+(e?.message||e)); }
@@ -597,9 +627,9 @@ document.getElementById('btnSignup')?.addEventListener('click', async ()=>{
 });
 
 elLoginOpen.addEventListener('click', ()=>{
-  setGateMsg('');
-  elGate.classList.remove('hidden');
+  window.location.href = '/login';
 });
+
 document.getElementById('btnGateClose')?.addEventListener('click', ()=> elGate.classList.add('hidden'));
 elLogout.addEventListener('click', async ()=>{
   try{ await supabaseClient.auth.signOut(); }
@@ -2052,6 +2082,7 @@ btnRun.addEventListener('click', async () => {
 dicoStatus.textContent = Object.keys(state.dicos||{}).length ? `${Object.keys(state.dicos).length} dictionnaire(s) chargé(s).` : '';
 tradStatus.textContent = Object.keys(state.translations||{}).length ? `${Object.keys(state.translations).length} traduction(s).` : '';
 parentsStatus.textContent = (state.parents||[]).length ? `${state.parents.length} URL(s) parent.` : '';
-</script>
+  </script>
+</div> <!-- ✅ ferme appShell -->
 </body>
 </html>
