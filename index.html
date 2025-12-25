@@ -539,30 +539,39 @@ function closeGate(){
 }
 
 function normPath(){
+  // normalise: "/login/" => "/login", "" => "/"
   const p = (location.pathname || '/').replace(/\/+$/, '');
   return p === '' ? '/' : p;
 }
+
 function isLoginRoute(){
-  const p = normPath();
-  if(p === '/loging'){ // si l’utilisateur tombe sur /loging, on normalise
-    history.replaceState({}, '', '/login');
-    return true;
-  }
-  return p === '/login';
+  const p = normPath().toLowerCase();
+  return p === '/login' || p === '/loging';
 }
 
 async function route(){
-  const { data:{ session } } = await supabaseClient.auth.getSession();
+  let session = null;
+
+  // ✅ SAFE: si Supabase répond mal / lentement, on ne bloque pas l’UI
+  try{
+    const { data } = await supabaseClient.auth.getSession();
+    session = data?.session || null;
+  }catch(e){
+    session = null;
+  }
+
   const authed = !!session;
 
   // Si on est sur /login
   if (isLoginRoute()){
     if (authed){
-      // IMPORTANT : on revient sur / sans recharger la page (évite impression de freeze)
+      // IMPORTANT : revenir sur / sans reload
       history.replaceState({}, '', '/');
       closeGate();
       return;
     }
+
+    // Non connecté => gate obligatoire visible
     setGateMsg('');
     openGate({ closable: false }); // sur /login => popup obligatoire (pas de Fermer)
     return;
@@ -667,9 +676,19 @@ document.getElementById('btnSignup')?.addEventListener('click', async ()=>{
 });
 
 // ✅ CLIC TOPBAR : va sur /login (exigence) + ouvre la pop-up obligatoire
-elLoginOpen.addEventListener('click', ()=>{
+elLoginOpen.addEventListener('click', (e)=>{
+  e.preventDefault();
+
+  // 1) ouvrir le popup immédiatement (ne dépend pas de Supabase)
   setGateMsg('');
-  history.pushState({}, '', '/login');
+  openGate({ closable: false });
+
+  // 2) mettre /login dans l'URL (sans recharger)
+  if (!isLoginRoute()){
+    history.pushState({}, '', '/login');
+  }
+
+  // 3) tenter de router (si Supabase répond, ok; sinon le popup est déjà ouvert)
   route().catch(()=>{});
 });
 
