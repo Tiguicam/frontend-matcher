@@ -627,11 +627,11 @@ if (authed && historyPanel?.classList.contains('active')) {
 
 
 supabaseClient.auth.onAuthStateChange(async (event, session)=>{
-  if(event === 'SIGNED_IN' || event === 'SIGNED_OUT'){
+  if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
     await applyAuthUI();
+    await route(); // <-- indispensable pour /login et pour fermer le gate
   }
 });
-
 
 document.getElementById('btnLogin')?.addEventListener('click', async ()=>{
   const email=document.getElementById('authEmail').value.trim();
@@ -643,6 +643,7 @@ document.getElementById('btnLogin')?.addEventListener('click', async ()=>{
     if(error) return setGateMsg('Erreur: '+error.message);
 setGateMsg('Connecté.');
 await applyAuthUI();
+await route();          // <-- ajoute ceci
 
 // Précharge l’historique (même si l’utilisateur n’a pas encore cliqué)
 loadHistory().catch(()=>{});
