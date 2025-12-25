@@ -619,12 +619,10 @@ async function applyAuthUI(){
   elHistoryTop.classList.toggle('hidden', !authed);
 
   // Optionnel : si connecté et que tu es déjà sur l’onglet historique, refresh
-  if(authed && panels?.history?.classList.contains('active')){
-    loadHistory().catch(()=>{});
-  }
-
-  // Route toujours en dernier
-  route().catch(()=>{});
+const historyPanel = document.getElementById('panel-history');
+if (authed && historyPanel?.classList.contains('active')) {
+  loadHistory().catch(()=>{});
+}
 }
 
 
@@ -670,6 +668,11 @@ document.getElementById('btnSignup')?.addEventListener('click', async ()=>{
 elLoginOpen.addEventListener('click', ()=>{
   setGateMsg('');
   history.pushState({}, '', '/login');
+
+  // ouvre immédiatement le popup (mode obligatoire sur /login)
+  openGate({ closable: false });
+
+  // et ensuite on laisse route gérer la logique (redirect si déjà connecté, etc.)
   route().catch(()=>{});
 });
 
@@ -691,9 +694,10 @@ elLogout.addEventListener('click', async ()=>{
 });
 
 applyAuthUI();
+route().catch(()=>{}); // ✅ ajoute cette ligne juste après applyAuthUI()
+
 /* =================== Fin Auth =================== */
 window.addEventListener('popstate', ()=> route().catch(()=>{}));
-
 
 /* =================== Tabs & Panels =================== */
 const tabs = document.querySelectorAll('.tab');
