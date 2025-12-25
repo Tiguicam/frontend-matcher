@@ -606,18 +606,26 @@ async function applyAuthUI(){
   const { data:{ session } } = await supabaseClient.auth.getSession();
   const authed = !!session;
 
-  elUser.textContent = session?.user?.email ? session.user.email : '';
+  // Affichage clair "Connecté / Déconnecté"
+  if(authed){
+    elUser.textContent = `Connecté : ${session.user.email}`;
+  } else {
+    elUser.textContent = 'Déconnecté';
+  }
+
+  // Boutons visibles selon l’état
   elLogout.classList.toggle('hidden', !authed);
   elLoginOpen.classList.toggle('hidden', authed);
   elHistoryTop.classList.toggle('hidden', !authed);
 
-  // IMPORTANT : ne pas appeler renderHistoryEmpty ici (évite TDZ / crash)
-  // L'historique est géré quand on ouvre l'onglet / via loadHistory()
+  // Optionnel : si connecté et que tu es déjà sur l’onglet historique, refresh
+  if(authed && panels?.history?.classList.contains('active')){
+    loadHistory().catch(()=>{});
+  }
 
   // Route toujours en dernier
   route().catch(()=>{});
 }
-
 
 
 supabaseClient.auth.onAuthStateChange(async (event, session)=>{
@@ -635,7 +643,12 @@ document.getElementById('btnLogin')?.addEventListener('click', async ()=>{
   try{
     const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
     if(error) return setGateMsg('Erreur: '+error.message);
-    setGateMsg('Connecté.'); await applyAuthUI();
+setGateMsg('Connecté.');
+await applyAuthUI();
+
+// Précharge l’historique (même si l’utilisateur n’a pas encore cliqué)
+loadHistory().catch(()=>{});
+
   }catch(e){ setGateMsg('Erreur inattendue: '+(e?.message||e)); }
   finally{ busyAuth(false); }
 });
