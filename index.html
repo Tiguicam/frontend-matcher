@@ -117,6 +117,13 @@
       transition: width .25s ease;
     }
 
+/* Blur background when gate is open */
+#appShell.blurred{
+  filter: blur(6px);
+  pointer-events: none;
+  user-select: none;
+}
+
     /* Auth Gate */
     #gate{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.25);z-index:80}
     #gate .card{width:min(520px, calc(100% - 24px));box-shadow:0 30px 80px #00000033}
@@ -518,38 +525,56 @@ const elUser = document.getElementById('currentUser');
 const elHistoryTop = document.getElementById('btnHistoryTop');
 const appShell = document.getElementById('appShell');
 
-function isLoginRoute(){
-  return location.pathname === '/login';
+function openGate({ closable = true } = {}){
+  elGate.classList.remove('hidden');
+  appShell?.classList.add('blurred');
+
+  const closeBtn = document.getElementById('btnGateClose');
+  if(closeBtn) closeBtn.classList.toggle('hidden', !closable);
 }
+
+function closeGate(){
+  elGate.classList.add('hidden');
+  appShell?.classList.remove('blurred');
+}
+
+
+function normPath(){
+  const p = (location.pathname || '/').replace(/\/+$/, '');
+  return p === '' ? '/' : p;
+}
+
+function isLoginRoute(){
+  const p = normPath();
+  return p === '/login' || p === '/loging'; // accepte les 2
+}
+
 
 async function route(){
   const { data:{ session } } = await supabaseClient.auth.getSession();
   const authed = !!session;
 
-  // /login : on affiche uniquement la connexion
+  // Si on est sur /login ou /loging
   if (isLoginRoute()){
     if (authed){
       window.location.replace('/');
       return;
     }
     setGateMsg('');
-    elGate.classList.remove('hidden');
-    appShell?.classList.add('hidden');
-
-    // Sur la page login, le bouton Fermer n'a pas de sens
-    document.getElementById('btnGateClose')?.classList.add('hidden');
+    openGate({ closable: false }); // sur /login => popup obligatoire
     return;
   }
 
-  // Pages app : on exige une session
+  // Sur les autres pages :
+  // - si pas connecté : on laisse l'app visible, mais pas d'accès aux actions sensibles
+  //   (le gate s'ouvrira quand il clique sur "Se connecter")
   if (!authed){
-    window.location.replace('/login');
+    closeGate();
     return;
   }
 
-  appShell?.classList.remove('hidden');
-  elGate.classList.add('hidden');
-  document.getElementById('btnGateClose')?.classList.remove('hidden');
+  // Connecté + hors /login
+  closeGate();
 }
 
 
@@ -570,11 +595,12 @@ async function requireAuthOrGate(message){
   const { data:{ session } } = await supabaseClient.auth.getSession();
   if(!session){
     setGateMsg(message || 'Connecte-toi pour continuer.');
-    elGate.classList.remove('hidden');
+    openGate({ closable: true }); // <- blur + bouton Fermer visible
     return null;
   }
   return session;
 }
+
 
 async function applyAuthUI(){
   const { data:{ session } } = await supabaseClient.auth.getSession();
@@ -629,10 +655,23 @@ document.getElementById('btnSignup')?.addEventListener('click', async ()=>{
 });
 
 elLoginOpen.addEventListener('click', ()=>{
-  window.location.href = '/login';
+  setGateMsg('');
+  history.pushState({}, '', '/login');
+  route().catch(()=>{});
 });
 
-document.getElementById('btnGateClose')?.addEventListener('click', ()=> elGate.classList.add('hidden'));
+document.getElementById('btnGateClose')?.addEventListener('click', ()=>{
+  // Si on est sur /login (popup obligatoire), on revient à /
+  if (isLoginRoute()){
+    history.pushState({}, '', '/');
+    route().catch(()=>{});
+    return;
+  }
+  // Sinon, c'est juste une demande d'auth pour une action => on ferme le popup sans changer l'URL
+  closeGate();
+  setGateMsg('');
+});
+
 elLogout.addEventListener('click', async ()=>{
   try{ await supabaseClient.auth.signOut(); }
   finally{ await applyAuthUI(); }
@@ -640,6 +679,7 @@ elLogout.addEventListener('click', async ()=>{
 
 applyAuthUI();
 /* =================== Fin Auth =================== */
+window.addEventListener('popstate', ()=> route().catch(()=>{}));
 
 
 /* =================== Tabs & Panels =================== */
