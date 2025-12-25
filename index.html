@@ -510,7 +510,7 @@
   </div>
 
 <script>
-/* ===================== Supabase Auth + Client (CORRIGÉ : SANS /login, SANS routing) ===================== */
+/* ===================== Supabase Auth + Client + ROUTING (CORRIGÉ) ===================== */
 const supabaseClient = window.supabase.createClient(
   window.SUPABASE_URL,
   window.SUPABASE_PUBLISHABLE_KEY,
@@ -524,22 +524,12 @@ const elUser = document.getElementById('currentUser');
 const elHistoryTop = document.getElementById('btnHistoryTop');
 const appShell = document.getElementById('appShell');
 
-function setGateMsg(msg){
-  const el = document.getElementById('authStatus');
-  if(el) el.textContent = msg || '';
-}
-function busyAuth(on){
-  ['btnLogin','btnSignup'].forEach(id=>{
-    const b=document.getElementById(id);
-    if(b) b.disabled = !!on;
-  });
-}
+function setGateMsg(msg){ const el=document.getElementById('authStatus'); if(el) el.textContent=msg||''; }
+function busyAuth(on){ ['btnLogin','btnSignup'].forEach(id=>{const b=document.getElementById(id); if(b) b.disabled=!!on; }); }
 
-function openGate({ closable = true, message = '' } = {}){
-  setGateMsg(message);
+function openGate({ closable = true } = {}){
   elGate.classList.remove('hidden');
   appShell?.classList.add('blurred');
-
   const closeBtn = document.getElementById('btnGateClose');
   if(closeBtn) closeBtn.classList.toggle('hidden', !closable);
 }
@@ -548,105 +538,164 @@ function closeGate(){
   appShell?.classList.remove('blurred');
 }
 
-async function applyAuthUI(){
+function normPath(){
+  const p = (location.pathname || '/').replace(/\/+$/, '');
+  return p === '' ? '/' : p;
+}
+function isLoginRoute(){
+  const p = normPath();
+  if(p === '/loging'){ // si l’utilisateur tombe sur /loging, on normalise
+    history.replaceState({}, '', '/login');
+    return true;
+  }
+  return p === '/login';
+}
+
+async function route(){
   const { data:{ session } } = await supabaseClient.auth.getSession();
   const authed = !!session;
 
-  elUser.textContent = authed ? `Connecté : ${session.user.email}` : 'Déconnecté';
-  elLogout.classList.toggle('hidden', !authed);
-  elLoginOpen.classList.toggle('hidden', authed);
-  elHistoryTop.classList.toggle('hidden', !authed);
-
-  if(authed){
-    // Très important : fermer le gate dès que la session existe
-    closeGate();
-
-    // Si l'historique est visible, refresh
-    const historyPanel = document.getElementById('panel-history');
-    if(historyPanel?.classList.contains('active')) {
-      loadHistory().catch(()=>{});
+  // Si on est sur /login
+  if (isLoginRoute()){
+    if (authed){
+      // IMPORTANT : on revient sur / sans recharger la page (évite impression de freeze)
+      history.replaceState({}, '', '/');
+      closeGate();
+      return;
     }
+    setGateMsg('');
+    openGate({ closable: false }); // sur /login => popup obligatoire (pas de Fermer)
+    return;
   }
+
+  // Hors /login
+  if (!authed){
+    // app utilisable, mais actions sensibles demanderont le gate
+    closeGate();
+    return;
+  }
+
+  // Connecté + hors /login
+  closeGate();
 }
+
+// Support éventuels tokens dans l’URL (magic link, etc.)
+(async function bootstrapFromHash(){
+  const hash=new URLSearchParams(location.hash.slice(1));
+  const access_token=hash.get('access_token');
+  const refresh_token=hash.get('refresh_token');
+  if(access_token && refresh_token){
+    try{ await supabaseClient.auth.setSession({access_token,refresh_token}); }
+    catch{}
+    finally{ history.replaceState(null,'',location.pathname+location.search); }
+  }
+})();
 
 async function requireAuthOrGate(message){
   const { data:{ session } } = await supabaseClient.auth.getSession();
   if(!session){
-    openGate({ closable: true, message: message || 'Connecte-toi pour continuer.' });
+    setGateMsg(message || 'Connecte-toi pour continuer.');
+    openGate({ closable: true }); // ici, on ne force pas /login (garde le contexte)
     return null;
   }
   return session;
 }
 
-supabaseClient.auth.onAuthStateChange(async ()=>{
-  await applyAuthUI();
+async function applyAuthUI(){
+  const { data:{ session } } = await supabaseClient.auth.getSession();
+  const authed = !!session;
+
+  elUser.textContent = authed ? `Connecté : ${session.user.email}` : 'Déconnecté';
+
+  elLogout.classList.toggle('hidden', !authed);
+  elLoginOpen.classList.toggle('hidden', authed);
+  elHistoryTop.classList.toggle('hidden', !authed);
+
+  const historyPanel = document.getElementById('panel-history');
+  if (authed && historyPanel?.classList.contains('active')) {
+    loadHistory().catch(()=>{});
+  }
+}
+
+supabaseClient.auth.onAuthStateChange(async (event)=> {
+  if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+    await applyAuthUI();
+    await route();
+  }
 });
 
 document.getElementById('btnLogin')?.addEventListener('click', async ()=>{
-  const email = document.getElementById('authEmail')?.value?.trim() || '';
-  const password = document.getElementById('authPassword')?.value || '';
-  if(!email || !password) return setGateMsg('Renseigne email et mot de passe.');
+  const email=document.getElementById('authEmail').value.trim();
+  const password=document.getElementById('authPassword').value;
+  if(!email||!password) return setGateMsg('Renseigne email et mot de passe.');
 
-  setGateMsg('Connexion…');
-  busyAuth(true);
+  setGateMsg('Connexion…'); busyAuth(true);
   try{
     const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-    if(error) return setGateMsg('Erreur : ' + error.message);
+    if(error) return setGateMsg('Erreur: '+error.message);
 
+    setGateMsg('Connecté.');
     await applyAuthUI();
-
-    // Précharge l’historique (utile même si l’utilisateur n’a pas encore cliqué)
-    loadHistory().catch(()=>{});
+    await route();                 // <-- ramène sur / si on est sur /login
+    loadHistory().catch(()=>{});   // précharge
   }catch(e){
-    setGateMsg('Erreur inattendue : ' + (e?.message || String(e)));
+    setGateMsg('Erreur inattendue: '+(e?.message||e));
   }finally{
     busyAuth(false);
   }
 });
 
 document.getElementById('btnSignup')?.addEventListener('click', async ()=>{
-  const email = document.getElementById('authEmail')?.value?.trim() || '';
-  const password = document.getElementById('authPassword')?.value || '';
-  if(!email || !password) return setGateMsg('Renseigne email et mot de passe (min. 6 caractères).');
+  const email=document.getElementById('authEmail').value.trim();
+  const password=document.getElementById('authPassword').value;
+  if(!email||!password) return setGateMsg('Renseigne email et mot de passe (min. 6 caractères).');
 
-  setGateMsg('Création du compte…');
-  busyAuth(true);
+  setGateMsg('Création du compte…'); busyAuth(true);
   try{
     const { error } = await supabaseClient.auth.signUp({
       email,
       password,
-      options: {
-        // IMPORTANT : pas de /login. On renvoie sur la home, Supabase gère le hash via detectSessionInUrl.
-        emailRedirectTo: `${location.origin}/`
-      }
+      options:{ emailRedirectTo: `${location.origin}/login` }
     });
-    if(error) return setGateMsg('Erreur : ' + error.message);
+    if(error) return setGateMsg('Erreur: '+error.message);
     setGateMsg('Compte créé. Vérifie ton email.');
   }catch(e){
-    setGateMsg('Erreur inattendue : ' + (e?.message || String(e)));
+    setGateMsg('Erreur inattendue: '+(e?.message||e));
   }finally{
     busyAuth(false);
   }
 });
 
-elLoginOpen?.addEventListener('click', ()=>{
-  openGate({ closable: true, message: '' });
+// ✅ CLIC TOPBAR : va sur /login (exigence) + ouvre la pop-up obligatoire
+elLoginOpen.addEventListener('click', ()=>{
+  setGateMsg('');
+  history.pushState({}, '', '/login');
+  route().catch(()=>{});
 });
 
 document.getElementById('btnGateClose')?.addEventListener('click', ()=>{
+  // Si on est sur /login, on revient à / (même si normalement le bouton est caché)
+  if (isLoginRoute()){
+    history.pushState({}, '', '/');
+    route().catch(()=>{});
+    return;
+  }
   closeGate();
   setGateMsg('');
 });
 
-elLogout?.addEventListener('click', async ()=>{
-  try{
-    await supabaseClient.auth.signOut();
-  }finally{
+elLogout.addEventListener('click', async ()=>{
+  try{ await supabaseClient.auth.signOut(); }
+  finally{
     await applyAuthUI();
+    await route();
   }
 });
 
+// Initial
 applyAuthUI();
+route().catch(()=>{});
+window.addEventListener('popstate', ()=> route().catch(()=>{}));
 
 /* =================== Fin Auth =================== */
 
@@ -720,6 +769,15 @@ function showConfirm({ title='Confirmer', subtitle='', html='', confirmText='Con
   });
 }
 
+function escapeHtml(s){
+  return String(s ?? '')
+    .replaceAll('&','&amp;')
+    .replaceAll('<','&lt;')
+    .replaceAll('>','&gt;')
+    .replaceAll('"','&quot;')
+    .replaceAll("'",'&#039;');
+}
+
 function showPrompt({ title='Nom du run', subtitle='Optionnel', placeholder='Ex: Décembre - redirections', defaultValue='' }){
   return new Promise((resolve)=>{
     mTitle.textContent = title;
@@ -757,8 +815,6 @@ const state={
     multi:[],
     ref:'(?i)ref[:\\- ]?([a-z0-9\\-]+)',
     min:0.5,
-
-    // paramètres scoring
     semanticWeight: 80,
     tokenBonus: 5,
     tokenMalus: -10
@@ -774,7 +830,6 @@ function saveLocal(){
       multi:state.cfg.multi,
       ref:state.cfg.ref,
       min:state.cfg.min,
-
       semanticWeight: state.cfg.semanticWeight,
       tokenBonus: state.cfg.tokenBonus,
       tokenMalus: state.cfg.tokenMalus
@@ -1053,7 +1108,6 @@ function isLocalHost(){
   const h = location.hostname;
   return h === 'localhost' || h === '127.0.0.1';
 }
-
 function buildUrl(path){
   const p = path.startsWith('/') ? path : '/' + path;
   const base = isLocalHost() ? DEV_API_BASE : PROD_API_BASE;
@@ -1062,15 +1116,6 @@ function buildUrl(path){
 
 
 /* =================== Excel helpers + validation =================== */
-function escapeHtml(s){
-  return String(s ?? '')
-    .replaceAll('&','&amp;')
-    .replaceAll('<','&lt;')
-    .replaceAll('>','&gt;')
-    .replaceAll('"','&quot;')
-    .replaceAll("'",'&#039;');
-}
-
 async function readExcel(file){
   return new Promise((resolve,reject)=>{
     const reader=new FileReader();
@@ -1222,7 +1267,6 @@ function buildConfigFromUI(){
     prefilter,
     scoreMin: state.cfg.min,
     parents: state.parents || [],
-
     embeddingWeight: state.cfg.semanticWeight,
     tokenBonusIdentical: state.cfg.tokenBonus,
     tokenPenaltyExtra: state.cfg.tokenMalus
@@ -1440,13 +1484,12 @@ btnTest.addEventListener('click', async () => {
     return;
   }
 
-  // ✅ Gate obligatoire (au lieu de throw)
-  const session = await requireAuthOrGate("Connecte-toi pour tester une URL.");
-  if(!session) return;
-
   try {
     const payload = { url, config: buildConfigFromUI() };
-    const token = session.access_token;
+
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    const token = session?.access_token;
+    if (!token) throw new Error("Non authentifié : Connectez-vous pour tester une url.");
 
     const r = await fetch(buildUrl('/debug-url'), {
       method: 'POST',
@@ -1487,6 +1530,7 @@ btnTest.addEventListener('click', async () => {
     testOut.value = '[ERREUR] ' + (e?.message || String(e));
   }
 });
+
 
 /* =================== Run Summary Modal =================== */
 const runSummaryModal = document.getElementById('runSummaryModal');
@@ -1906,7 +1950,6 @@ tblHistoryBody?.addEventListener('click', async (e)=>{
     const name = (input?.value || '').trim();
     try{
       await overwriteJson(`${base}/meta.json`, { name, updated_at: new Date().toISOString() });
-
       if(input){
         input.setAttribute('data-initial', name);
       }
@@ -2074,7 +2117,6 @@ dicoStatus.textContent = Object.keys(state.dicos||{}).length ? `${Object.keys(st
 tradStatus.textContent = Object.keys(state.translations||{}).length ? `${Object.keys(state.translations).length} traduction(s).` : '';
 parentsStatus.textContent = (state.parents||[]).length ? `${state.parents.length} URL(s) parent.` : '';
 </script>
-
-</div> <!-- ✅ ferme appShell -->
+</div> <!-- ferme appShell -->
 </body>
 </html>
