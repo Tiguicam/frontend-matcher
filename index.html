@@ -206,6 +206,19 @@
 
     /* Footer */
     .footer{margin:22px 0 0;color:var(--muted);font-size:12px}
+
+    /* ✅ Logout mini loader */
+    .spinner{
+      width:14px;height:14px;
+      border:2px solid #cbd5e1;
+      border-top-color: var(--accent);
+      border-radius:999px;
+      display:inline-block;
+      animation:spin .7s linear infinite;
+      vertical-align:-2px;
+      margin-right:8px;
+    }
+    @keyframes spin{to{transform:rotate(360deg)}}
   </style>
 
   <!-- libs -->
@@ -510,7 +523,7 @@
   </div>
 
 <script>
-/* ===================== Supabase Auth + Client + ROUTING (CORRIGÉ + ANTI-FREEZE) ===================== */
+/* ===================== Supabase Auth + Client + ROUTING (CORRIGÉ + ANTI-FREEZE + UX LOGOUT) ===================== */
 const supabaseClient = window.supabase.createClient(
   window.SUPABASE_URL,
   window.SUPABASE_PUBLISHABLE_KEY,
@@ -540,6 +553,19 @@ async function getSessionSafe(){
     return data?.session || null;
   }catch{
     return null;
+  }
+}
+
+/* ✅ Logout UX: spinner + texte */
+const logoutOriginalText = elLogout?.textContent || 'Se déconnecter';
+function setLogoutPending(on){
+  if(!elLogout) return;
+  if(on){
+    elLogout.disabled = true;
+    elLogout.innerHTML = `<span class="spinner"></span>Déconnexion…`;
+  }else{
+    elLogout.disabled = false;
+    elLogout.textContent = logoutOriginalText;
   }
 }
 
@@ -609,12 +635,13 @@ async function requireAuthOrGate(message){
   return session;
 }
 
-/* ✅ applyAuthUI(sessionOverride) pour éviter les re-getSession après login */
+/* ✅ applyAuthUI(sessionOverride) + ✅ ne rien afficher quand déconnecté */
 async function applyAuthUI(sessionOverride = null){
   const session = sessionOverride ?? await getSessionSafe();
   const authed = !!session;
 
-  elUser.textContent = authed ? `Connecté : ${session.user.email}` : 'Déconnecté';
+  // ✅ Demande: ne rien afficher en haut à droite quand déconnecté
+  elUser.textContent = authed ? `Connecté : ${session.user.email}` : '';
 
   elLogout.classList.toggle('hidden', !authed);
   elLoginOpen.classList.toggle('hidden', authed);
@@ -714,11 +741,29 @@ document.getElementById('btnGateClose')?.addEventListener('click', ()=>{
   setGateMsg('');
 });
 
+/* ✅ Logout UX-friendly (spinner + feedback immédiat) */
 elLogout.addEventListener('click', async ()=>{
-  try{ await withTimeout(supabaseClient.auth.signOut(), 8000); }
-  finally{
-    await applyAuthUI(null);
-    await route(null);
+  setLogoutPending(true);
+
+  // Feedback immédiat côté UI (optimiste)
+  closeGate();
+  setGateMsg('');
+  elUser.textContent = 'Déconnexion…';
+
+  try{
+    await withTimeout(supabaseClient.auth.signOut(), 8000);
+  }catch{
+    // On laisse onAuthStateChange faire le reste si Supabase répond plus tard.
+  }finally{
+    setLogoutPending(false);
+
+    // ✅ Rendre l'UI cohérente tout de suite
+    elUser.textContent = ''; // <- pas de "Déconnecté"
+    elLogout.classList.add('hidden');
+    elLoginOpen.classList.remove('hidden');
+    elHistoryTop.classList.add('hidden');
+
+    route(null).catch(()=>{});
   }
 });
 
