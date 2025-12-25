@@ -510,7 +510,7 @@
   </div>
 
 <script>
-/* ===================== Supabase Auth + Client + ROUTING (CORRIGÉ) ===================== */
+/* ===================== Supabase Auth + Client + ROUTING (CORRIGÉ + ANTI-FREEZE) ===================== */
 const supabaseClient = window.supabase.createClient(
   window.SUPABASE_URL,
   window.SUPABASE_PUBLISHABLE_KEY,
@@ -527,6 +527,22 @@ const appShell = document.getElementById('appShell');
 function setGateMsg(msg){ const el=document.getElementById('authStatus'); if(el) el.textContent=msg||''; }
 function busyAuth(on){ ['btnLogin','btnSignup'].forEach(id=>{const b=document.getElementById(id); if(b) b.disabled=!!on; }); }
 
+/* ---- anti-freeze helpers ---- */
+function withTimeout(promise, ms = 8000){
+  return Promise.race([
+    promise,
+    new Promise((_, reject)=> setTimeout(()=> reject(new Error('Timeout')), ms))
+  ]);
+}
+async function getSessionSafe(){
+  try{
+    const { data } = await withTimeout(supabaseClient.auth.getSession(), 8000);
+    return data?.session || null;
+  }catch{
+    return null;
+  }
+}
+
 function openGate({ closable = true } = {}){
   elGate.classList.remove('hidden');
   appShell?.classList.add('blurred');
@@ -539,56 +555,39 @@ function closeGate(){
 }
 
 function normPath(){
-  // normalise: "/login/" => "/login", "" => "/"
   const p = (location.pathname || '/').replace(/\/+$/, '');
   return p === '' ? '/' : p;
 }
-
 function isLoginRoute(){
   const p = normPath().toLowerCase();
-  return p === '/login' || p === '/loging';
+  return p === '/login';
 }
 
-async function route(){
-  let session = null;
-
-  // ✅ SAFE: si Supabase répond mal / lentement, on ne bloque pas l’UI
-  try{
-    const { data } = await supabaseClient.auth.getSession();
-    session = data?.session || null;
-  }catch(e){
-    session = null;
-  }
-
+/* ✅ route(sessionOverride) pour éviter les boucles getSession() */
+async function route(sessionOverride = null){
+  const session = sessionOverride ?? await getSessionSafe();
   const authed = !!session;
 
-  // Si on est sur /login
   if (isLoginRoute()){
     if (authed){
-      // IMPORTANT : revenir sur / sans reload
       history.replaceState({}, '', '/');
       closeGate();
       return;
     }
-
-    // Non connecté => gate obligatoire visible
     setGateMsg('');
-    openGate({ closable: false }); // sur /login => popup obligatoire (pas de Fermer)
+    openGate({ closable: false });
     return;
   }
 
-  // Hors /login
   if (!authed){
-    // app utilisable, mais actions sensibles demanderont le gate
     closeGate();
     return;
   }
 
-  // Connecté + hors /login
   closeGate();
 }
 
-// Support éventuels tokens dans l’URL (magic link, etc.)
+/* Support éventuels tokens dans l’URL (magic link, etc.) */
 (async function bootstrapFromHash(){
   const hash=new URLSearchParams(location.hash.slice(1));
   const access_token=hash.get('access_token');
@@ -601,17 +600,18 @@ async function route(){
 })();
 
 async function requireAuthOrGate(message){
-  const { data:{ session } } = await supabaseClient.auth.getSession();
+  const session = await getSessionSafe();
   if(!session){
     setGateMsg(message || 'Connecte-toi pour continuer.');
-    openGate({ closable: true }); // ici, on ne force pas /login (garde le contexte)
+    openGate({ closable: true });
     return null;
   }
   return session;
 }
 
-async function applyAuthUI(){
-  const { data:{ session } } = await supabaseClient.auth.getSession();
+/* ✅ applyAuthUI(sessionOverride) pour éviter les re-getSession après login */
+async function applyAuthUI(sessionOverride = null){
+  const session = sessionOverride ?? await getSessionSafe();
   const authed = !!session;
 
   elUser.textContent = authed ? `Connecté : ${session.user.email}` : 'Déconnecté';
@@ -626,13 +626,15 @@ async function applyAuthUI(){
   }
 }
 
-supabaseClient.auth.onAuthStateChange(async (event)=> {
+/* ✅ onAuthStateChange fournit session: on la réutilise (pas de getSession en boucle) */
+supabaseClient.auth.onAuthStateChange(async (event, session)=> {
   if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
-    await applyAuthUI();
-    await route();
+    await applyAuthUI(session || null);
+    await route(session || null);
   }
 });
 
+/* ✅ Login (anti-freeze + utilise data.session direct) */
 document.getElementById('btnLogin')?.addEventListener('click', async ()=>{
   const email=document.getElementById('authEmail').value.trim();
   const password=document.getElementById('authPassword').value;
@@ -640,20 +642,30 @@ document.getElementById('btnLogin')?.addEventListener('click', async ()=>{
 
   setGateMsg('Connexion…'); busyAuth(true);
   try{
-    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    const { data, error } = await withTimeout(
+      supabaseClient.auth.signInWithPassword({ email, password }),
+      12000
+    );
     if(error) return setGateMsg('Erreur: '+error.message);
 
+    const session = data?.session || null;
+
     setGateMsg('Connecté.');
-    await applyAuthUI();
-    await route();                 // <-- ramène sur / si on est sur /login
-    loadHistory().catch(()=>{});   // précharge
+    await applyAuthUI(session);
+
+    /* IMPORTANT: après login, on sort de /login immédiatement + on ferme */
+    history.replaceState({}, '', '/');
+    closeGate();
+
+    loadHistory().catch(()=>{});
   }catch(e){
-    setGateMsg('Erreur inattendue: '+(e?.message||e));
+    setGateMsg('Erreur: '+(e?.message || String(e)));
   }finally{
     busyAuth(false);
   }
 });
 
+/* Signup (avec timeout aussi) */
 document.getElementById('btnSignup')?.addEventListener('click', async ()=>{
   const email=document.getElementById('authEmail').value.trim();
   const password=document.getElementById('authPassword').value;
@@ -661,39 +673,38 @@ document.getElementById('btnSignup')?.addEventListener('click', async ()=>{
 
   setGateMsg('Création du compte…'); busyAuth(true);
   try{
-    const { error } = await supabaseClient.auth.signUp({
-      email,
-      password,
-      options:{ emailRedirectTo: `${location.origin}/login` }
-    });
+    const { error } = await withTimeout(
+      supabaseClient.auth.signUp({
+        email,
+        password,
+        options:{ emailRedirectTo: `${location.origin}/login` }
+      }),
+      12000
+    );
     if(error) return setGateMsg('Erreur: '+error.message);
     setGateMsg('Compte créé. Vérifie ton email.');
   }catch(e){
-    setGateMsg('Erreur inattendue: '+(e?.message||e));
+    setGateMsg('Erreur: '+(e?.message || String(e)));
   }finally{
     busyAuth(false);
   }
 });
 
-// ✅ CLIC TOPBAR : va sur /login (exigence) + ouvre la pop-up obligatoire
+/* ✅ CLIC TOPBAR : ouvre immédiatement la pop-up + met /login */
 elLoginOpen.addEventListener('click', (e)=>{
   e.preventDefault();
 
-  // 1) ouvrir le popup immédiatement (ne dépend pas de Supabase)
   setGateMsg('');
   openGate({ closable: false });
 
-  // 2) mettre /login dans l'URL (sans recharger)
   if (!isLoginRoute()){
     history.pushState({}, '', '/login');
   }
 
-  // 3) tenter de router (si Supabase répond, ok; sinon le popup est déjà ouvert)
   route().catch(()=>{});
 });
 
 document.getElementById('btnGateClose')?.addEventListener('click', ()=>{
-  // Si on est sur /login, on revient à / (même si normalement le bouton est caché)
   if (isLoginRoute()){
     history.pushState({}, '', '/');
     route().catch(()=>{});
@@ -704,14 +715,14 @@ document.getElementById('btnGateClose')?.addEventListener('click', ()=>{
 });
 
 elLogout.addEventListener('click', async ()=>{
-  try{ await supabaseClient.auth.signOut(); }
+  try{ await withTimeout(supabaseClient.auth.signOut(), 8000); }
   finally{
-    await applyAuthUI();
-    await route();
+    await applyAuthUI(null);
+    await route(null);
   }
 });
 
-// Initial
+/* Initial */
 applyAuthUI();
 route().catch(()=>{});
 window.addEventListener('popstate', ()=> route().catch(()=>{}));
@@ -1506,7 +1517,7 @@ btnTest.addEventListener('click', async () => {
   try {
     const payload = { url, config: buildConfigFromUI() };
 
-    const { data: { session } } = await supabaseClient.auth.getSession();
+    const session = await getSessionSafe();
     const token = session?.access_token;
     if (!token) throw new Error("Non authentifié : Connectez-vous pour tester une url.");
 
@@ -1809,7 +1820,7 @@ function markDirty(runId, isDirty){
 }
 
 async function loadHistory(){
-  const { data:{ session } } = await supabaseClient.auth.getSession();
+  const session = await getSessionSafe();
   if(!session){
     renderHistoryEmpty('Connecte-toi pour voir ton historique.');
     return;
