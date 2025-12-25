@@ -741,24 +741,107 @@ document.getElementById('btnGateClose')?.addEventListener('click', ()=>{
   setGateMsg('');
 });
 
-/* ✅ Logout UX-friendly (spinner + feedback immédiat) */
+
+function hardResetUIAndLocal(){
+  // 1) supprimer les paramètres sauvegardés (sinon refresh = ça revient)
+  try{
+    localStorage.removeItem('matcherFront');
+    // optionnel : reset estimation durée
+    // localStorage.removeItem('matcherAvgRunSeconds');
+  }catch{}
+
+  // 2) reset état mémoire
+  state.dicos = {};
+  state.dicoWeights = {};
+  state.translations = {};
+  state.parents = [];
+  state.cfg = {
+    stop: new Set(),
+    exc: new Set(),
+    multi: [],
+    ref: '(?i)ref[:\\- ]?([a-z0-9\\-]+)',
+    min: 0.5,
+    semanticWeight: 80,
+    tokenBonus: 5,
+    tokenMalus: -10
+  };
+
+  // 3) reset champs UI + statuts
+  if(fileDico) fileDico.value = '';
+  if(fileTrad) fileTrad.value = '';
+  if(fileParents) fileParents.value = '';
+  if(file404) file404.value = '';
+  if(file200) file200.value = '';
+
+  if(dicoStatus) dicoStatus.textContent = '';
+  if(tradStatus) tradStatus.textContent = '';
+  if(parentsStatus) parentsStatus.textContent = '';
+  if(f404Status) f404Status.textContent = '';
+  if(f200Status) f200Status.textContent = '';
+
+  if(inpStop) inpStop.value = '';
+  if(inpExc) inpExc.value = '';
+  if(inpMulti) inpMulti.value = '';
+  if(inpRegex) inpRegex.value = state.cfg.ref;
+  if(inpMin) inpMin.value = String(state.cfg.min);
+
+  if(inpSemanticWeight) inpSemanticWeight.value = '80';
+  if(inpTokenBonus) inpTokenBonus.value = '5';
+  if(inpTokenMalus) inpTokenMalus.value = '-10';
+
+  // reset UI matching / progress / download
+  resetDownloadUI();
+  clearRunStatus();
+  closeRunSummaryModal();
+  stopFakeProgress();
+  stopElapsedTimer();
+  uiProgressHide();
+
+  // rerender dicos + badge préfiltre
+  renderDicoTable();
+  updatePrefilterBadge();
+
+  // retourner sur un panel clean
+  openPanel('config');
+}
+
+/* ✅ Logout (secure) : si signOut OK -> purge localStorage + reset UI + refresh */
 elLogout.addEventListener('click', async ()=>{
   setLogoutPending(true);
 
-  // Feedback immédiat côté UI (optimiste)
+  // feedback immédiat
   closeGate();
   setGateMsg('');
   elUser.textContent = 'Déconnexion…';
 
   try{
+    // 1) Déconnexion Supabase (si ça échoue, on ne supprime rien)
     await withTimeout(supabaseClient.auth.signOut(), 8000);
-  }catch{
-    // On laisse onAuthStateChange faire le reste si Supabase répond plus tard.
+
+    // 2) Purge des paramètres UI sauvegardés + reset de l'état + reset des champs
+    hardResetUIAndLocal();
+
+    // 3) Comme un refresh complet (UI vide)
+    location.reload();
+
+  }catch(e){
+    // Important : en "secure", on ne purge PAS si la déconnexion échoue
+    if (typeof showAlert === 'function') {
+      showAlert({
+        title: 'Déconnexion impossible',
+        subtitle: 'Réseau / timeout',
+        html: `<div>${escapeHtml(e?.message || String(e))}</div>
+              <div class="help" style="margin-top:8px">Aucun paramètre n’a été supprimé.</div>`
+      });
+    } else {
+      alert('Déconnexion impossible: ' + (e?.message || String(e)));
+    }
+
   }finally{
     setLogoutPending(false);
 
-    // ✅ Rendre l'UI cohérente tout de suite
-    elUser.textContent = ''; // <- pas de "Déconnecté"
+    // UI cohérente si pas de reload (cas erreur)
+    elUser.textContent = '';
     elLogout.classList.add('hidden');
     elLoginOpen.classList.remove('hidden');
     elHistoryTop.classList.add('hidden');
@@ -766,6 +849,7 @@ elLogout.addEventListener('click', async ()=>{
     route(null).catch(()=>{});
   }
 });
+
 
 /* Initial */
 applyAuthUI();
