@@ -311,13 +311,13 @@
       <div class="card">
         <div class="section-title">
           Paramètres
-          <span id="prefilterBadge" class="badge info" title="Le préfiltre est actif si au moins un dictionnaire est coché.">Préfiltre : inactif</span>
+          <span id="prefilterBadge" class="badge info" title="Le filtrage automatique est activé si au moins une liste de mots est cochée.">Filtrage : désactivé</span>
         </div>
-        <div class="sub">Optionnel : dictionnaire, traductions, parents. Les fichiers sont validés dès l’import (colonnes/onglets).</div>
+        <div class="sub">Optionnel : listes de mots, traductions, parents. Les fichiers sont validés dès l’import (colonnes/onglets).</div>
 
         <div class="row" style="margin-top:14px">
           <div class="grow">
-            <label>Dictionnaire Excel (colonnes = noms de dicos, lignes = “clé, syn1, syn2…”)</label>
+            <label>Listes de mots (Excel) — colonnes = noms des listes, lignes = “clé, syn1, syn2…”</label>
             <input id="fileDico" type="file" accept=".xlsx,.xls" />
             <div id="dicoStatus" class="sub"></div>
           </div>
@@ -341,8 +341,8 @@
           <summary>Réglages avancés</summary>
 
           <div class="row" style="margin-top:12px">
-            <div class="grow"><label>Stopwords (virgules)</label><input id="inpStop" type="text" /></div>
-            <div class="grow"><label>Exceptions normalisation (virgules)</label><input id="inpExc" type="text" /></div>
+            <div class="grow"><label>Mots à ignorer (séparés par des virgules)</label><input id="inpStop" type="text" /></div>
+            <div class="grow"><label>Mots à ne pas modifier (séparés par des virgules)</label><input id="inpExc" type="text" /></div>
           </div>
 
           <div class="row" style="margin-top:10px">
@@ -351,37 +351,37 @@
             <div class="grow"><label>Score minimum</label><input id="inpMin" type="number" step="0.1" value="0.5" /></div>
           </div>
 
-          <!-- Scoring token + poids sémantique -->
+          <!-- Scoring mots + importance du sens -->
           <div class="row" style="margin-top:10px">
             <div class="grow">
-              <label>Poids sémantique</label>
+              <label>Importance du sens dans le résultat</label>
               <input id="inpSemanticWeight" type="number" step="1" value="80" />
-              <div class="help" style="margin-top:6px">Impact des embeddings (FAISS) dans le score final.</div>
+              <div class="help" style="margin-top:6px">Plus la valeur est élevée, plus l’outil se base sur le sens des mots (et pas seulement sur les mots identiques).</div>
             </div>
             <div class="grow">
-              <label>Bonus tokens identiques</label>
+              <label>Bonus si les mêmes mots apparaissent</label>
               <input id="inpTokenBonus" type="number" step="1" value="5" />
-              <div class="help" style="margin-top:6px">Ajout par token présent à la fois dans 404 et 200.</div>
+              <div class="help" style="margin-top:6px">Ajoute un bonus pour chaque mot présent à la fois dans l’URL à corriger et l’URL proposée.</div>
             </div>
             <div class="grow">
-              <label>Malus tokens en trop</label>
+              <label>Pénalité si l’URL proposée ajoute des mots</label>
               <input id="inpTokenMalus" type="number" step="1" value="-10" />
-              <div class="help" style="margin-top:6px">Pénalité par token présent dans 200 mais absent de 404 (valeur négative attendue).</div>
+              <div class="help" style="margin-top:6px">Retire des points pour chaque mot présent dans l’URL proposée mais absent de l’URL à corriger (valeur négative attendue).</div>
             </div>
           </div>
 
           <div style="margin-top:14px">
-            <div class="section-title" style="margin-bottom:8px">Dictionnaires dynamiques</div>
-            <div class="help" style="margin-bottom:10px">Bonus/malus + activation du préfiltre par dictionnaire.</div>
+            <div class="section-title" style="margin-bottom:8px">Listes de mots (bonus / pénalité)</div>
+            <div class="help" style="margin-bottom:10px">Ajuste l’importance de chaque liste et active/désactive son utilisation.</div>
 
             <div class="table-wrap">
               <table id="tblDico">
                 <thead>
                   <tr>
-                    <th>Dictionnaire</th>
+                    <th>Liste</th>
                     <th style="width:130px">Bonus</th>
-                    <th style="width:130px">Malus</th>
-                    <th style="width:120px">Actif</th>
+                    <th style="width:130px">Pénalité</th>
+                    <th style="width:120px">Utiliser</th>
                     <th style="width:140px">Entrées</th>
                   </tr>
                 </thead>
@@ -402,11 +402,11 @@
     <section id="panel-test" class="tab-panel">
       <div class="card">
         <div class="section-title">Diagnostic URL</div>
-        <div class="sub">Teste la normalisation + substitution (utile pour debug rapide).</div>
+        <div class="sub">Teste comment l’outil comprend et transforme une URL.</div>
 
         <div class="row" style="margin-top:14px">
           <div class="grow"><label>URL</label><input id="testUrl" type="text" placeholder="https://www.exemple.com/produit/ref-AB1234?color=red"></div>
-          <button class="btn primary" id="btnTest" style="align-self:flex-end">Analyser</button>
+          <button class="btn primary" id="btnTest" style="align-self:flex-end">Tester</button>
         </div>
 
         <div style="margin-top:12px">
@@ -420,17 +420,17 @@
     <section id="panel-matching" class="tab-panel">
       <div class="card">
         <div class="section-title">Traitement</div>
-        <div class="sub">Importe 404/200 (validés à l’import), puis lance le matching. Le résultat est stocké dans ton historique.</div>
+        <div class="sub">Importe les URLs à corriger et les URLs valides (validés à l’import), puis lance le traitement. Le résultat est stocké dans ton historique.</div>
 
         <div class="row" style="margin-top:14px">
           <div class="grow">
-            <label>Fichier 404 (onglet <code>404</code>, colonne <code>URL_404</code>)</label>
+            <label>Fichier des URLs à corriger (onglet <code>404</code>, colonne <code>URL_404</code>)</label>
             <input id="file404" type="file" accept=".xlsx,.xls" />
             <div id="f404Status" class="sub"></div>
           </div>
 
           <div class="grow">
-            <label>Fichier 200 (onglet <code>200</code>, colonne <code>URL_200</code>)</label>
+            <label>Fichier des URLs valides (onglet <code>200</code>, colonne <code>URL_200</code>)</label>
             <input id="file200" type="file" accept=".xlsx,.xls" />
             <div id="f200Status" class="sub"></div>
           </div>
@@ -803,7 +803,7 @@ function hardResetUIAndLocal(){
   stopElapsedTimer();
   uiProgressHide();
 
-  // rerender dicos + badge préfiltre
+  // rerender dicos + badge filtrage
   renderDicoTable();
   updatePrefilterBadge();
 
@@ -1403,13 +1403,13 @@ async function validate404File(file){
   const sh = findSheet(wb, '404');
   if(!sh){
     showAlert({
-      title:'Fichier 404 invalide',
+      title:'Fichier des URLs à corriger invalide',
       subtitle:'Il faut un onglet nommé “404”.',
       html:`<div class="help">Ton fichier doit contenir un onglet <b>404</b> avec une colonne <b>URL_404</b>.</div>`
     });
     return false;
   }
-  return assertColumns({ sheet: sh, required:['URL_404'], context:'404 → colonne URL_404' });
+  return assertColumns({ sheet: sh, required:['URL_404'], context:'URLs à corriger → colonne URL_404' });
 }
 
 async function validate200File(file){
@@ -1417,13 +1417,13 @@ async function validate200File(file){
   const sh = findSheet(wb, '200');
   if(!sh){
     showAlert({
-      title:'Fichier 200 invalide',
+      title:'Fichier des URLs valides invalide',
       subtitle:'Il faut un onglet nommé “200”.',
       html:`<div class="help">Ton fichier doit contenir un onglet <b>200</b> avec une colonne <b>URL_200</b>.</div>`
     });
     return false;
   }
-  return assertColumns({ sheet: sh, required:['URL_200'], context:'200 → colonne URL_200' });
+  return assertColumns({ sheet: sh, required:['URL_200'], context:'URLs valides → colonne URL_200' });
 }
 
 async function validateTradFile(file){
@@ -1467,9 +1467,9 @@ async function validateDicoFile(file){
   }
   if(totalHeaders <= 0){
     showAlert({
-      title:'Dictionnaire invalide',
+      title:'Listes de mots invalides',
       subtitle:'En-têtes vides',
-      html:`<div class="help">La première ligne doit contenir les noms des dictionnaires (colonnes).</div>`
+      html:`<div class="help">La première ligne doit contenir les noms des listes (colonnes).</div>`
     });
     return false;
   }
@@ -1514,13 +1514,13 @@ function buildConfigFromUI(){
 function updatePrefilterBadge(){
   const active = Object.keys(state.dicoWeights).filter(n => (state.dicoWeights[n] || {}).active);
   if(active.length>0){
-    prefilterBadge.textContent='Préfiltre : actif';
+    prefilterBadge.textContent='Filtrage : activé';
     prefilterBadge.className='badge ok';
-    prefilterBadge.title='Au moins un dictionnaire actif : le préfiltre est appliqué.';
+    prefilterBadge.title='Au moins une liste utilisée : le filtrage automatique est appliqué.';
   } else {
-    prefilterBadge.textContent='Préfiltre : inactif';
+    prefilterBadge.textContent='Filtrage : désactivé';
     prefilterBadge.className='badge info';
-    prefilterBadge.title='Active un dictionnaire pour activer le préfiltre.';
+    prefilterBadge.title='Active une liste pour appliquer le filtrage automatique.';
   }
 }
 
@@ -1530,7 +1530,7 @@ function renderDicoTable(){
   const names=Object.keys(state.dicos);
   if(names.length===0){
     const tr=document.createElement('tr'); const td=document.createElement('td');
-    td.colSpan=5; td.textContent='Aucun dictionnaire chargé.'; td.style.color='var(--muted)'; td.style.fontWeight='800';
+    td.colSpan=5; td.textContent='Aucune liste chargée.'; td.style.color='var(--muted)'; td.style.fontWeight='800';
     tr.appendChild(td); tblDico.appendChild(tr);
     updatePrefilterBadge();
     return;
@@ -1604,11 +1604,11 @@ fileDico.addEventListener('change', async ()=>{
 
     saveLocal();
     renderDicoTable();
-    dicoStatus.textContent = `${Object.keys(state.dicos).length} dictionnaire(s) chargé(s).`;
+    dicoStatus.textContent = `${Object.keys(state.dicos).length} liste(s) chargée(s).`;
   }catch(e){
     fileDico.value='';
     dicoStatus.textContent='';
-    showAlert({ title:'Erreur', subtitle:'Lecture du dictionnaire', html: escapeHtml(e?.message||String(e)) });
+    showAlert({ title:'Erreur', subtitle:'Lecture des listes de mots', html: escapeHtml(e?.message||String(e)) });
   }
 });
 
@@ -1675,7 +1675,7 @@ file404.addEventListener('change', async ()=>{
   }catch(e){
     file404.value='';
     f404Status.textContent='';
-    showAlert({ title:'Erreur', subtitle:'Lecture du fichier 404', html: escapeHtml(e?.message||String(e)) });
+    showAlert({ title:'Erreur', subtitle:'Lecture du fichier des URLs à corriger', html: escapeHtml(e?.message||String(e)) });
   }
 });
 
@@ -1688,7 +1688,7 @@ file200.addEventListener('change', async ()=>{
   }catch(e){
     file200.value='';
     f200Status.textContent='';
-    showAlert({ title:'Erreur', subtitle:'Lecture du fichier 200', html: escapeHtml(e?.message||String(e)) });
+    showAlert({ title:'Erreur', subtitle:'Lecture du fichier des URLs valides', html: escapeHtml(e?.message||String(e)) });
   }
 });
 
@@ -1701,13 +1701,13 @@ function formatDictHits(hits){
   Object.entries(hits).forEach(([dicoName, v])=>{
     if(v == null) return;
     if(Array.isArray(v)){
-      if(v.length) lines.push(`Dico ${dicoName} : ${v.join(', ')}`);
+      if(v.length) lines.push(`Liste ${dicoName} : ${v.join(', ')}`);
     } else if(typeof v === 'string'){
       const s = v.trim();
-      if(s) lines.push(`Dico ${dicoName} : ${s}`);
+      if(s) lines.push(`Liste ${dicoName} : ${s}`);
     } else if(typeof v === 'object'){
       const keys = Object.keys(v).filter(k => !!v[k]);
-      if(keys.length) lines.push(`Dico ${dicoName} : ${keys.join(', ')}`);
+      if(keys.length) lines.push(`Liste ${dicoName} : ${keys.join(', ')}`);
     }
   });
   return lines.length ? lines : null;
@@ -1725,7 +1725,7 @@ btnTest.addEventListener('click', async () => {
 
     const session = await getSessionSafe();
     const token = session?.access_token;
-    if (!token) throw new Error("Non authentifié : Connectez-vous pour tester une url.");
+    if (!token) throw new Error("Tu dois être connecté(e) pour utiliser cette fonction.");
 
     const r = await fetch(buildUrl('/debug-url'), {
       method: 'POST',
@@ -1737,33 +1737,33 @@ btnTest.addEventListener('click', async () => {
     });
 
     if (!r.ok) {
-      throw new Error('HTTP ' + r.status + ' – ' + await r.text());
+      throw new Error('Une erreur est survenue pendant le traitement. Réessaie dans quelques instants.');
     }
 
     const j = await r.json();
 
     const out = [];
-    out.push(`URL brute : ${j.input}`);
-    out.push(`URL nettoyée : ${j.clean}`);
-    out.push(`Après synonymes : ${j.substituted}`);
-    out.push(`Tokens : ${j.tokens?.length ? j.tokens.join(', ') : 'Aucun'}`);
-    out.push(j.reference ? `Référence détectée : ${j.reference}` : 'Aucune référence détectée (regex).');
+    out.push(`URL saisie : ${j.input}`);
+    out.push(`URL simplifiée : ${j.clean}`);
+    out.push(`URL après remplacement des termes : ${j.substituted}`);
+    out.push(`Mots détectés : ${j.tokens?.length ? j.tokens.join(', ') : 'Aucun'}`);
+    out.push(j.reference ? `Référence détectée : ${j.reference}` : 'Aucune référence détectée.');
 
     const hits = j.dict_hits || j.dico_hits || j.characteristics || j.dictionaries || null;
     const lines = formatDictHits(hits);
 
     if (lines) {
       out.push('');
-      out.push('Détection dictionnaires :');
+      out.push('Mots reconnus dans tes listes :');
       lines.forEach(x => out.push(' - ' + x));
     } else {
       out.push('');
-      out.push('Détection dictionnaires : aucun mot détecté (ou backend non configuré pour le renvoyer).');
+      out.push('Mots reconnus dans tes listes : aucun mot détecté (ou information non disponible).');
     }
 
     testOut.value = out.join('\n');
   } catch (e) {
-    testOut.value = '[ERREUR] ' + (e?.message || String(e));
+    testOut.value = 'Erreur : ' + (e?.message || String(e));
   }
 });
 
@@ -1875,8 +1875,8 @@ function renderRunSummary(summary){
             <tr>
               <th style="width:55px">#</th>
               <th style="width:90px">Score</th>
-              <th>URL 404</th>
-              <th>URL 200</th>
+              <th>URL à corriger</th>
+              <th>URL proposée</th>
             </tr>
           </thead>
           <tbody>
@@ -2003,7 +2003,7 @@ function renderHistoryEmpty(message){
 function badgeForFile(name){
   const n = String(name||'').toLowerCase();
   if(n.startsWith('result')) return `<span class="badge ok">result</span>`;
-  if(n.startsWith('dico')) return `<span class="badge info">dico</span>`;
+  if(n.startsWith('dico')) return `<span class="badge info">listes</span>`;
   if(n.startsWith('trad')) return `<span class="badge info">trad</span>`;
   if(n.startsWith('parents')) return `<span class="badge info">parents</span>`;
   if(n.startsWith('meta')) return `<span class="badge warn">meta</span>`;
@@ -2041,7 +2041,7 @@ async function loadHistory(){
     .list(`${userId}/runs`, { limit: 100, sortBy: { column: 'name', order: 'desc' } });
 
   if(error){
-    renderHistoryEmpty('Erreur Storage: ' + error.message);
+    renderHistoryEmpty('Impossible d’accéder à l’historique pour le moment. Réessaie plus tard.');
     if(historyStatus) historyStatus.textContent = '';
     return;
   }
@@ -2113,7 +2113,7 @@ async function loadHistory(){
     const trad = fileNames.find(n => n.toLowerCase().startsWith('trad.'));
     const parents = fileNames.find(n => n.toLowerCase().startsWith('parents.'));
 
-    if(dico) actions += makeActionBtn('Dico', { action:'download', path:`${base}/${dico}`, filename:dico });
+    if(dico) actions += makeActionBtn('Listes', { action:'download', path:`${base}/${dico}`, filename:dico });
     if(trad) actions += makeActionBtn('Trad', { action:'download', path:`${base}/${trad}`, filename:trad });
     if(parents) actions += makeActionBtn('Parents', { action:'download', path:`${base}/${parents}`, filename:parents });
 
@@ -2177,7 +2177,7 @@ tblHistoryBody?.addEventListener('click', async (e)=>{
     try{
       await storageSignedDownload(path, fname);
     }catch(err){
-      showAlert({ title:'Téléchargement impossible', subtitle:'Storage', html: escapeHtml(err?.message || String(err)) });
+      showAlert({ title:'Téléchargement impossible', subtitle:'Historique', html: escapeHtml(err?.message || String(err)) });
     }
   }
 
@@ -2201,7 +2201,7 @@ tblHistoryBody?.addEventListener('click', async (e)=>{
     const yes = await showConfirm({
       title: 'Supprimer ce run ?',
       subtitle: 'Cette action est définitive.',
-      html: `<div>Run : <b>${escapeHtml(runId)}</b></div><div class="help" style="margin-top:8px">Le résultat + les fichiers (dico/trad/parents) seront supprimés.</div>`,
+      html: `<div>Run : <b>${escapeHtml(runId)}</b></div><div class="help" style="margin-top:8px">Le résultat + les fichiers (listes/trad/parents) seront supprimés.</div>`,
       confirmText: 'Supprimer',
       danger: true
     });
@@ -2243,7 +2243,7 @@ btnClear.addEventListener('click',()=>{
 });
 
 btnRun.addEventListener('click', async () => {
-  const session = await requireAuthOrGate('Connecte-toi pour lancer le matching.');
+  const session = await requireAuthOrGate('Connecte-toi pour lancer le traitement.');
   if(!session) return;
 
   resetDownloadUI();
@@ -2251,7 +2251,7 @@ btnRun.addEventListener('click', async () => {
   clearRunStatus();
 
   if (!file404.files?.[0] || !file200.files?.[0]) {
-    showAlert({ title:'Fichiers manquants', subtitle:'Traitement', html:'<div>Importe le fichier <b>404</b> et le fichier <b>200</b> avant de lancer.</div>' });
+    showAlert({ title:'Fichiers manquants', subtitle:'Traitement', html:'<div>Importe les <b>URLs à corriger</b> et les <b>URLs valides</b> avant de lancer.</div>' });
     return;
   }
 
@@ -2287,7 +2287,7 @@ btnRun.addEventListener('click', async () => {
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
     const r = await fetch(buildUrl('/match'), { method: 'POST', headers, body: form });
-    if (!r.ok) throw new Error('HTTP ' + r.status + ' – ' + await r.text());
+    if (!r.ok) throw new Error('Une erreur est survenue pendant le traitement. Réessaie dans quelques instants.');
 
     const blob = await r.blob();
 
@@ -2336,7 +2336,7 @@ btnRun.addEventListener('click', async () => {
     finishProgressError();
     clearRunStatus();
     setRunStatus('err', 'Erreur');
-    showAlert({ title:'Erreur pendant le traitement', subtitle:'API /match', html: escapeHtml(e?.message || String(e)) });
+    showAlert({ title:'Erreur pendant le traitement', subtitle:'Traitement', html: escapeHtml(e?.message || String(e)) });
     resetDownloadUI();
   }finally{
     stopFakeProgress();
@@ -2349,7 +2349,7 @@ btnRun.addEventListener('click', async () => {
 
 
 /* =================== Misc (render initial status) =================== */
-dicoStatus.textContent = Object.keys(state.dicos||{}).length ? `${Object.keys(state.dicos).length} dictionnaire(s) chargé(s).` : '';
+dicoStatus.textContent = Object.keys(state.dicos||{}).length ? `${Object.keys(state.dicos).length} liste(s) chargée(s).` : '';
 tradStatus.textContent = Object.keys(state.translations||{}).length ? `${Object.keys(state.translations).length} traduction(s).` : '';
 parentsStatus.textContent = (state.parents||[]).length ? `${state.parents.length} URL(s) parent.` : '';
 
@@ -2368,7 +2368,6 @@ parentsStatus.textContent = (state.parents||[]).length ? `${state.parents.length
 
   window.addEventListener('popstate', ()=> route().catch(()=>{}));
 })();
-
 </script>
 </div> <!-- ferme appShell -->
 </body>
