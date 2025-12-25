@@ -805,51 +805,62 @@ function hardResetUIAndLocal(){
   openPanel('config');
 }
 
-/* ✅ Logout (secure) : si signOut OK -> purge localStorage + reset UI + refresh */
-elLogout.addEventListener('click', async ()=>{
+/* ✅ Logout "secure" sans faux timeout :
+   - purge locale immédiate (scope: 'local') => UI reset instant
+   - logout global en best-effort (ne bloque pas l'UI)
+*/
+elLogout.addEventListener('click', async () => {
   setLogoutPending(true);
 
-  // feedback immédiat
+  // UI immédiate
   closeGate();
   setGateMsg('');
   elUser.textContent = 'Déconnexion…';
 
-  try{
-    // 1) Déconnexion Supabase (si ça échoue, on ne supprime rien)
-    await withTimeout(supabaseClient.auth.signOut(), 8000);
+  // On garde le token AVANT de purger la session locale
+  let accessToken = null;
+  try {
+    const { data } = await supabaseClient.auth.getSession();
+    accessToken = data?.session?.access_token || null;
+  } catch {}
 
-    // 2) Purge des paramètres UI sauvegardés + reset de l'état + reset des champs
-    hardResetUIAndLocal();
+  // 1) Déconnexion locale immédiate (fiable, pas de réseau)
+  try {
+    await supabaseClient.auth.signOut({ scope: 'local' });
+  } catch {}
 
-    // 3) Comme un refresh complet (UI vide)
-    location.reload();
+  // 2) Tu veux "comme un refresh" => on vide aussi tes paramètres UI
+  hardResetUIAndLocal();
 
-  }catch(e){
-    // Important : en "secure", on ne purge PAS si la déconnexion échoue
-    if (typeof showAlert === 'function') {
-      showAlert({
-        title: 'Déconnexion impossible',
-        subtitle: 'Réseau / timeout',
-        html: `<div>${escapeHtml(e?.message || String(e))}</div>
-              <div class="help" style="margin-top:8px">Aucun paramètre n’a été supprimé.</div>`
-      });
-    } else {
-      alert('Déconnexion impossible: ' + (e?.message || String(e)));
-    }
+  // 3) Logout global en best-effort (ne bloque pas)
+  if (accessToken) {
+    const ctrl = new AbortController();
+    setTimeout(() => ctrl.abort(), 6000);
 
-  }finally{
-    setLogoutPending(false);
-
-    // UI cohérente si pas de reload (cas erreur)
-    elUser.textContent = '';
-    elLogout.classList.add('hidden');
-    elLoginOpen.classList.remove('hidden');
-    elHistoryTop.classList.add('hidden');
-
-    route(null).catch(()=>{});
+    fetch(`${window.SUPABASE_URL}/auth/v1/logout?scope=global`, {
+      method: 'POST',
+      headers: {
+        apikey: window.SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json;charset=UTF-8'
+      },
+      signal: ctrl.signal
+    }).catch(() => {
+      // best-effort : si ça échoue, l'utilisateur est déjà déconnecté localement
+    });
   }
-});
 
+  // 4) UI finale + refresh page (optionnel mais cohérent avec ton besoin)
+  setLogoutPending(false);
+  elUser.textContent = '';
+  elLogout.classList.add('hidden');
+  elLoginOpen.classList.remove('hidden');
+  elHistoryTop.classList.add('hidden');
+
+  // Re-route et recharge
+  route(null).catch(() => {});
+  location.reload();
+});
 
 /* Initial */
 applyAuthUI();
