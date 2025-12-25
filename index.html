@@ -656,6 +656,12 @@ async function applyAuthUI(sessionOverride = null){
 /* ✅ onAuthStateChange fournit session: on la réutilise (pas de getSession en boucle) */
 supabaseClient.auth.onAuthStateChange(async (event, session)=> {
   if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+
+    // ✅ important : bascule de compte => on charge le localStorage du bon user
+    CURRENT_USER_ID = session?.user?.id || null;
+    loadLocalForUser(CURRENT_USER_ID);
+    hydrateUIFromState();
+
     await applyAuthUI(session || null);
     await route(session || null);
   }
@@ -991,43 +997,88 @@ const state={
   }
 };
 
+let CURRENT_USER_ID = null;
+
+function getSettingsKey(userId){
+  return `matcherFront::${userId || 'anon'}`;
+}
+
+function resetStateOnly(){
+  state.dicos = {};
+  state.dicoWeights = {};
+  state.translations = {};
+  state.parents = [];
+  state.cfg = {
+    stop: new Set(),
+    exc: new Set(),
+    multi: [],
+    ref: '(?i)ref[:\\- ]?([a-z0-9\\-]+)',
+    min: 0.5,
+    semanticWeight: 80,
+    tokenBonus: 5,
+    tokenMalus: -10
+  };
+}
+
 function saveLocal(){
-  localStorage.setItem('matcherFront', JSON.stringify({
-    dicoWeights:state.dicoWeights,
-    cfg:{
-      stop:[...state.cfg.stop],
-      exc:[...state.cfg.exc],
-      multi:state.cfg.multi,
-      ref:state.cfg.ref,
-      min:state.cfg.min,
+  const key = getSettingsKey(CURRENT_USER_ID);
+
+  localStorage.setItem(key, JSON.stringify({
+    dicoWeights: state.dicoWeights,
+    cfg: {
+      stop: [...state.cfg.stop],
+      exc: [...state.cfg.exc],
+      multi: state.cfg.multi,
+      ref: state.cfg.ref,
+      min: state.cfg.min,
       semanticWeight: state.cfg.semanticWeight,
       tokenBonus: state.cfg.tokenBonus,
       tokenMalus: state.cfg.tokenMalus
     },
-    translations:state.translations,
-    parents:state.parents
+    translations: state.translations,
+    parents: state.parents
   }));
 }
-function loadLocal(){
-  const raw=localStorage.getItem('matcherFront');
-  if(!raw) return;
+
+function loadLocalForUser(userId){
+  // reset pour éviter “mélange” entre comptes
+  resetStateOnly();
+
+  const key = getSettingsKey(userId);
+  const raw = localStorage.getItem(key);
+
+  // migration (si tu avais déjà des réglages dans l'ancienne clé)
+  const legacy = localStorage.getItem('matcherFront');
+
+  const src = raw || legacy;
+  if(!src) return;
+
   try{
-    const obj=JSON.parse(raw);
-    state.dicoWeights=obj.dicoWeights||{};
-    state.cfg.stop=new Set(obj?.cfg?.stop||[]);
-    state.cfg.exc=new Set(obj?.cfg?.exc||[]);
-    state.cfg.multi=obj?.cfg?.multi||[];
-    state.cfg.ref=obj?.cfg?.ref||state.cfg.ref;
-    state.cfg.min=obj?.cfg?.min??0.5;
+    const obj = JSON.parse(src);
+
+    state.dicoWeights = obj.dicoWeights || {};
+    state.cfg.stop = new Set(obj?.cfg?.stop || []);
+    state.cfg.exc = new Set(obj?.cfg?.exc || []);
+    state.cfg.multi = obj?.cfg?.multi || [];
+    state.cfg.ref = obj?.cfg?.ref || state.cfg.ref;
+    state.cfg.min = obj?.cfg?.min ?? 0.5;
 
     state.cfg.semanticWeight = Number(obj?.cfg?.semanticWeight ?? 80);
     state.cfg.tokenBonus = Number(obj?.cfg?.tokenBonus ?? 5);
     state.cfg.tokenMalus = Number(obj?.cfg?.tokenMalus ?? -10);
 
-    state.translations=obj.translations||{};
-    state.parents=obj.parents||[];
+    state.translations = obj.translations || {};
+    state.parents = obj.parents || [];
+
+    // si on a migré depuis l'ancienne clé, on la copie vers la clé user
+    if(!raw && legacy){
+      localStorage.setItem(key, src);
+      // optionnel : supprimer l’ancienne clé globale
+      // localStorage.removeItem('matcherFront');
+    }
   }catch{}
 }
+
 loadLocal();
 
 
@@ -1072,6 +1123,27 @@ const prefilterBadge=document.getElementById('prefilterBadge');
 const downloadWrap = document.getElementById('downloadWrap');
 const btnDownload = document.getElementById('btnDownload');
 const downloadLabel = document.getElementById('downloadLabel');
+
+function hydrateUIFromState(){
+  // Inputs config
+  if(inpStop) inpStop.value = [...state.cfg.stop].join(', ');
+  if(inpExc) inpExc.value = [...state.cfg.exc].join(', ');
+  if(inpMulti) inpMulti.value = state.cfg.multi.join(', ');
+  if(inpRegex) inpRegex.value = state.cfg.ref;
+  if(inpMin) inpMin.value = String(state.cfg.min);
+
+  if(inpSemanticWeight) inpSemanticWeight.value = String(state.cfg.semanticWeight ?? 80);
+  if(inpTokenBonus) inpTokenBonus.value = String(state.cfg.tokenBonus ?? 5);
+  if(inpTokenMalus) inpTokenMalus.value = String(state.cfg.tokenMalus ?? -10);
+
+  // Status text
+  if(tradStatus) tradStatus.textContent = Object.keys(state.translations||{}).length ? `${Object.keys(state.translations).length} traduction(s).` : '';
+  if(parentsStatus) parentsStatus.textContent = (state.parents||[]).length ? `${state.parents.length} URL(s) parent.` : '';
+
+  // Table dicos (si tu n’as pas rechargé le fichier dico, state.dicos restera vide — c'est normal)
+  renderDicoTable();
+  updatePrefilterBadge();
+}
 
 /* Progress DOM */
 const progressWrap = document.getElementById('progressWrap');
