@@ -667,6 +667,7 @@ supabaseClient.auth.onAuthStateChange(async (event, session)=> {
   }
 });
 
+
 /* ✅ Login (anti-freeze + utilise data.session direct) */
 document.getElementById('btnLogin')?.addEventListener('click', async ()=>{
   const email=document.getElementById('authEmail').value.trim();
@@ -749,12 +750,11 @@ document.getElementById('btnGateClose')?.addEventListener('click', ()=>{
 
 
 function hardResetUIAndLocal(){
-  // 1) supprimer les paramètres sauvegardés (sinon refresh = ça revient)
   try{
-    localStorage.removeItem('matcherFront');
-    // optionnel : reset estimation durée
-    // localStorage.removeItem('matcherAvgRunSeconds');
-  }catch{}
+  // supprime les settings du user courant + legacy
+  localStorage.removeItem(getSettingsKey(CURRENT_USER_ID));
+  localStorage.removeItem('matcherFront'); // legacy (si tu l’as eu avant)
+}catch{}
 
   // 2) reset état mémoire
   state.dicos = {};
@@ -865,13 +865,9 @@ elLogout.addEventListener('click', async () => {
 
   // Re-route et recharge
   route(null).catch(() => {});
+  CURRENT_USER_ID = null;
   location.reload();
 });
-
-/* Initial */
-applyAuthUI();
-route().catch(()=>{});
-window.addEventListener('popstate', ()=> route().catch(()=>{}));
 
 /* =================== Fin Auth =================== */
 
@@ -1078,8 +1074,6 @@ function loadLocalForUser(userId){
     }
   }catch{}
 }
-
-loadLocal();
 
 
 /* =================== DOM refs =================== */
@@ -2358,6 +2352,23 @@ btnRun.addEventListener('click', async () => {
 dicoStatus.textContent = Object.keys(state.dicos||{}).length ? `${Object.keys(state.dicos).length} dictionnaire(s) chargé(s).` : '';
 tradStatus.textContent = Object.keys(state.translations||{}).length ? `${Object.keys(state.translations).length} traduction(s).` : '';
 parentsStatus.textContent = (state.parents||[]).length ? `${state.parents.length} URL(s) parent.` : '';
+
+/* ✅ BOOTSTRAP SAFE (à la fin, quand tout est déclaré) */
+(async function boot(){
+  const session = await getSessionSafe();
+
+  // important: CURRENT_USER_ID et state existent maintenant
+  CURRENT_USER_ID = session?.user?.id || null;
+
+  loadLocalForUser(CURRENT_USER_ID);
+  hydrateUIFromState();
+
+  await applyAuthUI(session || null);
+  await route(session || null);
+
+  window.addEventListener('popstate', ()=> route().catch(()=>{}));
+})();
+
 </script>
 </div> <!-- ferme appShell -->
 </body>
