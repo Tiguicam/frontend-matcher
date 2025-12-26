@@ -657,17 +657,19 @@ async function applyAuthUI(sessionOverride = null){
 
 /* ✅ onAuthStateChange fournit session: on la réutilise (pas de getSession en boucle) */
 supabaseClient.auth.onAuthStateChange(async (event, session)=> {
-  if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
-
-    // ✅ important : bascule de compte => on charge le localStorage du bon user
+  if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
     CURRENT_USER_ID = session?.user?.id || null;
     loadLocalForUser(CURRENT_USER_ID);
     hydrateUIFromState();
-
-    await applyAuthUI(session || null);
-    await route(session || null);
+  } else if (event === 'TOKEN_REFRESHED') {
+    // Ne pas reset le state : on garde les dicos en mémoire
+    CURRENT_USER_ID = session?.user?.id || CURRENT_USER_ID;
   }
+
+  await applyAuthUI(session || null);
+  await route(session || null);
 });
+
 
 
 /* ✅ Login (anti-freeze + utilise data.session direct) */
