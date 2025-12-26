@@ -670,8 +670,6 @@ supabaseClient.auth.onAuthStateChange(async (event, session)=> {
   await route(session || null);
 });
 
-
-
 /* ✅ Login (anti-freeze + utilise data.session direct) */
 document.getElementById('btnLogin')?.addEventListener('click', async ()=>{
   const email=document.getElementById('authEmail').value.trim();
@@ -752,13 +750,12 @@ document.getElementById('btnGateClose')?.addEventListener('click', ()=>{
   setGateMsg('');
 });
 
-
 function hardResetUIAndLocal(){
   try{
-  // supprime les settings du user courant + legacy
-  localStorage.removeItem(getSettingsKey(CURRENT_USER_ID));
-  localStorage.removeItem('matcherFront'); // legacy (si tu l’as eu avant)
-}catch{}
+    // supprime les settings du user courant + legacy
+    localStorage.removeItem(getSettingsKey(CURRENT_USER_ID));
+    localStorage.removeItem('matcherFront'); // legacy (si tu l’as eu avant)
+  }catch{}
 
   // 2) reset état mémoire
   state.dicos = {};
@@ -803,10 +800,8 @@ function hardResetUIAndLocal(){
   resetDownloadUI();
   clearRunStatus();
   closeRunSummaryModal();
-
-  /* ✅ MODIF: stop progress time-based (au lieu de fake) */
+  stopFakeProgress();
   stopTimeBasedProgress();
-
   stopElapsedTimer();
   uiProgressHide();
 
@@ -842,7 +837,7 @@ elLogout.addEventListener('click', async () => {
     await supabaseClient.auth.signOut({ scope: 'local' });
   } catch {}
 
-  // 2) Tu veux "comme un refresh" => on vide aussi tes paramètres UI
+  // 2) reset complet
   hardResetUIAndLocal();
 
   // 3) Logout global en best-effort (ne bloque pas)
@@ -859,18 +854,17 @@ elLogout.addEventListener('click', async () => {
       },
       signal: ctrl.signal
     }).catch(() => {
-      // best-effort : si ça échoue, l'utilisateur est déjà déconnecté localement
+      // best-effort
     });
   }
 
-  // 4) UI finale + refresh page (optionnel mais cohérent avec ton besoin)
+  // 4) UI finale + refresh page
   setLogoutPending(false);
   elUser.textContent = '';
   elLogout.classList.add('hidden');
   elLoginOpen.classList.remove('hidden');
   elHistoryTop.classList.add('hidden');
 
-  // Re-route et recharge
   route(null).catch(() => {});
   CURRENT_USER_ID = null;
   location.reload();
@@ -906,7 +900,6 @@ elHistoryTop?.addEventListener('click', async ()=>{
   if(!session) return;
   openPanel('history');
 });
-
 
 /* =================== Modal helpers =================== */
 const modal = document.getElementById('modal');
@@ -981,7 +974,6 @@ function showPrompt({ title='Nom du run', subtitle='Optionnel', placeholder='Ex:
   });
 }
 
-
 /* =================== App state =================== */
 const state={
   dicos:{},
@@ -1045,12 +1037,11 @@ function deserializeDicos(raw){
   return out;
 }
 
-
 function saveLocal(){
   const key = getSettingsKey(CURRENT_USER_ID);
 
   localStorage.setItem(key, JSON.stringify({
-    dicos: serializeDicos(), // ✅ AJOUT ICI
+    dicos: serializeDicos(),
 
     dicoWeights: state.dicoWeights,
     cfg: {
@@ -1069,7 +1060,6 @@ function saveLocal(){
 }
 
 function loadLocalForUser(userId){
-  // reset pour éviter “mélange” entre comptes
   resetStateOnly();
 
   const key = getSettingsKey(userId);
@@ -1084,7 +1074,7 @@ function loadLocalForUser(userId){
   try{
     const obj = JSON.parse(src);
 
-    state.dicos = deserializeDicos(obj.dicos || {}); // ✅ AJOUT ICI
+    state.dicos = deserializeDicos(obj.dicos || {});
 
     state.dicoWeights = obj.dicoWeights || {};
     state.cfg.stop = new Set(obj?.cfg?.stop || []);
@@ -1103,12 +1093,9 @@ function loadLocalForUser(userId){
     // si on a migré depuis l'ancienne clé, on la copie vers la clé user
     if(!raw && legacy){
       localStorage.setItem(key, src);
-      // optionnel : supprimer l’ancienne clé globale
-      // localStorage.removeItem('matcherFront');
     }
   }catch{}
 }
-
 
 /* =================== DOM refs =================== */
 const fileDico=document.getElementById('fileDico');
@@ -1153,7 +1140,6 @@ const btnDownload = document.getElementById('btnDownload');
 const downloadLabel = document.getElementById('downloadLabel');
 
 function hydrateUIFromState(){
-  // Inputs config
   if(inpStop) inpStop.value = [...state.cfg.stop].join(', ');
   if(inpExc) inpExc.value = [...state.cfg.exc].join(', ');
   if(inpMulti) inpMulti.value = state.cfg.multi.join(', ');
@@ -1164,11 +1150,9 @@ function hydrateUIFromState(){
   if(inpTokenBonus) inpTokenBonus.value = String(state.cfg.tokenBonus ?? 5);
   if(inpTokenMalus) inpTokenMalus.value = String(state.cfg.tokenMalus ?? -10);
 
-  // Status text
   if(tradStatus) tradStatus.textContent = Object.keys(state.translations||{}).length ? `${Object.keys(state.translations).length} traduction(s).` : '';
   if(parentsStatus) parentsStatus.textContent = (state.parents||[]).length ? `${state.parents.length} URL(s) parent.` : '';
 
-  // Table dicos (si tu n’as pas rechargé le fichier dico, state.dicos restera vide — c'est normal)
   renderDicoTable();
   updatePrefilterBadge();
 }
@@ -1226,9 +1210,10 @@ enableFileReimport(fileParents);
 enableFileReimport(file404);
 enableFileReimport(file200);
 
-/* =================== Progress (time-based + elapsed + ETA) =================== */
+/* =================== Progress (elapsed + ETA + time-based bar) =================== */
 let progressTimer = null;
-let timeProgressTimer = null;   // ✅ timer pour progression basée sur le temps
+let timeProgressTimer = null;
+let fakeProgressTimer = null;
 let runStartTs = 0;
 
 function fmtSeconds(totalSec){
@@ -1306,20 +1291,18 @@ function startTimeBasedProgress(){
   stopTimeBasedProgress();
   setProgress(0);
 
-  // Si on n'a pas encore de moyenne, on part sur une estimation par défaut (ajuste si besoin)
-  const avg = loadAvgRunSeconds() ?? 60;     // 60s par défaut
-  const target = Math.max(10, avg);          // évite les divisions trop petites
+  const avg = loadAvgRunSeconds() ?? 60;
+  const target = Math.max(10, avg);
 
   timeProgressTimer = setInterval(() => {
     const elapsedSec = (Date.now() - runStartTs) / 1000;
 
-    // Monte vers 95% jusqu'à target, puis "rampe" doucement vers 99%
     let p;
     if (elapsedSec <= target) {
       p = (elapsedSec / target) * 95;
     } else {
       const extra = elapsedSec - target;
-      p = 95 + (1 - Math.exp(-extra / target)) * 4; // 95 → 99
+      p = 95 + (1 - Math.exp(-extra / target)) * 4;
     }
 
     p = Math.min(99, p);
@@ -1334,30 +1317,36 @@ function stopTimeBasedProgress(){
   }
 }
 
-/* ✅ MODIF IMPORTANTE:
-   - On garde startFakeProgress/stopFakeProgress pour compatibilité (si ton code de run les appelle),
-     mais on les "redirige" vers la progression basée sur le temps.
-*/
 function startFakeProgress(){
-  startTimeBasedProgress();
+  stopFakeProgress();
+  let p = 0;
+  setProgress(0);
+
+  fakeProgressTimer = setInterval(()=>{
+    if(p < 70) p += 2 + Math.random() * 2;
+    else if(p < 88) p += 0.6 + Math.random() * 0.8;
+    else if(p < 90) p += 0.2 + Math.random() * 0.3;
+    else p = 90;
+
+    setProgress(p);
+  }, 250);
 }
+
 function stopFakeProgress(){
-  stopTimeBasedProgress();
+  if(fakeProgressTimer){ clearInterval(fakeProgressTimer); fakeProgressTimer = null; }
 }
 
 function finishProgressOK(){
-  /* ✅ MODIF: on stoppe la progression time-based */
+  stopFakeProgress();
   stopTimeBasedProgress();
-
   setProgress(100);
   if(progressPct){ progressPct.className = 'badge ok'; progressPct.textContent = '100%'; }
   if(progressLabel) progressLabel.textContent = 'Terminé';
 }
 
 function finishProgressError(){
-  /* ✅ MODIF: on stoppe la progression time-based */
+  stopFakeProgress();
   stopTimeBasedProgress();
-
   if(progressPct){ progressPct.className = 'badge err'; progressPct.textContent = 'Erreur'; }
   if(progressLabel) progressLabel.textContent = 'Erreur';
 }
@@ -1397,7 +1386,6 @@ btnApply.addEventListener('click',()=>{
   setTimeout(()=>cfgStatus.classList.add('hidden'), 1600);
 });
 
-
 /* =================== URL builder (Cloud Run direct) =================== */
 const PROD_API_BASE = "https://url-matcher-70649262164.europe-west1.run.app";
 const DEV_API_BASE  = "https://url-matcher-70649262164.europe-west1.run.app";
@@ -1411,7 +1399,6 @@ function buildUrl(path){
   const base = isLocalHost() ? DEV_API_BASE : PROD_API_BASE;
   return base.replace(/\/$/, '') + p;
 }
-
 
 /* =================== Excel helpers + validation =================== */
 async function readExcel(file){
@@ -1538,7 +1525,6 @@ async function validateDicoFile(file){
   return true;
 }
 
-
 /* =================== Config build for API =================== */
 function buildConfigFromUI(){
   const dictionaries = Object.entries(state.dicos).map(([name, dict]) => ({
@@ -1570,7 +1556,6 @@ function buildConfigFromUI(){
     tokenPenaltyExtra: state.cfg.tokenMalus
   };
 }
-
 
 /* =================== Dico table rendering + badge =================== */
 function updatePrefilterBadge(){
@@ -1628,7 +1613,6 @@ function renderDicoTable(){
   updatePrefilterBadge();
 }
 renderDicoTable();
-
 
 /* =================== File imports (validated with popups) =================== */
 fileDico.addEventListener('change', async ()=>{
@@ -1754,7 +1738,6 @@ file200.addEventListener('change', async ()=>{
   }
 });
 
-
 /* =================== Diagnostic URL =================== */
 function formatDictHits(hits){
   if(!hits || typeof hits !== 'object') return null;
@@ -1829,7 +1812,6 @@ btnTest.addEventListener('click', async () => {
   }
 });
 
-
 /* =================== Run Summary Modal =================== */
 const runSummaryModal = document.getElementById('runSummaryModal');
 const runSummaryContent = document.getElementById('runSummaryContent');
@@ -1856,12 +1838,12 @@ function toNumberSafe(v){
 
 async function buildRunSummaryFromBlob(blob){
   const text = await blob.text();
-  const wb = XLSX.read(text, { type: 'string', FS: ';' }); // ✅ ton CSV backend est en ';'
+  const wb = XLSX.read(text, { type: 'string', FS: ';' }); // CSV ';'
   const sh = wb.Sheets[wb.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json(sh, { defval: "" });
 
   const total = rows.length;
-  const scoreKey = "Score_total_%"; // ✅ colonne réellement produite par le backend
+  const scoreKey = "Score_total_%";
   const url404Key = "URL_404";
   const url200Key = "URL_200_top1";
 
@@ -1893,8 +1875,6 @@ function renderRunSummary(summary){
   const thrTxt = (threshold == null) ? 'n/a' : `${Math.round(threshold)}%`;
   if(rsSubtitle) rsSubtitle.textContent = `Seuil de vérif (Score_total_% ≤ ${thrTxt}) · basé sur Score_total_%.`;
 
-
-
   const tableRows = worst5.map((x, idx) => {
     const s = Math.round(x.score);
     return `
@@ -1917,7 +1897,7 @@ function renderRunSummary(summary){
       <div class="rs-kpi">
         <div class="label">Scores exploitables</div>
         <div class="value">${Number(nScored).toLocaleString('fr-FR')}</div>
-        <div class="hint">Basé sur “match_pct”</div>
+        <div class="hint">Basé sur “Score_total_%”</div>
       </div>
       <div class="rs-kpi">
         <div class="label">URLs à vérifier</div>
@@ -1929,8 +1909,6 @@ function renderRunSummary(summary){
     <div class="rs-callout">
       URLs à vérifier à partir de la ligne ${Number(startLineExcel).toLocaleString('fr-FR')}
       (dans Excel après tri décroissant de <b>Score_total_%</b>).
-
-
     </div>
 
     <div class="card" style="padding:0;border-radius:12px;box-shadow:none;border:1px solid var(--border)">
@@ -1967,7 +1945,6 @@ btnRunSummaryDownload?.addEventListener('click', () => {
   a.click();
   a.remove();
 });
-
 
 /* =================== Storage helpers (history) =================== */
 const STORAGE_BUCKET = 'matcher-results';
@@ -2035,35 +2012,32 @@ async function uploadRunFolder({ userId, runId, resultBlob, dicoFile, tradFile, 
   if(dicoFile){
     const ext = extFromFile(dicoFile);
     await uploadOne(
-  `${base}/dico.${ext}`,
-  dicoFile,
-  dicoFile.type || (ext === 'xls'
-    ? 'application/vnd.ms-excel'
-    : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-);
-
+      `${base}/dico.${ext}`,
+      dicoFile,
+      dicoFile.type || (ext === 'xls'
+        ? 'application/vnd.ms-excel'
+        : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    );
   }
   if(tradFile){
     const ext = extFromFile(tradFile);
     await uploadOne(
-  `${base}/trad.${ext}`,
-  tradFile,
-  tradFile.type || (ext === 'xls'
-    ? 'application/vnd.ms-excel'
-    : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-);
-
+      `${base}/trad.${ext}`,
+      tradFile,
+      tradFile.type || (ext === 'xls'
+        ? 'application/vnd.ms-excel'
+        : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    );
   }
   if(parentsFile){
     const ext = extFromFile(parentsFile);
     await uploadOne(
-  `${base}/parents.${ext}`,
-  parentsFile,
-  parentsFile.type || (ext === 'xls'
-    ? 'application/vnd.ms-excel'
-    : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-);
-
+      `${base}/parents.${ext}`,
+      parentsFile,
+      parentsFile.type || (ext === 'xls'
+        ? 'application/vnd.ms-excel'
+        : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    );
   }
 
   await overwriteJson(`${base}/meta.json`, {
@@ -2073,7 +2047,6 @@ async function uploadRunFolder({ userId, runId, resultBlob, dicoFile, tradFile, 
 
   return base;
 }
-
 
 /* =================== Historique =================== */
 const tblHistory = document.getElementById('tblHistory');
@@ -2318,6 +2291,259 @@ tblHistoryBody?.addEventListener('click', async (e)=>{
   }
 });
 
+/* =================== ✅ MATCHING / RUN (FIX: btnRun manquant) =================== */
+function uniqCleanUrls(urls){
+  const out = [];
+  const seen = new Set();
+  for(const u of (urls || [])){
+    const s = String(u || '').trim();
+    if(!s) continue;
+    if(seen.has(s)) continue;
+    seen.add(s);
+    out.push(s);
+  }
+  return out;
+}
+
+async function extractUrlsFromFile404(file){
+  const wb = await readExcel(file);
+  const sh = findSheet(wb, '404');
+  const rows = XLSX.utils.sheet_to_json(sh, { defval: "" });
+  return uniqCleanUrls(rows.map(r => r.URL_404));
+}
+
+async function extractUrlsFromFile200(file){
+  const wb = await readExcel(file);
+  const sh = findSheet(wb, '200');
+  const rows = XLSX.utils.sheet_to_json(sh, { defval: "" });
+  return uniqCleanUrls(rows.map(r => r.URL_200));
+}
+
+function parseFilenameFromDisposition(disposition){
+  try{
+    const s = String(disposition || '');
+    const m = s.match(/filename\*?=(?:UTF-8''|")?([^;"\n]+)"/i) || s.match(/filename\*?=(?:UTF-8''|)?([^;"\n]+)/i);
+    if(!m) return null;
+    return decodeURIComponent(m[1]).trim();
+  }catch{
+    return null;
+  }
+}
+
+async function postJsonTry({ endpoints, payloads, token }){
+  const errors = [];
+  for(const ep of endpoints){
+    for(const payload of payloads){
+      try{
+        const r = await withTimeout(fetch(buildUrl(ep), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        }), 120000); // jusqu'à 2 min
+
+        if(r.ok){
+          return r;
+        }
+
+        // si 400/404/405/422 => on tente une autre variante (endpoint/payload)
+        if([400,404,405,422].includes(r.status)){
+          errors.push(`${ep} → ${r.status}`);
+          continue;
+        }
+
+        // sinon erreur "dure"
+        const txt = await r.text().catch(()=> '');
+        throw new Error(`API ${ep} → ${r.status} ${r.statusText} ${txt ? ('- ' + txt.slice(0,200)) : ''}`);
+      }catch(e){
+        // si timeout/réseau sur cet essai, on tente la suite
+        errors.push(`${ep} → ${e?.message || String(e)}`);
+        continue;
+      }
+    }
+  }
+  throw new Error(`Impossible d’appeler l’API. Essais: ${errors.join(' | ')}`);
+}
+
+function setRunButtonsDisabled(on){
+  if(btnRun) btnRun.disabled = !!on;
+  if(btnClear) btnClear.disabled = !!on;
+  if(btnApply) btnApply.disabled = !!on;
+  if(btnTest) btnTest.disabled = !!on;
+  if(file404) file404.disabled = !!on;
+  if(file200) file200.disabled = !!on;
+}
+
+btnClear.addEventListener('click', ()=>{
+  // reset uniquement matching
+  if(file404) file404.value = '';
+  if(file200) file200.value = '';
+  if(f404Status) f404Status.textContent = '';
+  if(f200Status) f200Status.textContent = '';
+  resetDownloadUI();
+  clearRunStatus();
+  closeRunSummaryModal();
+  stopFakeProgress();
+  stopTimeBasedProgress();
+  stopElapsedTimer();
+  uiProgressHide();
+  setRunStatus('info', 'Réinitialisé');
+  setTimeout(()=>clearRunStatus(), 900);
+});
+
+btnRun.addEventListener('click', async ()=>{
+  resetDownloadUI();
+  clearRunStatus();
+  closeRunSummaryModal();
+
+  const session = await requireAuthOrGate('Connecte-toi pour lancer un traitement.');
+  if(!session) return;
+
+  const token = session.access_token;
+  const userId = session.user.id;
+
+  const f404 = file404?.files?.[0];
+  const f200 = file200?.files?.[0];
+
+  if(!f404 || !f200){
+    showAlert({
+      title:'Fichiers manquants',
+      subtitle:'Traitement',
+      html:`<div>Tu dois importer :</div>
+      <ul>
+        <li>un fichier <b>404</b> (onglet 404, colonne URL_404)</li>
+        <li>un fichier <b>200</b> (onglet 200, colonne URL_200)</li>
+      </ul>`
+    });
+    return;
+  }
+
+  // re-validate avant run (sécurité)
+  try{
+    const ok404 = await validate404File(f404);
+    if(!ok404) return;
+    const ok200 = await validate200File(f200);
+    if(!ok200) return;
+  }catch(e){
+    showAlert({ title:'Erreur', subtitle:'Validation des fichiers', html: escapeHtml(e?.message||String(e)) });
+    return;
+  }
+
+  // nom run optionnel
+  const runName = await showPrompt({ title:'Nom du run', subtitle:'Optionnel (tu peux renommer ensuite)', placeholder:'Ex: Décembre - redirections', defaultValue:'' });
+
+  setRunButtonsDisabled(true);
+  uiProgressShow();
+  startElapsedTimer();
+  startTimeBasedProgress();
+  setRunStatus('info', 'Traitement en cours…');
+
+  const startTs = Date.now();
+
+  try{
+    const urls404 = await extractUrlsFromFile404(f404);
+    const urls200 = await extractUrlsFromFile200(f200);
+
+    if(!urls404.length){
+      throw new Error('Aucune URL_404 trouvée dans le fichier 404.');
+    }
+    if(!urls200.length){
+      throw new Error('Aucune URL_200 trouvée dans le fichier 200.');
+    }
+
+    // payloads possibles (au cas où ton backend attend d'autres clés)
+    const config = buildConfigFromUI();
+
+    const payloads = [
+      { urls_404: urls404, urls_200: urls200, config },
+      { urls404, urls200, config },
+      { urls_404: urls404, urls_200: urls200, cfg: config },
+      { urls404, urls200, cfg: config },
+      { urls_404: urls404, urls_200: urls200, settings: config },
+      { urls404, urls200, settings: config }
+    ];
+
+    // endpoints possibles (au cas où)
+    const endpoints = [
+      '/match',
+      '/run',
+      '/process',
+      '/match-urls',
+      '/match/batch',
+      '/run-match',
+      '/matcher',
+      '/batch-match'
+    ];
+
+    const r = await postJsonTry({ endpoints, payloads, token });
+
+    // récupère blob (CSV)
+    const blob = await r.blob();
+
+    // filename
+    const cd = r.headers.get('content-disposition');
+    const suggested = parseFilenameFromDisposition(cd) || `result_${tsForRunId()}.csv`;
+    resultFilename = suggested.endsWith('.csv') ? suggested : (suggested + '.csv');
+
+    // local download
+    resultBlobUrl = URL.createObjectURL(blob);
+    downloadLabel.textContent = 'Résultat prêt';
+    downloadWrap.classList.remove('hidden');
+
+    // upload historique
+    const runId = makeRunId();
+    await uploadRunFolder({
+      userId,
+      runId,
+      resultBlob: blob,
+      dicoFile: fileDico?.files?.[0] || null,
+      tradFile: fileTrad?.files?.[0] || null,
+      parentsFile: fileParents?.files?.[0] || null
+    });
+
+    // save meta name si fourni
+    if(runName && String(runName).trim()){
+      await overwriteJson(`${userId}/runs/${runId}/meta.json`, { name: String(runName).trim(), updated_at: new Date().toISOString() });
+    }
+
+    // recap modal
+    try{
+      const summary = await buildRunSummaryFromBlob(blob);
+      renderRunSummary(summary);
+      openRunSummaryModal();
+    }catch{
+      // si parsing CSV échoue, on n'empêche pas le run
+    }
+
+    finishProgressOK();
+    setRunStatus('ok', 'Terminé');
+
+    // stats run
+    const seconds = (Date.now() - startTs) / 1000;
+    saveRunSeconds(seconds);
+
+    // refresh history si panel actif
+    const historyPanel = document.getElementById('panel-history');
+    if(historyPanel?.classList.contains('active')){
+      loadHistory().catch(()=>{});
+    }
+
+  }catch(e){
+    finishProgressError();
+    setRunStatus('err', 'Erreur');
+    showAlert({
+      title:'Erreur pendant le traitement',
+      subtitle:'Traitement',
+      html:`<div>${escapeHtml(e?.message || String(e))}</div><div class="help" style="margin-top:10px">Vérifie aussi que ton backend Cloud Run est bien up et que l’endpoint correspond.</div>`
+    });
+  }finally{
+    stopElapsedTimer();
+    setRunButtonsDisabled(false);
+  }
+});
+
 /* =================== Misc (render initial status) =================== */
 dicoStatus.textContent = Object.keys(state.dicos||{}).length ? `${Object.keys(state.dicos).length} liste(s) chargée(s).` : '';
 tradStatus.textContent = Object.keys(state.translations||{}).length ? `${Object.keys(state.translations).length} traduction(s).` : '';
@@ -2327,7 +2553,6 @@ parentsStatus.textContent = (state.parents||[]).length ? `${state.parents.length
 (async function boot(){
   const session = await getSessionSafe();
 
-  // important: CURRENT_USER_ID et state existent maintenant
   CURRENT_USER_ID = session?.user?.id || null;
 
   loadLocalForUser(CURRENT_USER_ID);
