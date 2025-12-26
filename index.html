@@ -20,13 +20,14 @@
       --warn:#f59e0b;
       --err:#dc2626;
 
-      --chip:#eef2ff;
       --shadow:0 10px 30px #0000000a;
     }
 
     *{box-sizing:border-box}
     body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text)}
     a{color:var(--accent);text-decoration:none}
+    code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:.95em}
+
     .container{max-width:1100px;margin:0 auto;padding:0 20px}
 
     /* Topbar */
@@ -37,27 +38,27 @@
       border-bottom:1px solid var(--border)
     }
     .nav{display:flex;align-items:center;justify-content:space-between;height:60px}
-    .brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.2px}
+    .brand{display:flex;align-items:center;gap:10px;font-weight:900;letter-spacing:.2px}
     .brand .logo{width:10px;height:24px;background:var(--accent);border-radius:4px}
 
     .actions{display:flex;align-items:center;gap:10px}
     .user{font-size:13px;color:var(--muted)}
 
-    .btn{cursor:pointer;border:none;border-radius:10px;font-weight:700;padding:10px 14px}
+    .btn{cursor:pointer;border:none;border-radius:10px;font-weight:800;padding:10px 14px}
     .btn.primary{background:var(--accent);color:#fff}
     .btn.primary:hover{background:var(--accent-600)}
     .btn.ghost{background:#fff;border:1px solid var(--border);color:var(--text)}
     .btn.ghost:hover{background:#fafafa}
     .btn.danger{background:#fff;border:1px solid #fecaca;color:#991b1b}
     .btn.danger:hover{background:#fff5f5}
-    .btn.mini{padding:8px 10px;border-radius:10px;font-size:13px;font-weight:700}
+    .btn.mini{padding:8px 10px;border-radius:10px;font-size:13px;font-weight:900}
     .hidden{display:none !important}
 
     /* Tabs */
     .tabs{display:flex;gap:8px;border-bottom:1px solid var(--border);padding:14px 0;margin:0 0 16px 0;flex-wrap:wrap}
     .tab{
       padding:8px 12px;border-radius:999px;background:#fff;color:var(--text);
-      cursor:pointer;border:1px solid var(--border);font-weight:800;font-size:13px
+      cursor:pointer;border:1px solid var(--border);font-weight:900;font-size:13px
     }
     .tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
     .tab-panel{display:none}
@@ -72,7 +73,7 @@
       padding:16px;
       box-shadow:var(--shadow)
     }
-    .section-title{font-weight:900;margin:0 0 10px 0;display:flex;align-items:center;gap:10px}
+    .section-title{font-weight:950;margin:0 0 10px 0;display:flex;align-items:center;gap:10px}
     .sub{margin-top:6px;color:var(--muted);line-height:1.45;font-size:13px}
 
     .row{display:flex;gap:12px;flex-wrap:wrap}
@@ -82,12 +83,13 @@
       width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:#fafafa;color:var(--text)
     }
     input[type=file]{width:100%}
+    textarea{resize:vertical}
 
-    label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px;font-weight:700}
+    label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px;font-weight:900}
 
     .badge{
       display:inline-block;padding:4px 10px;border-radius:999px;font-size:12px;
-      border:1px solid var(--border);background:#fff;color:var(--muted);font-weight:800
+      border:1px solid var(--border);background:#fff;color:var(--muted);font-weight:900
     }
     .badge.ok{background:#dcfce7;color:#065f46;border-color:#bbf7d0}
     .badge.err{background:#fee2e2;color:#991b1b;border-color:#fecaca}
@@ -97,7 +99,7 @@
     /* Tables */
     table{width:100%;border-collapse:collapse}
     th,td{padding:10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
-    th{font-size:12px;color:var(--muted);font-weight:900;background:#fafafa}
+    th{font-size:12px;color:var(--muted);font-weight:950;background:#fafafa}
     td{font-size:13px}
     .table-wrap{overflow:auto;border:1px solid var(--border);border-radius:14px;background:#fff}
 
@@ -107,7 +109,7 @@
     .switch:checked:before{left:21px}
 
     details{background:#fafafa;border:1px solid var(--border);border-radius:14px;padding:12px}
-    summary{cursor:pointer;font-weight:900}
+    summary{cursor:pointer;font-weight:950}
     .help{font-size:12px;color:var(--muted)}
 
     /* Progress bar */
@@ -128,7 +130,7 @@
     #gate{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.25);z-index:80}
     #gate .card{width:min(520px, calc(100% - 24px));box-shadow:0 30px 80px #00000033}
 
-    /* Modal (alerts + confirm + rename) */
+    /* Modal (alerts + confirm + prompt) */
     #modal.hidden{display:none !important;}
     #modal{position:fixed;inset:0;z-index:90}
     .m-backdrop{position:absolute;inset:0;background:rgba(15,23,42,.45)}
@@ -140,7 +142,7 @@
       box-shadow:0 30px 80px #00000033;overflow:hidden
     }
     .m-head{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
-    .m-title{font-weight:900}
+    .m-title{font-weight:950}
     .m-body{padding:16px;color:var(--text);font-size:14px;line-height:1.5}
     .m-foot{padding:14px 16px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
 
@@ -149,7 +151,7 @@
     #runSummaryModal{position:fixed;inset:0;z-index:85;}
     .rs-backdrop{position:absolute;inset:0;background:rgba(15,23,42,.45);}
 
-    /* IMPORTANT: modal scrollable (pour voir le bas) */
+    /* IMPORTANT: scrollable modal */
     .rs-modal{
       position:relative;
       width:min(760px, calc(100% - 28px));
@@ -171,7 +173,7 @@
       border-bottom:1px solid var(--border);
       background:rgba(255,255,255,.9);
     }
-    .rs-title{font-weight:900;font-size:18px;margin:0;color:var(--text)}
+    .rs-title{font-weight:950;font-size:18px;margin:0;color:var(--text)}
     .rs-subtitle{margin-top:4px;color:var(--muted);font-size:13px;line-height:1.35}
 
     .rs-body{
@@ -179,7 +181,7 @@
       padding:16px;
       display:grid;
       gap:12px;
-      overflow:auto; /* <- scroll interne */
+      overflow:auto;
     }
 
     .rs-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
@@ -188,13 +190,13 @@
       .rs-modal{ margin:16px auto; max-height: calc(100vh - 32px); }
     }
     .rs-kpi{border:1px solid var(--border);border-radius:12px;padding:12px;background:#fafafa;}
-    .rs-kpi .label{font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:900}
-    .rs-kpi .value{font-size:20px;font-weight:900;color:var(--text);line-height:1}
+    .rs-kpi .label{font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:950}
+    .rs-kpi .value{font-size:20px;font-weight:950;color:var(--text);line-height:1}
     .rs-kpi .hint{margin-top:6px;font-size:12px;color:var(--muted)}
-    .rs-callout{border:1px solid #bfdbfe;background:#eff6ff;color:#1e3a8a;border-radius:12px;padding:12px;font-size:13px;line-height:1.35;font-weight:800}
+    .rs-callout{border:1px solid #bfdbfe;background:#eff6ff;color:#1e3a8a;border-radius:12px;padding:12px;font-size:13px;line-height:1.35;font-weight:900}
     .rs-table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--border);border-radius:12px;overflow:hidden;}
     .rs-table th,.rs-table td{padding:10px;border-bottom:1px solid var(--border);vertical-align:top;}
-    .rs-table th{font-size:12px;color:var(--muted);font-weight:900;background:#fafafa;}
+    .rs-table th{font-size:12px;color:var(--muted);font-weight:950;background:#fafafa;}
     .rs-table tr:last-child td{border-bottom:none;}
     .rs-url{word-break:break-word;color:var(--text);font-size:12px;line-height:1.35;}
 
@@ -207,7 +209,7 @@
     /* Footer */
     .footer{margin:22px 0 0;color:var(--muted);font-size:12px}
 
-    /* ✅ Logout mini loader */
+    /* Logout mini loader */
     .spinner{
       width:14px;height:14px;
       border:2px solid #cbd5e1;
@@ -242,10 +244,7 @@
       <div class="actions">
         <span id="currentUser" class="user"></span>
         <button id="btnLoginOpen" class="btn primary">Se connecter</button>
-
-        <!-- Historique en haut à droite (uniquement connecté) -->
         <button id="btnHistoryTop" class="btn ghost hidden">Historique</button>
-
         <button id="btnLogout" class="btn ghost hidden">Se déconnecter</button>
       </div>
     </div>
@@ -294,238 +293,236 @@
     </div>
   </div>
 
-<div id="appShell">
+  <div id="appShell">
+    <!-- Main -->
+    <div class="container page">
+      <div class="tabs">
+        <button class="tab active" data-tab="config">Paramètres</button>
+        <button class="tab" data-tab="test">Diagnostic URL</button>
+        <button class="tab" data-tab="matching">Traitement</button>
+      </div>
 
-  <!-- Main -->
-  <div class="container page">
+      <!-- Panel: Configuration -->
+      <section id="panel-config" class="tab-panel active">
+        <div class="card">
+          <div class="section-title">
+            Paramètres
+            <span id="prefilterBadge" class="badge info" title="Le filtrage automatique est activé si au moins une liste de mots est cochée.">Filtrage : désactivé</span>
+          </div>
+          <div class="sub">Optionnel : listes de mots, traductions, parents. Les fichiers sont validés dès l’import (colonnes/onglets).</div>
 
-    <!-- Tabs (Historique accessible via bouton topbar) -->
-    <div class="tabs">
-      <button class="tab active" data-tab="config">Paramètres</button>
-      <button class="tab" data-tab="test">Diagnostic URL</button>
-      <button class="tab" data-tab="matching">Traitement</button>
+          <div class="row" style="margin-top:14px">
+            <div class="grow">
+              <label>Listes de mots (Excel) — colonnes = noms des listes, lignes = “clé, syn1, syn2…”</label>
+              <input id="fileDico" type="file" accept=".xlsx,.xls" />
+              <div id="dicoStatus" class="sub"></div>
+            </div>
+
+            <div class="grow">
+              <label>Traductions Excel (colonnes <code>SOURCE</code> et <code>TRANSLATION</code>)</label>
+              <input id="fileTrad" type="file" accept=".xlsx,.xls" />
+              <div id="tradStatus" class="sub"></div>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:10px">
+            <div class="grow">
+              <label>Parents (optionnel) – Excel avec colonne <code>URL</code></label>
+              <input id="fileParents" type="file" accept=".xlsx,.xls" />
+              <div id="parentsStatus" class="sub"></div>
+            </div>
+          </div>
+
+          <details style="margin-top:14px" open>
+            <summary>Réglages avancés</summary>
+
+            <div class="row" style="margin-top:12px">
+              <div class="grow"><label>Mots à ignorer (séparés par des virgules)</label><input id="inpStop" type="text" /></div>
+              <div class="grow"><label>Mots à ne pas modifier (séparés par des virgules)</label><input id="inpExc" type="text" /></div>
+            </div>
+
+            <div class="row" style="margin-top:10px">
+              <div class="grow"><label>Expressions multi-mots (virgules)</label><input id="inpMulti" type="text" /></div>
+              <div class="grow"><label>Regex référence</label><input id="inpRegex" type="text" value="(?i)ref[:\\- ]?([a-z0-9\\-]+)" /></div>
+              <div class="grow"><label>Score minimum</label><input id="inpMin" type="number" step="0.1" value="0.5" /></div>
+              <div class="help" style="margin-top:6px">Informationnel : ce seuil n’est pas utilisé comme filtre dans le moteur.</div>
+            </div>
+
+            <div class="row" style="margin-top:10px">
+              <div class="grow">
+                <label>Importance du sens dans le résultat</label>
+                <input id="inpSemanticWeight" type="number" step="1" value="80" />
+                <div class="help" style="margin-top:6px">Plus la valeur est élevée, plus l’outil se base sur le sens des mots.</div>
+              </div>
+              <div class="grow">
+                <label>Bonus si les mêmes mots apparaissent</label>
+                <input id="inpTokenBonus" type="number" step="1" value="5" />
+                <div class="help" style="margin-top:6px">Ajoute un bonus pour chaque mot présent à la fois dans l’URL à corriger et l’URL proposée.</div>
+              </div>
+              <div class="grow">
+                <label>Pénalité si l’URL proposée ajoute des mots</label>
+                <input id="inpTokenMalus" type="number" step="1" value="-10" />
+                <div class="help" style="margin-top:6px">Retire des points pour chaque mot présent dans l’URL proposée mais absent de l’URL à corriger (valeur négative attendue).</div>
+              </div>
+            </div>
+
+            <div style="margin-top:14px">
+              <div class="section-title" style="margin-bottom:8px">Listes de mots (bonus / pénalité)</div>
+              <div class="help" style="margin-bottom:10px">Ajuste l’importance de chaque liste et active/désactive son utilisation.</div>
+
+              <div class="table-wrap">
+                <table id="tblDico">
+                  <thead>
+                    <tr>
+                      <th>Liste</th>
+                      <th style="width:130px">Bonus</th>
+                      <th style="width:130px">Pénalité</th>
+                      <th style="width:120px">Utiliser</th>
+                      <th style="width:140px">Entrées</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </details>
+
+          <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+            <button class="btn ghost" id="btnApply">Appliquer</button>
+            <span id="cfgStatus" class="badge info hidden"></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Panel: Test URL -->
+      <section id="panel-test" class="tab-panel">
+        <div class="card">
+          <div class="section-title">Diagnostic URL</div>
+          <div class="sub">Teste comment l’outil comprend et transforme une URL.</div>
+
+          <div class="row" style="margin-top:14px">
+            <div class="grow"><label>URL</label><input id="testUrl" type="text" placeholder="https://www.exemple.com/produit/ref-AB1234?color=red"></div>
+            <button class="btn primary" id="btnTest" style="align-self:flex-end">Tester</button>
+          </div>
+
+          <div style="margin-top:12px">
+            <label>Résultat</label>
+            <textarea id="testOut" readonly style="min-height:160px"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <!-- Panel: Matching -->
+      <section id="panel-matching" class="tab-panel">
+        <div class="card">
+          <div class="section-title">Traitement</div>
+          <div class="sub">Importe les URLs à corriger et les URLs valides (validés à l’import), puis lance le traitement. Le résultat est stocké dans ton historique.</div>
+
+          <div class="row" style="margin-top:14px">
+            <div class="grow">
+              <label>Fichier des URLs à corriger (onglet <code>404</code>, colonne <code>URL_404</code>)</label>
+              <input id="file404" type="file" accept=".xlsx,.xls" />
+              <div id="f404Status" class="sub"></div>
+            </div>
+
+            <div class="grow">
+              <label>Fichier des URLs valides (onglet <code>200</code>, colonne <code>URL_200</code>)</label>
+              <input id="file200" type="file" accept=".xlsx,.xls" />
+              <div id="f200Status" class="sub"></div>
+            </div>
+          </div>
+
+          <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:flex-end">
+            <span id="runStatus" class="badge info hidden"></span>
+            <button class="btn ghost" id="btnClear">Réinitialiser</button>
+            <button class="btn primary" id="btnRun">Lancer</button>
+          </div>
+
+          <!-- Progress -->
+          <div id="progressWrap" class="hidden" style="margin-top:12px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px">
+              <span id="progressLabel" class="sub" style="margin:0">Traitement…</span>
+              <span id="progressPct" class="badge info">0%</span>
+            </div>
+
+            <div style="height:10px;background:#eef2ff;border:1px solid var(--border);border-radius:999px;overflow:hidden">
+              <div id="progressBar" style="height:100%;width:0%"></div>
+            </div>
+
+            <div class="help" style="margin-top:8px;display:flex;gap:12px;flex-wrap:wrap">
+              <span>Temps écoulé : <b id="elapsedTxt">0s</b></span>
+              <span>Estimation : <b id="etaTxt">—</b></span>
+            </div>
+          </div>
+
+          <!-- Download immédiat (local) -->
+          <div id="downloadWrap" class="hidden" style="margin-top:14px; display:flex; gap:10px; align-items:center; justify-content:flex-end;flex-wrap:wrap">
+            <span id="downloadLabel" class="badge ok"></span>
+            <button class="btn ghost" id="btnDownload" type="button">Télécharger</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Panel: Historique (accessible via bouton topbar) -->
+      <section id="panel-history" class="tab-panel">
+        <div class="card">
+          <div class="section-title" style="justify-content:space-between;align-items:center;">
+            <span>Historique</span>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <button class="btn ghost mini" id="btnHistoryRefresh" type="button">Rafraîchir</button>
+            </div>
+          </div>
+          <div class="sub">Nom du run + date + fichiers. Tu peux renommer et supprimer un run.</div>
+
+          <div style="margin-top:12px" class="table-wrap">
+            <table id="tblHistory">
+              <thead>
+                <tr>
+                  <th style="width:220px">Date</th>
+                  <th style="width:320px">Nom</th>
+                  <th>Run</th>
+                  <th style="width:260px">Fichiers</th>
+                  <th style="width:340px">Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <div id="historyStatus" class="sub" style="margin-top:10px"></div>
+        </div>
+      </section>
+
+      <div class="footer">© Redirect Match</div>
     </div>
 
-    <!-- Panel: Configuration -->
-    <section id="panel-config" class="tab-panel active">
-      <div class="card">
-        <div class="section-title">
-          Paramètres
-          <span id="prefilterBadge" class="badge info" title="Le filtrage automatique est activé si au moins une liste de mots est cochée.">Filtrage : désactivé</span>
-        </div>
-        <div class="sub">Optionnel : listes de mots, traductions, parents. Les fichiers sont validés dès l’import (colonnes/onglets).</div>
+    <!-- Run Summary Modal -->
+    <div id="runSummaryModal" class="hidden">
+      <div class="rs-backdrop" id="runSummaryBackdrop"></div>
 
-        <div class="row" style="margin-top:14px">
-          <div class="grow">
-            <label>Listes de mots (Excel) — colonnes = noms des listes, lignes = “clé, syn1, syn2…”</label>
-            <input id="fileDico" type="file" accept=".xlsx,.xls" />
-            <div id="dicoStatus" class="sub"></div>
+      <div class="rs-modal" role="dialog" aria-modal="true" aria-labelledby="rsTitle">
+        <div class="rs-header">
+          <div>
+            <div id="rsTitle" class="rs-title">Récap du run</div>
+            <div id="rsSubtitle" class="rs-subtitle"></div>
           </div>
-
-          <div class="grow">
-            <label>Traductions Excel (colonnes <code>SOURCE</code> et <code>TRANSLATION</code>)</label>
-            <input id="fileTrad" type="file" accept=".xlsx,.xls" />
-            <div id="tradStatus" class="sub"></div>
-          </div>
+          <button id="btnRunSummaryClose" class="btn ghost" type="button">Fermer</button>
         </div>
 
-        <div class="row" style="margin-top:10px">
-          <div class="grow">
-            <label>Parents (optionnel) – Excel avec colonne <code>URL</code></label>
-            <input id="fileParents" type="file" accept=".xlsx,.xls" />
-            <div id="parentsStatus" class="sub"></div>
-          </div>
+        <div class="rs-body" id="runSummaryContent"></div>
+
+        <div class="rs-footer">
+          <button id="btnRunSummaryDownload" class="btn primary" type="button">Télécharger le résultat</button>
+          <button id="btnRunSummaryOk" class="btn ghost" type="button">OK</button>
         </div>
-
-        <details style="margin-top:14px" open>
-          <summary>Réglages avancés</summary>
-
-          <div class="row" style="margin-top:12px">
-            <div class="grow"><label>Mots à ignorer (séparés par des virgules)</label><input id="inpStop" type="text" /></div>
-            <div class="grow"><label>Mots à ne pas modifier (séparés par des virgules)</label><input id="inpExc" type="text" /></div>
-          </div>
-
-          <div class="row" style="margin-top:10px">
-            <div class="grow"><label>Expressions multi-mots (virgules)</label><input id="inpMulti" type="text" /></div>
-            <div class="grow"><label>Regex référence</label><input id="inpRegex" type="text" value="(?i)ref[:\\- ]?([a-z0-9\\-]+)" /></div>
-            <div class="grow"><label>Score minimum</label><input id="inpMin" type="number" step="0.1" value="0.5" /></div>
-            <div class="help" style="margin-top:6px">Informationnel : ce seuil n’est pas utilisé comme filtre dans le moteur.</div>
-
-          </div>
-
-          <!-- Scoring mots + importance du sens -->
-          <div class="row" style="margin-top:10px">
-            <div class="grow">
-              <label>Importance du sens dans le résultat</label>
-              <input id="inpSemanticWeight" type="number" step="1" value="80" />
-              <div class="help" style="margin-top:6px">Plus la valeur est élevée, plus l’outil se base sur le sens des mots (et pas seulement sur les mots identiques).</div>
-            </div>
-            <div class="grow">
-              <label>Bonus si les mêmes mots apparaissent</label>
-              <input id="inpTokenBonus" type="number" step="1" value="5" />
-              <div class="help" style="margin-top:6px">Ajoute un bonus pour chaque mot présent à la fois dans l’URL à corriger et l’URL proposée.</div>
-            </div>
-            <div class="grow">
-              <label>Pénalité si l’URL proposée ajoute des mots</label>
-              <input id="inpTokenMalus" type="number" step="1" value="-10" />
-              <div class="help" style="margin-top:6px">Retire des points pour chaque mot présent dans l’URL proposée mais absent de l’URL à corriger (valeur négative attendue).</div>
-            </div>
-          </div>
-
-          <div style="margin-top:14px">
-            <div class="section-title" style="margin-bottom:8px">Listes de mots (bonus / pénalité)</div>
-            <div class="help" style="margin-bottom:10px">Ajuste l’importance de chaque liste et active/désactive son utilisation.</div>
-
-            <div class="table-wrap">
-              <table id="tblDico">
-                <thead>
-                  <tr>
-                    <th>Liste</th>
-                    <th style="width:130px">Bonus</th>
-                    <th style="width:130px">Pénalité</th>
-                    <th style="width:120px">Utiliser</th>
-                    <th style="width:140px">Entrées</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
-            </div>
-          </div>
-        </details>
-
-        <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-          <button class="btn ghost" id="btnApply">Appliquer</button>
-          <span id="cfgStatus" class="badge info hidden"></span>
-        </div>
-      </div>
-    </section>
-
-    <!-- Panel: Test URL -->
-    <section id="panel-test" class="tab-panel">
-      <div class="card">
-        <div class="section-title">Diagnostic URL</div>
-        <div class="sub">Teste comment l’outil comprend et transforme une URL.</div>
-
-        <div class="row" style="margin-top:14px">
-          <div class="grow"><label>URL</label><input id="testUrl" type="text" placeholder="https://www.exemple.com/produit/ref-AB1234?color=red"></div>
-          <button class="btn primary" id="btnTest" style="align-self:flex-end">Tester</button>
-        </div>
-
-        <div style="margin-top:12px">
-          <label>Résultat</label>
-          <textarea id="testOut" readonly style="min-height:160px"></textarea>
-        </div>
-      </div>
-    </section>
-
-    <!-- Panel: Matching -->
-    <section id="panel-matching" class="tab-panel">
-      <div class="card">
-        <div class="section-title">Traitement</div>
-        <div class="sub">Importe les URLs à corriger et les URLs valides (validés à l’import), puis lance le traitement. Le résultat est stocké dans ton historique.</div>
-
-        <div class="row" style="margin-top:14px">
-          <div class="grow">
-            <label>Fichier des URLs à corriger (onglet <code>404</code>, colonne <code>URL_404</code>)</label>
-            <input id="file404" type="file" accept=".xlsx,.xls" />
-            <div id="f404Status" class="sub"></div>
-          </div>
-
-          <div class="grow">
-            <label>Fichier des URLs valides (onglet <code>200</code>, colonne <code>URL_200</code>)</label>
-            <input id="file200" type="file" accept=".xlsx,.xls" />
-            <div id="f200Status" class="sub"></div>
-          </div>
-        </div>
-
-        <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:flex-end">
-          <span id="runStatus" class="badge info hidden"></span>
-          <button class="btn ghost" id="btnClear">Réinitialiser</button>
-          <button class="btn primary" id="btnRun">Lancer</button>
-        </div>
-
-        <!-- Progress (barre + temps + estimation) -->
-        <div id="progressWrap" class="hidden" style="margin-top:12px">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px">
-            <span id="progressLabel" class="sub" style="margin:0">Traitement…</span>
-            <span id="progressPct" class="badge info">0%</span>
-          </div>
-
-          <div style="height:10px;background:#eef2ff;border:1px solid var(--border);border-radius:999px;overflow:hidden">
-            <div id="progressBar" style="height:100%;width:0%"></div>
-          </div>
-
-          <div class="help" style="margin-top:8px;display:flex;gap:12px;flex-wrap:wrap">
-            <span>Temps écoulé : <b id="elapsedTxt">0s</b></span>
-            <span>Estimation : <b id="etaTxt">—</b></span>
-          </div>
-        </div>
-
-        <!-- Download immédiat (local) -->
-        <div id="downloadWrap" class="hidden" style="margin-top:14px; display:flex; gap:10px; align-items:center; justify-content:flex-end;flex-wrap:wrap">
-          <span id="downloadLabel" class="badge ok"></span>
-          <button class="btn ghost" id="btnDownload" type="button">Télécharger</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Panel: Historique (accessible via bouton topbar) -->
-    <section id="panel-history" class="tab-panel">
-      <div class="card">
-        <div class="section-title" style="justify-content:space-between;align-items:center;">
-          <span>Historique</span>
-          <div style="display:flex;gap:10px;flex-wrap:wrap">
-            <button class="btn ghost mini" id="btnHistoryRefresh" type="button">Rafraîchir</button>
-          </div>
-        </div>
-        <div class="sub">Nom du run + date + fichiers. Tu peux renommer et supprimer un run.</div>
-
-        <div style="margin-top:12px" class="table-wrap">
-          <table id="tblHistory">
-            <thead>
-              <tr>
-                <th style="width:220px">Date</th>
-                <th style="width:260px">Nom</th>
-                <th>Run</th>
-                <th style="width:260px">Fichiers</th>
-                <th style="width:320px">Actions</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-
-        <div id="historyStatus" class="sub" style="margin-top:10px"></div>
-      </div>
-    </section>
-
-    <div class="footer">© Redirect Match</div>
-  </div>
-
-  <!-- Run Summary Modal (PRO) -->
-  <div id="runSummaryModal" class="hidden">
-    <div class="rs-backdrop" id="runSummaryBackdrop"></div>
-
-    <div class="rs-modal" role="dialog" aria-modal="true" aria-labelledby="rsTitle">
-      <div class="rs-header">
-        <div>
-          <div id="rsTitle" class="rs-title">Récap du run</div>
-          <div id="rsSubtitle" class="rs-subtitle"></div>
-        </div>
-        <button id="btnRunSummaryClose" class="btn ghost" type="button">Fermer</button>
-      </div>
-
-      <div class="rs-body" id="runSummaryContent"></div>
-
-      <div class="rs-footer">
-        <button id="btnRunSummaryDownload" class="btn primary" type="button">Télécharger le résultat</button>
-        <button id="btnRunSummaryOk" class="btn ghost" type="button">OK</button>
       </div>
     </div>
   </div>
 
 <script>
-/* ===================== Supabase Auth + Client + ROUTING (CORRIGÉ + ANTI-FREEZE + UX LOGOUT) ===================== */
+/* ============================================================
+   SUPABASE + AUTH + ROUTING /login + LOGOUT NON-BLOQUANT
+   ============================================================ */
 const supabaseClient = window.supabase.createClient(
   window.SUPABASE_URL,
   window.SUPABASE_PUBLISHABLE_KEY,
@@ -541,35 +538,6 @@ const appShell = document.getElementById('appShell');
 
 function setGateMsg(msg){ const el=document.getElementById('authStatus'); if(el) el.textContent=msg||''; }
 function busyAuth(on){ ['btnLogin','btnSignup'].forEach(id=>{const b=document.getElementById(id); if(b) b.disabled=!!on; }); }
-
-/* ---- anti-freeze helpers ---- */
-function withTimeout(promise, ms = 8000){
-  return Promise.race([
-    promise,
-    new Promise((_, reject)=> setTimeout(()=> reject(new Error('Timeout')), ms))
-  ]);
-}
-async function getSessionSafe(){
-  try{
-    const { data } = await withTimeout(supabaseClient.auth.getSession(), 8000);
-    return data?.session || null;
-  }catch{
-    return null;
-  }
-}
-
-/* ✅ Logout UX: spinner + texte */
-const logoutOriginalText = elLogout?.textContent || 'Se déconnecter';
-function setLogoutPending(on){
-  if(!elLogout) return;
-  if(on){
-    elLogout.disabled = true;
-    elLogout.innerHTML = `<span class="spinner"></span>Déconnexion…`;
-  }else{
-    elLogout.disabled = false;
-    elLogout.textContent = logoutOriginalText;
-  }
-}
 
 function openGate({ closable = true } = {}){
   elGate.classList.remove('hidden');
@@ -587,11 +555,24 @@ function normPath(){
   return p === '' ? '/' : p;
 }
 function isLoginRoute(){
-  const p = normPath().toLowerCase();
-  return p === '/login';
+  return normPath().toLowerCase() === '/login';
 }
 
-/* ✅ route(sessionOverride) pour éviter les boucles getSession() */
+function withTimeout(promise, ms = 9000){
+  return Promise.race([
+    promise,
+    new Promise((_, reject)=> setTimeout(()=> reject(new Error('Timeout')), ms))
+  ]);
+}
+async function getSessionSafe(){
+  try{
+    const { data } = await withTimeout(supabaseClient.auth.getSession(), 9000);
+    return data?.session || null;
+  }catch{
+    return null;
+  }
+}
+
 async function route(sessionOverride = null){
   const session = sessionOverride ?? await getSessionSafe();
   const authed = !!session;
@@ -607,25 +588,27 @@ async function route(sessionOverride = null){
     return;
   }
 
-  if (!authed){
-    closeGate();
-    return;
-  }
-
+  // si on n'est pas sur /login, on n'impose pas la gate : on la ferme si elle est ouverte
   closeGate();
+  if(!authed) return;
 }
 
-/* Support éventuels tokens dans l’URL (magic link, etc.) */
-(async function bootstrapFromHash(){
-  const hash=new URLSearchParams(location.hash.slice(1));
-  const access_token=hash.get('access_token');
-  const refresh_token=hash.get('refresh_token');
-  if(access_token && refresh_token){
-    try{ await supabaseClient.auth.setSession({access_token,refresh_token}); }
-    catch{}
-    finally{ history.replaceState(null,'',location.pathname+location.search); }
+async function applyAuthUI(sessionOverride = null){
+  const session = sessionOverride ?? await getSessionSafe();
+  const authed = !!session;
+
+  // demandé : ne rien afficher en haut à droite quand déconnecté
+  elUser.textContent = authed ? `Connecté : ${session.user.email}` : '';
+
+  elLogout.classList.toggle('hidden', !authed);
+  elLoginOpen.classList.toggle('hidden', authed);
+  elHistoryTop.classList.toggle('hidden', !authed);
+
+  // si l'onglet Historique est visible, refresh
+  if (authed && panels?.history?.classList.contains('active')) {
+    loadHistory().catch(()=>{});
   }
-})();
+}
 
 async function requireAuthOrGate(message){
   const session = await getSessionSafe();
@@ -637,32 +620,39 @@ async function requireAuthOrGate(message){
   return session;
 }
 
-/* ✅ applyAuthUI(sessionOverride) + ✅ ne rien afficher quand déconnecté */
-async function applyAuthUI(sessionOverride = null){
-  const session = sessionOverride ?? await getSessionSafe();
-  const authed = !!session;
+/* Support tokens éventuels dans l’URL (magic link) */
+(async function bootstrapFromHash(){
+  const hash=new URLSearchParams(location.hash.slice(1));
+  const access_token=hash.get('access_token');
+  const refresh_token=hash.get('refresh_token');
+  if(access_token && refresh_token){
+    try{ await supabaseClient.auth.setSession({access_token,refresh_token}); }
+    catch{}
+    finally{ history.replaceState(null,'',location.pathname+location.search); }
+  }
+})();
 
-  // ✅ Demande: ne rien afficher en haut à droite quand déconnecté
-  elUser.textContent = authed ? `Connecté : ${session.user.email}` : '';
-
-  elLogout.classList.toggle('hidden', !authed);
-  elLoginOpen.classList.toggle('hidden', authed);
-  elHistoryTop.classList.toggle('hidden', !authed);
-
-  const historyPanel = document.getElementById('panel-history');
-  if (authed && historyPanel?.classList.contains('active')) {
-    loadHistory().catch(()=>{});
+const logoutOriginalText = elLogout?.textContent || 'Se déconnecter';
+function setLogoutPending(on){
+  if(!elLogout) return;
+  if(on){
+    elLogout.disabled = true;
+    elLogout.innerHTML = '<span class="spinner"></span>Déconnexion…';
+  }else{
+    elLogout.disabled = false;
+    elLogout.textContent = logoutOriginalText;
   }
 }
 
-/* ✅ onAuthStateChange fournit session: on la réutilise (pas de getSession en boucle) */
+/* Auth state changes */
+let CURRENT_USER_ID = null;
+
 supabaseClient.auth.onAuthStateChange(async (event, session)=> {
   if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
     CURRENT_USER_ID = session?.user?.id || null;
     loadLocalForUser(CURRENT_USER_ID);
     hydrateUIFromState();
   } else if (event === 'TOKEN_REFRESHED') {
-    // Ne pas reset le state : on garde les dicos en mémoire
     CURRENT_USER_ID = session?.user?.id || CURRENT_USER_ID;
   }
 
@@ -670,9 +660,7 @@ supabaseClient.auth.onAuthStateChange(async (event, session)=> {
   await route(session || null);
 });
 
-
-
-/* ✅ Login (anti-freeze + utilise data.session direct) */
+/* Login */
 document.getElementById('btnLogin')?.addEventListener('click', async ()=>{
   const email=document.getElementById('authEmail').value.trim();
   const password=document.getElementById('authPassword').value;
@@ -686,12 +674,9 @@ document.getElementById('btnLogin')?.addEventListener('click', async ()=>{
     );
     if(error) return setGateMsg('Erreur: '+error.message);
 
-    const session = data?.session || null;
-
     setGateMsg('Connecté.');
-    await applyAuthUI(session);
+    await applyAuthUI(data?.session || null);
 
-    /* IMPORTANT: après login, on sort de /login immédiatement + on ferme */
     history.replaceState({}, '', '/');
     closeGate();
 
@@ -703,7 +688,7 @@ document.getElementById('btnLogin')?.addEventListener('click', async ()=>{
   }
 });
 
-/* Signup (avec timeout aussi) */
+/* Signup */
 document.getElementById('btnSignup')?.addEventListener('click', async ()=>{
   const email=document.getElementById('authEmail').value.trim();
   const password=document.getElementById('authPassword').value;
@@ -728,17 +713,14 @@ document.getElementById('btnSignup')?.addEventListener('click', async ()=>{
   }
 });
 
-/* ✅ CLIC TOPBAR : ouvre immédiatement la pop-up + met /login */
+/* Clic topbar login => ouvre gate + pousse /login */
 elLoginOpen.addEventListener('click', (e)=>{
   e.preventDefault();
-
   setGateMsg('');
   openGate({ closable: false });
-
   if (!isLoginRoute()){
     history.pushState({}, '', '/login');
   }
-
   route().catch(()=>{});
 });
 
@@ -752,101 +734,30 @@ document.getElementById('btnGateClose')?.addEventListener('click', ()=>{
   setGateMsg('');
 });
 
-
-function hardResetUIAndLocal(){
-  try{
-  // supprime les settings du user courant + legacy
-  localStorage.removeItem(getSettingsKey(CURRENT_USER_ID));
-  localStorage.removeItem('matcherFront'); // legacy (si tu l’as eu avant)
-}catch{}
-
-  // 2) reset état mémoire
-  state.dicos = {};
-  state.dicoWeights = {};
-  state.translations = {};
-  state.parents = [];
-  state.cfg = {
-    stop: new Set(),
-    exc: new Set(),
-    multi: [],
-    ref: '(?i)ref[:\\- ]?([a-z0-9\\-]+)',
-    min: 0.5,
-    semanticWeight: 80,
-    tokenBonus: 5,
-    tokenMalus: -10
-  };
-
-  // 3) reset champs UI + statuts
-  if(fileDico) fileDico.value = '';
-  if(fileTrad) fileTrad.value = '';
-  if(fileParents) fileParents.value = '';
-  if(file404) file404.value = '';
-  if(file200) file200.value = '';
-
-  if(dicoStatus) dicoStatus.textContent = '';
-  if(tradStatus) tradStatus.textContent = '';
-  if(parentsStatus) parentsStatus.textContent = '';
-  if(f404Status) f404Status.textContent = '';
-  if(f200Status) f200Status.textContent = '';
-
-  if(inpStop) inpStop.value = '';
-  if(inpExc) inpExc.value = '';
-  if(inpMulti) inpMulti.value = '';
-  if(inpRegex) inpRegex.value = state.cfg.ref;
-  if(inpMin) inpMin.value = String(state.cfg.min);
-
-  if(inpSemanticWeight) inpSemanticWeight.value = '80';
-  if(inpTokenBonus) inpTokenBonus.value = '5';
-  if(inpTokenMalus) inpTokenMalus.value = '-10';
-
-  // reset UI matching / progress / download
-  resetDownloadUI();
-  clearRunStatus();
-  closeRunSummaryModal();
-  stopFakeProgress();
-  stopElapsedTimer();
-  uiProgressHide();
-
-  // rerender dicos + badge filtrage
-  renderDicoTable();
-  updatePrefilterBadge();
-
-  // retourner sur un panel clean
-  openPanel('config');
-}
-
-/* ✅ Logout "secure" sans faux timeout :
-   - purge locale immédiate (scope: 'local') => UI reset instant
-   - logout global en best-effort (ne bloque pas l'UI)
-*/
+/* Logout non-bloquant */
 elLogout.addEventListener('click', async () => {
   setLogoutPending(true);
 
-  // UI immédiate
   closeGate();
   setGateMsg('');
   elUser.textContent = 'Déconnexion…';
 
-  // On garde le token AVANT de purger la session locale
   let accessToken = null;
   try {
     const { data } = await supabaseClient.auth.getSession();
     accessToken = data?.session?.access_token || null;
   } catch {}
 
-  // 1) Déconnexion locale immédiate (fiable, pas de réseau)
-  try {
-    await supabaseClient.auth.signOut({ scope: 'local' });
-  } catch {}
+  // 1) déconnexion locale immédiate (ne dépend pas du réseau)
+  try { await supabaseClient.auth.signOut({ scope: 'local' }); } catch {}
 
-  // 2) Tu veux "comme un refresh" => on vide aussi tes paramètres UI
+  // 2) reset UI/local
   hardResetUIAndLocal();
 
-  // 3) Logout global en best-effort (ne bloque pas)
+  // 3) best effort global logout (ne bloque pas)
   if (accessToken) {
     const ctrl = new AbortController();
     setTimeout(() => ctrl.abort(), 6000);
-
     fetch(`${window.SUPABASE_URL}/auth/v1/logout?scope=global`, {
       method: 'POST',
       headers: {
@@ -855,28 +766,23 @@ elLogout.addEventListener('click', async () => {
         'Content-Type': 'application/json;charset=UTF-8'
       },
       signal: ctrl.signal
-    }).catch(() => {
-      // best-effort : si ça échoue, l'utilisateur est déjà déconnecté localement
-    });
+    }).catch(() => {});
   }
 
-  // 4) UI finale + refresh page (optionnel mais cohérent avec ton besoin)
   setLogoutPending(false);
   elUser.textContent = '';
   elLogout.classList.add('hidden');
   elLoginOpen.classList.remove('hidden');
   elHistoryTop.classList.add('hidden');
 
-  // Re-route et recharge
-  route(null).catch(() => {});
   CURRENT_USER_ID = null;
+  await route(null).catch(()=>{});
   location.reload();
 });
 
-/* =================== Fin Auth =================== */
-
-
-/* =================== Tabs & Panels =================== */
+/* ============================================================
+   UI TABS / PANELS
+   ============================================================ */
 const tabs = document.querySelectorAll('.tab');
 const panels = {
   config: document.getElementById('panel-config'),
@@ -904,8 +810,13 @@ elHistoryTop?.addEventListener('click', async ()=>{
   openPanel('history');
 });
 
+window.addEventListener('popstate', async ()=>{
+  await route().catch(()=>{});
+});
 
-/* =================== Modal helpers =================== */
+/* ============================================================
+   MODALS
+   ============================================================ */
 const modal = document.getElementById('modal');
 const mTitle = document.getElementById('mTitle');
 const mSubtitle = document.getElementById('mSubtitle');
@@ -917,6 +828,15 @@ const mBackdrop = document.getElementById('mBackdrop');
 function closeModal(){ modal?.classList.add('hidden'); }
 mClose?.addEventListener('click', closeModal);
 mBackdrop?.addEventListener('click', closeModal);
+
+function escapeHtml(s){
+  return String(s ?? '')
+    .replaceAll('&','&amp;')
+    .replaceAll('<','&lt;')
+    .replaceAll('>','&gt;')
+    .replaceAll('"','&quot;')
+    .replaceAll("'",'&#039;');
+}
 
 function showAlert({ title='Attention', subtitle='', html='' }){
   if(!modal) return alert(title);
@@ -935,7 +855,7 @@ function showConfirm({ title='Confirmer', subtitle='', html='', confirmText='Con
     mBody.innerHTML = html || '';
     mFoot.innerHTML = `
       <button class="btn ghost" type="button" id="mCancel">Annuler</button>
-      <button class="btn ${danger?'danger':'primary'}" type="button" id="mConfirm">${confirmText}</button>
+      <button class="btn ${danger?'danger':'primary'}" type="button" id="mConfirm">${escapeHtml(confirmText)}</button>
     `;
     modal.classList.remove('hidden');
 
@@ -943,15 +863,6 @@ function showConfirm({ title='Confirmer', subtitle='', html='', confirmText='Con
     document.getElementById('mCancel')?.addEventListener('click', ()=>done(false), { once:true });
     document.getElementById('mConfirm')?.addEventListener('click', ()=>done(true), { once:true });
   });
-}
-
-function escapeHtml(s){
-  return String(s ?? '')
-    .replaceAll('&','&amp;')
-    .replaceAll('<','&lt;')
-    .replaceAll('>','&gt;')
-    .replaceAll('"','&quot;')
-    .replaceAll("'",'&#039;');
 }
 
 function showPrompt({ title='Nom du run', subtitle='Optionnel', placeholder='Ex: Décembre - redirections', defaultValue='' }){
@@ -978,8 +889,9 @@ function showPrompt({ title='Nom du run', subtitle='Optionnel', placeholder='Ex:
   });
 }
 
-
-/* =================== App state =================== */
+/* ============================================================
+   STATE + LOCAL STORAGE PER USER
+   ============================================================ */
 const state={
   dicos:{},
   dicoWeights:{},
@@ -996,8 +908,6 @@ const state={
     tokenMalus: -10
   }
 };
-
-let CURRENT_USER_ID = null;
 
 function getSettingsKey(userId){
   return `matcherFront::${userId || 'anon'}`;
@@ -1042,13 +952,10 @@ function deserializeDicos(raw){
   return out;
 }
 
-
 function saveLocal(){
   const key = getSettingsKey(CURRENT_USER_ID);
-
   localStorage.setItem(key, JSON.stringify({
-    dicos: serializeDicos(), // ✅ AJOUT ICI
-
+    dicos: serializeDicos(),
     dicoWeights: state.dicoWeights,
     cfg: {
       stop: [...state.cfg.stop],
@@ -1066,24 +973,21 @@ function saveLocal(){
 }
 
 function loadLocalForUser(userId){
-  // reset pour éviter “mélange” entre comptes
   resetStateOnly();
-
   const key = getSettingsKey(userId);
   const raw = localStorage.getItem(key);
 
-  // migration (si tu avais déjà des réglages dans l'ancienne clé)
+  // migration legacy
   const legacy = localStorage.getItem('matcherFront');
-
   const src = raw || legacy;
   if(!src) return;
 
   try{
     const obj = JSON.parse(src);
 
-    state.dicos = deserializeDicos(obj.dicos || {}); // ✅ AJOUT ICI
-
+    state.dicos = deserializeDicos(obj.dicos || {});
     state.dicoWeights = obj.dicoWeights || {};
+
     state.cfg.stop = new Set(obj?.cfg?.stop || []);
     state.cfg.exc = new Set(obj?.cfg?.exc || []);
     state.cfg.multi = obj?.cfg?.multi || [];
@@ -1097,17 +1001,15 @@ function loadLocalForUser(userId){
     state.translations = obj.translations || {};
     state.parents = obj.parents || [];
 
-    // si on a migré depuis l'ancienne clé, on la copie vers la clé user
     if(!raw && legacy){
       localStorage.setItem(key, src);
-      // optionnel : supprimer l’ancienne clé globale
-      // localStorage.removeItem('matcherFront');
     }
   }catch{}
 }
 
-
-/* =================== DOM refs =================== */
+/* ============================================================
+   DOM REFS
+   ============================================================ */
 const fileDico=document.getElementById('fileDico');
 const fileTrad=document.getElementById('fileTrad');
 const fileParents=document.getElementById('fileParents');
@@ -1145,12 +1047,43 @@ const runStatus=document.getElementById('runStatus');
 const tblDico=document.querySelector('#tblDico tbody');
 const prefilterBadge=document.getElementById('prefilterBadge');
 
+/* Progress DOM */
+const progressWrap = document.getElementById('progressWrap');
+const progressLabel = document.getElementById('progressLabel');
+const progressPct = document.getElementById('progressPct');
+const progressBar = document.getElementById('progressBar');
+const elapsedTxt = document.getElementById('elapsedTxt');
+const etaTxt = document.getElementById('etaTxt');
+
+/* Download UI */
 const downloadWrap = document.getElementById('downloadWrap');
 const btnDownload = document.getElementById('btnDownload');
 const downloadLabel = document.getElementById('downloadLabel');
 
+const tblHistory = document.getElementById('tblHistory');
+const tblHistoryBody = tblHistory?.querySelector('tbody');
+const historyStatus = document.getElementById('historyStatus');
+const btnHistoryRefresh = document.getElementById('btnHistoryRefresh');
+
+/* Summary Modal */
+const runSummaryModal = document.getElementById('runSummaryModal');
+const runSummaryContent = document.getElementById('runSummaryContent');
+const rsSubtitle = document.getElementById('rsSubtitle');
+const btnRunSummaryClose = document.getElementById('btnRunSummaryClose');
+const btnRunSummaryOk = document.getElementById('btnRunSummaryOk');
+const btnRunSummaryDownload = document.getElementById('btnRunSummaryDownload');
+const runSummaryBackdrop = document.getElementById('runSummaryBackdrop');
+
+function openRunSummaryModal(){ runSummaryModal?.classList.remove('hidden'); }
+function closeRunSummaryModal(){ runSummaryModal?.classList.add('hidden'); }
+btnRunSummaryClose?.addEventListener('click', closeRunSummaryModal);
+btnRunSummaryOk?.addEventListener('click', closeRunSummaryModal);
+runSummaryBackdrop?.addEventListener('click', closeRunSummaryModal);
+
+/* ============================================================
+   INIT UI FROM STATE + RESET
+   ============================================================ */
 function hydrateUIFromState(){
-  // Inputs config
   if(inpStop) inpStop.value = [...state.cfg.stop].join(', ');
   if(inpExc) inpExc.value = [...state.cfg.exc].join(', ');
   if(inpMulti) inpMulti.value = state.cfg.multi.join(', ');
@@ -1161,25 +1094,62 @@ function hydrateUIFromState(){
   if(inpTokenBonus) inpTokenBonus.value = String(state.cfg.tokenBonus ?? 5);
   if(inpTokenMalus) inpTokenMalus.value = String(state.cfg.tokenMalus ?? -10);
 
-  // Status text
   if(tradStatus) tradStatus.textContent = Object.keys(state.translations||{}).length ? `${Object.keys(state.translations).length} traduction(s).` : '';
   if(parentsStatus) parentsStatus.textContent = (state.parents||[]).length ? `${state.parents.length} URL(s) parent.` : '';
 
-  // Table dicos (si tu n’as pas rechargé le fichier dico, state.dicos restera vide — c'est normal)
   renderDicoTable();
   updatePrefilterBadge();
 }
 
-/* Progress DOM */
-const progressWrap = document.getElementById('progressWrap');
-const progressLabel = document.getElementById('progressLabel');
-const progressPct = document.getElementById('progressPct');
-const progressBar = document.getElementById('progressBar');
-const elapsedTxt = document.getElementById('elapsedTxt');
-const etaTxt = document.getElementById('etaTxt');
+function hardResetUIAndLocal(){
+  try{
+    localStorage.removeItem(getSettingsKey(CURRENT_USER_ID));
+    localStorage.removeItem('matcherFront'); // legacy
+  }catch{}
 
+  resetStateOnly();
+
+  if(fileDico) fileDico.value = '';
+  if(fileTrad) fileTrad.value = '';
+  if(fileParents) fileParents.value = '';
+  if(file404) file404.value = '';
+  if(file200) file200.value = '';
+
+  if(dicoStatus) dicoStatus.textContent = '';
+  if(tradStatus) tradStatus.textContent = '';
+  if(parentsStatus) parentsStatus.textContent = '';
+  if(f404Status) f404Status.textContent = '';
+  if(f200Status) f200Status.textContent = '';
+
+  if(inpStop) inpStop.value = '';
+  if(inpExc) inpExc.value = '';
+  if(inpMulti) inpMulti.value = '';
+  if(inpRegex) inpRegex.value = state.cfg.ref;
+  if(inpMin) inpMin.value = String(state.cfg.min);
+
+  if(inpSemanticWeight) inpSemanticWeight.value = '80';
+  if(inpTokenBonus) inpTokenBonus.value = '5';
+  if(inpTokenMalus) inpTokenMalus.value = '-10';
+
+  resetDownloadUI();
+  clearRunStatus();
+  closeRunSummaryModal();
+  stopTimeBasedProgress();
+  stopElapsedTimer();
+  uiProgressHide();
+
+  renderDicoTable();
+  updatePrefilterBadge();
+
+  openPanel('config');
+}
+
+/* ============================================================
+   RUN STATUS + DOWNLOAD LOCAL
+   ============================================================ */
 let resultBlobUrl = null;
 let resultFilename = 'result.csv';
+let lastResultBlob = null;
 
 function setRunStatus(kind, text){
   if(!runStatus) return;
@@ -1197,6 +1167,7 @@ function resetDownloadUI() {
     URL.revokeObjectURL(resultBlobUrl);
     resultBlobUrl = null;
   }
+  lastResultBlob = null;
   resultFilename = 'result.csv';
   downloadWrap.classList.add('hidden');
   downloadLabel.textContent = '';
@@ -1212,23 +1183,12 @@ btnDownload.addEventListener('click', () => {
   a.remove();
 });
 
-/* =================== Force re-import same file (reset on click) =================== */
-function enableFileReimport(inputEl){
-  if(!inputEl) return;
-  inputEl.addEventListener('click', ()=>{ inputEl.value=''; });
-}
-enableFileReimport(fileDico);
-enableFileReimport(fileTrad);
-enableFileReimport(fileParents);
-enableFileReimport(file404);
-enableFileReimport(file200);
-
-/* =================== Progress (fake + elapsed + ETA) =================== */
+/* ============================================================
+   PROGRESS (elapsed + ETA + time-based progress)
+   ============================================================ */
 let progressTimer = null;
-let timeProgressTimer = null;   // ✅ nouveau
-let fakeProgressTimer = null;   // (tu peux le supprimer ensuite si tu veux)
+let timeProgressTimer = null;
 let runStartTs = 0;
-
 
 function fmtSeconds(totalSec){
   const s = Math.max(0, Math.floor(totalSec));
@@ -1248,7 +1208,6 @@ function loadAvgRunSeconds(){
 function saveRunSeconds(seconds){
   const sec = Number(seconds);
   if(!Number.isFinite(sec) || sec <= 0) return;
-
   const old = loadAvgRunSeconds();
   const next = old == null ? sec : (old * 0.7 + sec * 0.3);
   try{ localStorage.setItem('matcherAvgRunSeconds', String(next)); }catch{}
@@ -1263,7 +1222,6 @@ function uiProgressShow(){
   if(elapsedTxt) elapsedTxt.textContent = '0s';
   if(etaTxt) etaTxt.textContent = '—';
 }
-
 function uiProgressHide(){
   if(!progressWrap) return;
   progressWrap.classList.add('hidden');
@@ -1272,22 +1230,18 @@ function uiProgressHide(){
   if(elapsedTxt) elapsedTxt.textContent = '0s';
   if(etaTxt) etaTxt.textContent = '—';
 }
-
 function setProgress(p){
   const pct = Math.max(0, Math.min(100, Math.floor(p)));
   if(progressBar) progressBar.style.width = pct + '%';
   if(progressPct) progressPct.textContent = pct + '%';
 }
-
 function startElapsedTimer(){
   runStartTs = Date.now();
   const avg = loadAvgRunSeconds();
-
   stopElapsedTimer();
   progressTimer = setInterval(()=>{
     const elapsedSec = (Date.now() - runStartTs) / 1000;
     if(elapsedTxt) elapsedTxt.textContent = fmtSeconds(elapsedSec);
-
     if(avg != null){
       const remaining = Math.max(0, avg - elapsedSec);
       etaTxt.textContent = fmtSeconds(remaining);
@@ -1296,46 +1250,63 @@ function startElapsedTimer(){
     }
   }, 250);
 }
-
 function stopElapsedTimer(){
   if(progressTimer){ clearInterval(progressTimer); progressTimer = null; }
 }
-
-
-
-function startFakeProgress(){
-  stopFakeProgress();
-  let p = 0;
+function startTimeBasedProgress(){
+  stopTimeBasedProgress();
   setProgress(0);
 
-  fakeProgressTimer = setInterval(()=>{
-    if(p < 70) p += 2 + Math.random() * 2;
-    else if(p < 88) p += 0.6 + Math.random() * 0.8;
-    else if(p < 90) p += 0.2 + Math.random() * 0.3;
-    else p = 90;
+  const avg = loadAvgRunSeconds() ?? 60;
+  const target = Math.max(10, avg);
 
+  timeProgressTimer = setInterval(() => {
+    const elapsedSec = (Date.now() - runStartTs) / 1000;
+
+    let p;
+    if (elapsedSec <= target) p = (elapsedSec / target) * 95;
+    else {
+      const extra = elapsedSec - target;
+      p = 95 + (1 - Math.exp(-extra / target)) * 4;
+    }
+    p = Math.min(99, p);
     setProgress(p);
   }, 250);
 }
-
-function stopFakeProgress(){
-  if(fakeProgressTimer){ clearInterval(fakeProgressTimer); fakeProgressTimer = null; }
+function stopTimeBasedProgress(){
+  if(timeProgressTimer){
+    clearInterval(timeProgressTimer);
+    timeProgressTimer = null;
+  }
 }
-
 function finishProgressOK(){
-  stopFakeProgress();
+  stopTimeBasedProgress();
   setProgress(100);
   if(progressPct){ progressPct.className = 'badge ok'; progressPct.textContent = '100%'; }
   if(progressLabel) progressLabel.textContent = 'Terminé';
 }
-
 function finishProgressError(){
-  stopFakeProgress();
+  stopTimeBasedProgress();
   if(progressPct){ progressPct.className = 'badge err'; progressPct.textContent = 'Erreur'; }
   if(progressLabel) progressLabel.textContent = 'Erreur';
 }
 
-/* =================== Init inputs =================== */
+/* ============================================================
+   FILE INPUT: allow re-import same file (reset on click)
+   ============================================================ */
+function enableFileReimport(inputEl){
+  if(!inputEl) return;
+  inputEl.addEventListener('click', ()=>{ inputEl.value=''; });
+}
+enableFileReimport(fileDico);
+enableFileReimport(fileTrad);
+enableFileReimport(fileParents);
+enableFileReimport(file404);
+enableFileReimport(file200);
+
+/* ============================================================
+   CONFIG APPLY
+   ============================================================ */
 inpStop.value=[...state.cfg.stop].join(', ');
 inpExc.value=[...state.cfg.exc].join(', ');
 inpMulti.value=state.cfg.multi.join(', ');
@@ -1370,10 +1341,13 @@ btnApply.addEventListener('click',()=>{
   setTimeout(()=>cfgStatus.classList.add('hidden'), 1600);
 });
 
-
-/* =================== URL builder (Cloud Run direct) =================== */
+/* ============================================================
+   API BASE (Cloud Run direct)
+   ============================================================ */
 const PROD_API_BASE = "https://url-matcher-70649262164.europe-west1.run.app";
 const DEV_API_BASE  = "https://url-matcher-70649262164.europe-west1.run.app";
+// adapte si besoin
+const MATCH_ENDPOINT = "/match"; // ex: "/run" selon ton backend
 
 function isLocalHost(){
   const h = location.hostname;
@@ -1385,8 +1359,9 @@ function buildUrl(path){
   return base.replace(/\/$/, '') + p;
 }
 
-
-/* =================== Excel helpers + validation =================== */
+/* ============================================================
+   EXCEL HELPERS + VALIDATIONS
+   ============================================================ */
 async function readExcel(file){
   return new Promise((resolve,reject)=>{
     const reader=new FileReader();
@@ -1511,41 +1486,27 @@ async function validateDicoFile(file){
   return true;
 }
 
-
-/* =================== Config build for API =================== */
-function buildConfigFromUI(){
-  const dictionaries = Object.entries(state.dicos).map(([name, dict]) => ({
-    name,
-    rows: Object.entries(dict).map(([k, synSet]) => [k, ...Array.from(synSet)].join(','))
-  }));
-
-  const bonus = {}, malus = {}, prefilter = {};
-  Object.entries(state.dicoWeights || {}).forEach(([name, w]) => {
-    bonus[name] = Number(w?.bonus || 0);
-    malus[name] = Number(w?.malus || 0);
-    prefilter[name] = !!w?.active;
-  });
-
-  return {
-    stopwords: [...state.cfg.stop],
-    exceptions: [...state.cfg.exc],
-    multi: state.cfg.multi,
-    refRegex: state.cfg.ref,
-    translations: Object.entries(state.translations || {}).map(([SOURCE, TRANSLATION]) => ({ SOURCE, TRANSLATION })),
-    dictionaries,
-    bonus,
-    malus,
-    prefilter,
-    scoreMin: state.cfg.min,
-    parents: state.parents || [],
-    embeddingWeight: state.cfg.semanticWeight,
-    tokenBonusIdentical: state.cfg.tokenBonus,
-    tokenPenaltyExtra: state.cfg.tokenMalus
-  };
+async function extractUrlsFrom404File(file){
+  const wb = await readExcel(file);
+  const sh = findSheet(wb, '404');
+  const rows = XLSX.utils.sheet_to_json(sh, { defval: "" });
+  return rows
+    .map(r => String(r.URL_404 ?? '').trim())
+    .filter(Boolean);
 }
 
+async function extractUrlsFrom200File(file){
+  const wb = await readExcel(file);
+  const sh = findSheet(wb, '200');
+  const rows = XLSX.utils.sheet_to_json(sh, { defval: "" });
+  return rows
+    .map(r => String(r.URL_200 ?? '').trim())
+    .filter(Boolean);
+}
 
-/* =================== Dico table rendering + badge =================== */
+/* ============================================================
+   DICTIONARY TABLE + PREFILTER BADGE
+   ============================================================ */
 function updatePrefilterBadge(){
   const active = Object.keys(state.dicoWeights).filter(n => (state.dicoWeights[n] || {}).active);
   if(active.length>0){
@@ -1565,7 +1526,7 @@ function renderDicoTable(){
   const names=Object.keys(state.dicos);
   if(names.length===0){
     const tr=document.createElement('tr'); const td=document.createElement('td');
-    td.colSpan=5; td.textContent='Aucune liste chargée.'; td.style.color='var(--muted)'; td.style.fontWeight='800';
+    td.colSpan=5; td.textContent='Aucune liste chargée.'; td.style.color='var(--muted)'; td.style.fontWeight='900';
     tr.appendChild(td); tblDico.appendChild(tr);
     updatePrefilterBadge();
     return;
@@ -1578,9 +1539,9 @@ function renderDicoTable(){
 
     const tr=document.createElement('tr');
     tr.innerHTML=`
-      <td style="font-weight:900">${escapeHtml(name)}</td>
-      <td><input type="number" step="0.1" value="${w.bonus}" data-k="bonus" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:12px;background:#fff"></td>
-      <td><input type="number" step="0.1" value="${w.malus}" data-k="malus" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:12px;background:#fff"></td>
+      <td style="font-weight:950">${escapeHtml(name)}</td>
+      <td><input type="number" step="0.1" value="${escapeHtml(w.bonus)}" data-k="bonus" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:12px;background:#fff"></td>
+      <td><input type="number" step="0.1" value="${escapeHtml(w.malus)}" data-k="malus" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:12px;background:#fff"></td>
       <td><input class="switch" type="checkbox" ${w.active?'checked':''} data-k="active"></td>
       <td>${entries.toLocaleString('fr-FR')}</td>
     `;
@@ -1602,8 +1563,9 @@ function renderDicoTable(){
 }
 renderDicoTable();
 
-
-/* =================== File imports (validated with popups) =================== */
+/* ============================================================
+   IMPORT FILES (validated at import)
+   ============================================================ */
 fileDico.addEventListener('change', async ()=>{
   if(!fileDico.files?.[0]) return;
   try{
@@ -1658,7 +1620,7 @@ fileTrad.addEventListener('change', async ()=>{
 
     wb.SheetNames.forEach(name=>{
       const sh=wb.Sheets[name];
-      const arr=XLSX.utils.sheet_to_json(sh);
+      const arr=XLSX.utils.sheet_to_json(sh, { defval: "" });
       arr.forEach(row=>{
         const s=String(row['SOURCE']||'').trim().toLowerCase();
         const t=String(row['TRANSLATION']||'').trim().toLowerCase();
@@ -1686,7 +1648,7 @@ fileParents.addEventListener('change', async ()=>{
 
     wb.SheetNames.forEach(name=>{
       const sh=wb.Sheets[name];
-      const arr=XLSX.utils.sheet_to_json(sh);
+      const arr=XLSX.utils.sheet_to_json(sh, { defval: "" });
       arr.forEach(row=>{
         if(row.URL) state.parents.push(String(row.URL));
       });
@@ -1706,7 +1668,7 @@ file404.addEventListener('change', async ()=>{
   try{
     const ok = await validate404File(file404.files[0]);
     if(!ok){ file404.value=''; f404Status.textContent=''; return; }
-    f404Status.textContent = `OK (${escapeHtml(file404.files[0].name)})`;
+    f404Status.textContent = `OK (${file404.files[0].name})`;
   }catch(e){
     file404.value='';
     f404Status.textContent='';
@@ -1719,7 +1681,7 @@ file200.addEventListener('change', async ()=>{
   try{
     const ok = await validate200File(file200.files[0]);
     if(!ok){ file200.value=''; f200Status.textContent=''; return; }
-    f200Status.textContent = `OK (${escapeHtml(file200.files[0].name)})`;
+    f200Status.textContent = `OK (${file200.files[0].name})`;
   }catch(e){
     file200.value='';
     f200Status.textContent='';
@@ -1727,11 +1689,45 @@ file200.addEventListener('change', async ()=>{
   }
 });
 
+/* ============================================================
+   BUILD CONFIG (payload API)
+   ============================================================ */
+function buildConfigFromUI(){
+  const dictionaries = Object.entries(state.dicos).map(([name, dict]) => ({
+    name,
+    rows: Object.entries(dict).map(([k, synSet]) => [k, ...Array.from(synSet)].join(','))
+  }));
 
-/* =================== Diagnostic URL =================== */
+  const bonus = {}, malus = {}, prefilter = {};
+  Object.entries(state.dicoWeights || {}).forEach(([name, w]) => {
+    bonus[name] = Number(w?.bonus || 0);
+    malus[name] = Number(w?.malus || 0);
+    prefilter[name] = !!w?.active;
+  });
+
+  return {
+    stopwords: [...state.cfg.stop],
+    exceptions: [...state.cfg.exc],
+    multi: state.cfg.multi,
+    refRegex: state.cfg.ref,
+    translations: Object.entries(state.translations || {}).map(([SOURCE, TRANSLATION]) => ({ SOURCE, TRANSLATION })),
+    dictionaries,
+    bonus,
+    malus,
+    prefilter,
+    scoreMin: state.cfg.min,
+    parents: state.parents || [],
+    embeddingWeight: state.cfg.semanticWeight,
+    tokenBonusIdentical: state.cfg.tokenBonus,
+    tokenPenaltyExtra: state.cfg.tokenMalus
+  };
+}
+
+/* ============================================================
+   DIAGNOSTIC URL
+   ============================================================ */
 function formatDictHits(hits){
   if(!hits || typeof hits !== 'object') return null;
-
   const lines = [];
   Object.entries(hits).forEach(([dicoName, v])=>{
     if(v == null) return;
@@ -1750,10 +1746,7 @@ function formatDictHits(hits){
 
 btnTest.addEventListener('click', async () => {
   const url = testUrl.value.trim();
-  if (!url) {
-    testOut.value = 'Veuillez saisir une URL.';
-    return;
-  }
+  if (!url) { testOut.value = 'Veuillez saisir une URL.'; return; }
 
   try {
     const payload = { url, config: buildConfigFromUI() };
@@ -1762,19 +1755,17 @@ btnTest.addEventListener('click', async () => {
     const token = session?.access_token;
     if (!token) throw new Error("Tu dois être connecté(e) pour utiliser cette fonction.");
 
+    const ctrl = new AbortController();
+    setTimeout(()=>ctrl.abort(), 15000);
+
     const r = await fetch(buildUrl('/debug-url'), {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(payload)
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify(payload),
+      signal: ctrl.signal
     });
 
-    if (!r.ok) {
-      throw new Error('Une erreur est survenue pendant le traitement. Réessaie dans quelques instants.');
-    }
-
+    if (!r.ok) throw new Error('Une erreur est survenue pendant le traitement. Réessaie dans quelques instants.');
     const j = await r.json();
 
     const out = [];
@@ -1787,12 +1778,11 @@ btnTest.addEventListener('click', async () => {
     const hits = j.dict_hits || j.dico_hits || j.characteristics || j.dictionaries || null;
     const lines = formatDictHits(hits);
 
+    out.push('');
     if (lines) {
-      out.push('');
       out.push('Mots reconnus dans tes listes :');
       lines.forEach(x => out.push(' - ' + x));
     } else {
-      out.push('');
       out.push('Mots reconnus dans tes listes : aucun mot détecté (ou information non disponible).');
     }
 
@@ -1802,22 +1792,9 @@ btnTest.addEventListener('click', async () => {
   }
 });
 
-
-/* =================== Run Summary Modal =================== */
-const runSummaryModal = document.getElementById('runSummaryModal');
-const runSummaryContent = document.getElementById('runSummaryContent');
-const rsSubtitle = document.getElementById('rsSubtitle');
-const btnRunSummaryClose = document.getElementById('btnRunSummaryClose');
-const btnRunSummaryOk = document.getElementById('btnRunSummaryOk');
-const btnRunSummaryDownload = document.getElementById('btnRunSummaryDownload');
-const runSummaryBackdrop = document.getElementById('runSummaryBackdrop');
-
-function openRunSummaryModal(){ runSummaryModal?.classList.remove('hidden'); }
-function closeRunSummaryModal(){ runSummaryModal?.classList.add('hidden'); }
-btnRunSummaryClose?.addEventListener('click', closeRunSummaryModal);
-btnRunSummaryOk?.addEventListener('click', closeRunSummaryModal);
-runSummaryBackdrop?.addEventListener('click', closeRunSummaryModal);
-
+/* ============================================================
+   SUMMARY MODAL: compute bottom 10% + line number + top 5 worst
+   ============================================================ */
 function toNumberSafe(v){
   const s = String(v ?? '')
     .replace('%', '')
@@ -1829,12 +1806,12 @@ function toNumberSafe(v){
 
 async function buildRunSummaryFromBlob(blob){
   const text = await blob.text();
-  const wb = XLSX.read(text, { type: 'string', FS: ';' }); // ✅ ton CSV backend est en ';'
+  const wb = XLSX.read(text, { type: 'string', FS: ';' });
   const sh = wb.Sheets[wb.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json(sh, { defval: "" });
 
   const total = rows.length;
-  const scoreKey = "Score_total_%"; // ✅ colonne réellement produite par le backend
+  const scoreKey = "Score_total_%";
   const url404Key = "URL_404";
   const url200Key = "URL_200_top1";
 
@@ -1854,7 +1831,11 @@ async function buildRunSummaryFromBlob(blob){
   const bottom = scored.slice(startIndex);
 
   const threshold = (nScored > 0) ? scored[startIndex]?.score : null;
-  const startLineExcel = (startIndex + 1) + 1;
+
+  // Excel line number when sorted desc by score:
+  // header line 1, first row line 2 => startIndex row is line startIndex+2
+  const startLineExcel = (startIndex + 2);
+
   const worst5 = bottom.slice().sort((a,b)=> a.score - b.score).slice(0, 5);
 
   return { total, nScored, k, threshold, startLineExcel, worst5 };
@@ -1865,8 +1846,6 @@ function renderRunSummary(summary){
 
   const thrTxt = (threshold == null) ? 'n/a' : `${Math.round(threshold)}%`;
   if(rsSubtitle) rsSubtitle.textContent = `Seuil de vérif (Score_total_% ≤ ${thrTxt}) · basé sur Score_total_%.`;
-
-
 
   const tableRows = worst5.map((x, idx) => {
     const s = Math.round(x.score);
@@ -1890,7 +1869,7 @@ function renderRunSummary(summary){
       <div class="rs-kpi">
         <div class="label">Scores exploitables</div>
         <div class="value">${Number(nScored).toLocaleString('fr-FR')}</div>
-        <div class="hint">Basé sur “match_pct”</div>
+        <div class="hint">Basé sur “Score_total_%”</div>
       </div>
       <div class="rs-kpi">
         <div class="label">URLs à vérifier</div>
@@ -1902,12 +1881,10 @@ function renderRunSummary(summary){
     <div class="rs-callout">
       URLs à vérifier à partir de la ligne ${Number(startLineExcel).toLocaleString('fr-FR')}
       (dans Excel après tri décroissant de <b>Score_total_%</b>).
-
-
     </div>
 
     <div class="card" style="padding:0;border-radius:12px;box-shadow:none;border:1px solid var(--border)">
-      <div style="padding:12px 12px 0 12px;font-weight:900">Top 5 à vérifier</div>
+      <div style="padding:12px 12px 0 12px;font-weight:950">Top 5 à vérifier</div>
       <div style="padding:10px 12px 12px 12px;color:var(--muted);font-size:12px">
         Les plus faibles scores (échantillon pour contrôle rapide).
       </div>
@@ -1931,6 +1908,7 @@ function renderRunSummary(summary){
   `;
 }
 
+/* Summary download uses current local blob url */
 btnRunSummaryDownload?.addEventListener('click', () => {
   if (!resultBlobUrl) return;
   const a = document.createElement('a');
@@ -1941,8 +1919,9 @@ btnRunSummaryDownload?.addEventListener('click', () => {
   a.remove();
 });
 
-
-/* =================== Storage helpers (history) =================== */
+/* ============================================================
+   STORAGE (Supabase bucket) + HISTORY
+   ============================================================ */
 const STORAGE_BUCKET = 'matcher-results';
 
 function tsForRunId(){
@@ -1955,7 +1934,6 @@ function makeRunId(){ return `${tsForRunId()}_${rand4()}`; }
 function resultContentType(){
   return 'text/csv; charset=utf-8';
 }
-
 function extFromFile(file){
   const n = (file?.name || '').toLowerCase();
   if(n.endsWith('.xlsx')) return 'xlsx';
@@ -1974,7 +1952,6 @@ async function storageSignedDownload(path, suggestedName){
   const { data, error } = await supabaseClient.storage
     .from(STORAGE_BUCKET)
     .createSignedUrl(path, 60);
-
   if(error) throw error;
 
   const a = document.createElement('a');
@@ -1993,14 +1970,12 @@ async function uploadOne(path, fileOrBlob, contentType){
 }
 
 async function overwriteJson(path, obj){
-  try{
-    await supabaseClient.storage.from(STORAGE_BUCKET).remove([path]);
-  }catch{}
+  try{ await supabaseClient.storage.from(STORAGE_BUCKET).remove([path]); }catch{}
   const blob = new Blob([JSON.stringify(obj)], { type:'application/json' });
   await uploadOne(path, blob, 'application/json');
 }
 
-async function uploadRunFolder({ userId, runId, resultBlob, dicoFile, tradFile, parentsFile }){
+async function uploadRunFolder({ userId, runId, resultBlob, dicoFile, tradFile, parentsFile, runName }) {
   const base = `${userId}/runs/${runId}`;
 
   await uploadOne(`${base}/result.csv`, resultBlob, resultContentType());
@@ -2008,57 +1983,47 @@ async function uploadRunFolder({ userId, runId, resultBlob, dicoFile, tradFile, 
   if(dicoFile){
     const ext = extFromFile(dicoFile);
     await uploadOne(
-  `${base}/dico.${ext}`,
-  dicoFile,
-  dicoFile.type || (ext === 'xls'
-    ? 'application/vnd.ms-excel'
-    : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-);
-
+      `${base}/dico.${ext}`,
+      dicoFile,
+      dicoFile.type || (ext === 'xls'
+        ? 'application/vnd.ms-excel'
+        : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    );
   }
   if(tradFile){
     const ext = extFromFile(tradFile);
     await uploadOne(
-  `${base}/trad.${ext}`,
-  tradFile,
-  tradFile.type || (ext === 'xls'
-    ? 'application/vnd.ms-excel'
-    : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-);
-
+      `${base}/trad.${ext}`,
+      tradFile,
+      tradFile.type || (ext === 'xls'
+        ? 'application/vnd.ms-excel'
+        : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    );
   }
   if(parentsFile){
     const ext = extFromFile(parentsFile);
     await uploadOne(
-  `${base}/parents.${ext}`,
-  parentsFile,
-  parentsFile.type || (ext === 'xls'
-    ? 'application/vnd.ms-excel'
-    : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-);
-
+      `${base}/parents.${ext}`,
+      parentsFile,
+      parentsFile.type || (ext === 'xls'
+        ? 'application/vnd.ms-excel'
+        : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    );
   }
 
   await overwriteJson(`${base}/meta.json`, {
-    name: '',
+    name: runName || '',
     created_at: new Date().toISOString()
   });
 
   return base;
 }
 
-
-/* =================== Historique =================== */
-const tblHistory = document.getElementById('tblHistory');
-const tblHistoryBody = tblHistory?.querySelector('tbody');
-const historyStatus = document.getElementById('historyStatus');
-const btnHistoryRefresh = document.getElementById('btnHistoryRefresh');
-
 function renderHistoryEmpty(message){
   if(tblHistoryBody){
     tblHistoryBody.innerHTML = `
       <tr>
-        <td colspan="5" style="color:var(--muted);font-weight:800">${escapeHtml(message || 'Aucun élément.')}</td>
+        <td colspan="5" style="color:var(--muted);font-weight:900">${escapeHtml(message || 'Aucun élément.')}</td>
       </tr>
     `;
   }
@@ -2080,14 +2045,17 @@ function makeActionBtn(label, attrs = {}, kind='ghost'){
   return `<button class="btn ${kind} mini" type="button" ${data} style="margin-right:6px;margin-top:6px">${escapeHtml(label)}</button>`;
 }
 
-/* Dirty tracking for run names */
-const dirtyRunName = new Set();
-function markDirty(runId, isDirty){
-  if(isDirty) dirtyRunName.add(runId);
-  else dirtyRunName.delete(runId);
-
-  const btn = tblHistoryBody?.querySelector(`button[data-action="saveName"][data-runid="${CSS.escape(runId)}"]`);
-  if(btn) btn.classList.toggle('hidden', !dirtyRunName.has(runId));
+async function fetchMetaNameSigned(path){
+  const { data: signed, error } = await supabaseClient.storage.from(STORAGE_BUCKET).createSignedUrl(path, 60);
+  if(error) return '';
+  try{
+    const r = await fetch(signed.signedUrl);
+    if(!r.ok) return '';
+    const j = await r.json();
+    return String(j?.name || '').trim();
+  }catch{
+    return '';
+  }
 }
 
 async function loadHistory(){
@@ -2099,11 +2067,12 @@ async function loadHistory(){
 
   const userId = session.user.id;
   if(historyStatus) historyStatus.textContent = 'Chargement…';
+
   if(!tblHistoryBody) return;
 
   const { data: items, error } = await supabaseClient.storage
     .from(STORAGE_BUCKET)
-    .list(`${userId}/runs`, { limit: 100, sortBy: { column: 'name', order: 'desc' } });
+    .list(`${userId}/runs`, { limit: 200, sortBy: { column: 'name', order: 'desc' } });
 
   if(error){
     renderHistoryEmpty('Impossible d’accéder à l’historique pour le moment. Réessaie plus tard.');
@@ -2111,6 +2080,7 @@ async function loadHistory(){
     return;
   }
 
+  // Supabase storage folders: often have id==null
   const folders = (items || []).filter(it => it?.id == null && it?.name);
   const runIds = folders.map(f=>f.name).filter(Boolean);
 
@@ -2123,12 +2093,13 @@ async function loadHistory(){
   async function listFilesInRun(runId){
     const { data, error } = await supabaseClient.storage
       .from(STORAGE_BUCKET)
-      .list(`${userId}/runs/${runId}`, { limit: 60, sortBy: { column: 'name', order: 'asc' } });
+      .list(`${userId}/runs/${runId}`, { limit: 80, sortBy: { column: 'name', order: 'asc' } });
     if(error) return { runId, files: [], metaName: '', error };
     const files = (data || []).filter(x => x?.id !== null);
     return { runId, files, metaName:'', error:null };
   }
 
+  // limited concurrency
   const maxConcurrent = 6;
   const listed = [];
   for(let i=0;i<runIds.length;i+=maxConcurrent){
@@ -2137,24 +2108,14 @@ async function loadHistory(){
     listed.push(...res);
   }
 
-  async function fetchMetaName(basePath){
-    const { data: signed, error } = await supabaseClient.storage.from(STORAGE_BUCKET).createSignedUrl(basePath, 60);
-    if(error) return '';
-    try{
-      const r = await fetch(signed.signedUrl);
-      if(!r.ok) return '';
-      const j = await r.json();
-      return String(j?.name || '').trim();
-    }catch{
-      return '';
-    }
-  }
-
+  // fetch meta names
   for(const r of listed){
     const meta = r.files.find(f => String(f.name||'').toLowerCase() === 'meta.json');
     if(meta){
       const path = `${userId}/runs/${r.runId}/meta.json`;
-      r.metaName = await fetchMetaName(path);
+      r.metaName = await fetchMetaNameSigned(path);
+    } else {
+      r.metaName = '';
     }
   }
 
@@ -2182,136 +2143,314 @@ async function loadHistory(){
     if(trad) actions += makeActionBtn('Trad', { action:'download', path:`${base}/${trad}`, filename:trad });
     if(parents) actions += makeActionBtn('Parents', { action:'download', path:`${base}/${parents}`, filename:parents });
 
+    actions += makeActionBtn('Renommer', { action:'rename', runid: runId }, 'ghost');
     actions += makeActionBtn('Supprimer', { action:'deleteRun', runid: runId }, 'danger');
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${escapeHtml(prettyRunDate(runId))}</td>
       <td>
-        <input type="text"
-          value="${escapeHtml(r.metaName || '')}"
-          placeholder="Nom du run…"
-          style="width:100%;background:#fff"
-          data-action="nameInput"
-          data-runid="${escapeHtml(runId)}"
-          data-initial="${escapeHtml(r.metaName || '')}"
-        >
-        <div style="margin-top:8px">
-          ${makeActionBtn('Enregistrer', { action:'saveName', runid: runId }, 'ghost')}
+        <div style="display:grid;gap:6px">
+          <input type="text" value="${escapeHtml(r.metaName || '')}" data-field="name" data-runid="${escapeHtml(runId)}" placeholder="Sans nom">
+          <div class="help">Modifie et clique sur “Enregistrer” via Renommer.</div>
         </div>
       </td>
-      <td style="font-size:12px;color:var(--muted)">${escapeHtml(runId)}</td>
+      <td><span class="badge info">${escapeHtml(runId)}</span></td>
       <td>${filesBadges}</td>
       <td>${actions}</td>
     `;
     tblHistoryBody.appendChild(tr);
-
-    markDirty(runId, false);
   });
 
-  if(historyStatus) historyStatus.textContent = `Runs: ${listed.length}`;
+  if(historyStatus) historyStatus.textContent = `${listed.length} run(s).`;
 }
 
 btnHistoryRefresh?.addEventListener('click', ()=> loadHistory().catch(()=>{}));
 
-tblHistoryBody?.addEventListener('input', (e)=>{
-  const input = e.target.closest('input[data-action="nameInput"]');
-  if(!input) return;
-  const runId = String(input.getAttribute('data-runid') || '');
-  const initial = String(input.getAttribute('data-initial') || '');
-  const current = String(input.value || '');
-  markDirty(runId, current.trim() !== initial.trim());
-});
-
+/* Delegation actions history */
 tblHistoryBody?.addEventListener('click', async (e)=>{
   const btn = e.target.closest('button');
   if(!btn) return;
 
-  const action = decodeURIComponent(btn.getAttribute('data-action') || '');
-  const runId = decodeURIComponent(btn.getAttribute('data-runid') || '');
-
+  const action = decodeURIComponent(btn.dataset.action || '');
   const session = await requireAuthOrGate('Connecte-toi pour accéder à ton historique.');
   if(!session) return;
 
   const userId = session.user.id;
-  const base = `${userId}/runs/${runId}`;
 
   if(action === 'download'){
-    const path = decodeURIComponent(btn.getAttribute('data-path') || '');
-    const fname = decodeURIComponent(btn.getAttribute('data-filename') || '') || path.split('/').pop();
+    const path = decodeURIComponent(btn.dataset.path || '');
+    const filename = decodeURIComponent(btn.dataset.filename || '');
     try{
-      await storageSignedDownload(path, fname);
+      await storageSignedDownload(path, filename);
     }catch(err){
-      showAlert({ title:'Téléchargement impossible', subtitle:'Historique', html: escapeHtml(err?.message || String(err)) });
+      showAlert({ title:'Erreur', subtitle:'Téléchargement', html: escapeHtml(err?.message || String(err)) });
     }
+    return;
   }
 
-  if(action === 'saveName'){
-    const input = tblHistoryBody.querySelector(`input[data-action="nameInput"][data-runid="${CSS.escape(runId)}"]`);
-    const name = (input?.value || '').trim();
+  if(action === 'rename'){
+    const runId = decodeURIComponent(btn.dataset.runid || '');
+    if(!runId) return;
+
+    const input = tblHistoryBody.querySelector(`input[data-field="name"][data-runid="${CSS.escape(runId)}"]`);
+    const current = (input?.value || '').trim();
+
+    const newName = await showPrompt({
+      title: 'Renommer le run',
+      subtitle: 'Ce nom s’affiche dans l’historique.',
+      placeholder: 'Ex: Novembre - redirections',
+      defaultValue: current
+    });
+    if(newName === null) return;
+
     try{
-      await overwriteJson(`${base}/meta.json`, { name, updated_at: new Date().toISOString() });
-      if(input){
-        input.setAttribute('data-initial', name);
-      }
-      markDirty(runId, false);
-      showAlert({ title:'OK', subtitle:'Nom enregistré', html:`<div>Le run a été renommé.</div>` });
-      loadHistory().catch(()=>{});
+      const metaPath = `${userId}/runs/${runId}/meta.json`;
+      await overwriteJson(metaPath, { name: newName || '', created_at: new Date().toISOString() });
+      await loadHistory();
     }catch(err){
-      showAlert({ title:'Erreur', subtitle:'Impossible d’enregistrer le nom', html: escapeHtml(err?.message || String(err)) });
+      showAlert({ title:'Erreur', subtitle:'Renommage', html: escapeHtml(err?.message || String(err)) });
     }
+    return;
   }
 
   if(action === 'deleteRun'){
-    const yes = await showConfirm({
+    const runId = decodeURIComponent(btn.dataset.runid || '');
+    if(!runId) return;
+
+    const ok = await showConfirm({
       title: 'Supprimer ce run ?',
-      subtitle: 'Cette action est définitive.',
-      html: `<div>Run : <b>${escapeHtml(runId)}</b></div><div class="help" style="margin-top:8px">Le résultat + les fichiers (listes/trad/parents) seront supprimés.</div>`,
+      subtitle: 'Action irréversible',
+      html: `<div>Le run <b>${escapeHtml(runId)}</b> et ses fichiers seront supprimés.</div>`,
       confirmText: 'Supprimer',
       danger: true
     });
-    if(!yes) return;
+    if(!ok) return;
 
     try{
+      // list files and delete
       const { data, error } = await supabaseClient.storage
         .from(STORAGE_BUCKET)
-        .list(`${base}`, { limit: 100, sortBy: { column: 'name', order: 'asc' } });
+        .list(`${userId}/runs/${runId}`, { limit: 200 });
 
       if(error) throw error;
-      const files = (data || []).filter(x => x?.id !== null).map(x => `${base}/${x.name}`);
+      const files = (data || []).filter(x => x?.name).map(x => `${userId}/runs/${runId}/${x.name}`);
       if(files.length){
-        const { error: rmErr } = await supabaseClient.storage.from(STORAGE_BUCKET).remove(files);
-        if(rmErr) throw rmErr;
+        const { error: delErr } = await supabaseClient.storage.from(STORAGE_BUCKET).remove(files);
+        if(delErr) throw delErr;
       }
-      showAlert({ title:'Supprimé', subtitle:'Run supprimé', html:`<div>Le run a été supprimé.</div>` });
-      loadHistory().catch(()=>{});
+      // remove folder listing entry is implicit after deleting files
+      await loadHistory();
     }catch(err){
-      showAlert({ title:'Erreur', subtitle:'Suppression impossible', html: escapeHtml(err?.message || String(err)) });
+      showAlert({ title:'Erreur', subtitle:'Suppression', html: escapeHtml(err?.message || String(err)) });
     }
+    return;
   }
 });
 
-/* =================== Misc (render initial status) =================== */
-dicoStatus.textContent = Object.keys(state.dicos||{}).length ? `${Object.keys(state.dicos).length} liste(s) chargée(s).` : '';
-tradStatus.textContent = Object.keys(state.translations||{}).length ? `${Object.keys(state.translations).length} traduction(s).` : '';
-parentsStatus.textContent = (state.parents||[]).length ? `${state.parents.length} URL(s) parent.` : '';
+/* ============================================================
+   MATCHING: RUN
+   ============================================================ */
+async function runMatching({ urls404, urls200, config, token }){
+  const ctrl = new AbortController();
+  // Timeout large (gros run) : 12 minutes. Ajuste si besoin.
+  const timeoutMs = 12 * 60 * 1000;
+  const t = setTimeout(()=>ctrl.abort(), timeoutMs);
 
-/* ✅ BOOTSTRAP SAFE (à la fin, quand tout est déclaré) */
+  try{
+    const r = await fetch(buildUrl(MATCH_ENDPOINT), {
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ urls_404: urls404, urls_200: urls200, config }),
+      signal: ctrl.signal
+    });
+
+    if(!r.ok){
+      let msg = 'Une erreur est survenue pendant le matching.';
+      try{
+        const j = await r.json();
+        msg = j?.error || j?.message || msg;
+      }catch{
+        // ignore
+      }
+      throw new Error(msg);
+    }
+
+    // le backend renvoie idéalement du CSV
+    const contentType = r.headers.get('content-type') || '';
+    if(contentType.includes('text/csv') || contentType.includes('application/octet-stream') || contentType.includes('text/plain')){
+      const blob = await r.blob();
+      return blob;
+    }
+
+    // fallback: JSON => convert to CSV minimal
+    const j = await r.json();
+    const rows = Array.isArray(j) ? j : (j?.rows || []);
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const csv = XLSX.utils.sheet_to_csv(ws, { FS: ';' });
+    return new Blob([csv], { type: resultContentType() });
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+btnClear.addEventListener('click', ()=>{
+  file404.value=''; file200.value='';
+  f404Status.textContent=''; f200Status.textContent='';
+  clearRunStatus();
+  uiProgressHide();
+  stopElapsedTimer();
+  stopTimeBasedProgress();
+  resetDownloadUI();
+});
+
+btnRun.addEventListener('click', async ()=>{
+  resetDownloadUI();
+  clearRunStatus();
+
+  const session = await requireAuthOrGate('Connecte-toi pour lancer un matching.');
+  if(!session) return;
+
+  const f404 = file404.files?.[0];
+  const f200 = file200.files?.[0];
+
+  if(!f404 || !f200){
+    showAlert({
+      title:'Fichiers manquants',
+      subtitle:'Il faut 2 fichiers',
+      html:`<div class="help">Importe un fichier <b>404</b> (onglet 404 / URL_404) et un fichier <b>200</b> (onglet 200 / URL_200).</div>`
+    });
+    return;
+  }
+
+  // Revalidate quickly before run
+  try{
+    if(!(await validate404File(f404))) return;
+    if(!(await validate200File(f200))) return;
+  }catch(e){
+    showAlert({ title:'Erreur', subtitle:'Validation des fichiers', html: escapeHtml(e?.message||String(e)) });
+    return;
+  }
+
+  // ask run name (optional)
+  const runName = await showPrompt({
+    title:'Nom du run',
+    subtitle:'Optionnel (tu peux renommer plus tard)',
+    placeholder:'Ex: Redirections - Semaine 52',
+    defaultValue:''
+  });
+
+  // extract urls
+  let urls404 = [], urls200 = [];
+  try{
+    setRunStatus('info', 'Lecture des fichiers…');
+    urls404 = await extractUrlsFrom404File(f404);
+    urls200 = await extractUrlsFrom200File(f200);
+  }catch(e){
+    setRunStatus('err', 'Erreur lecture fichiers');
+    showAlert({ title:'Erreur', subtitle:'Lecture des fichiers Excel', html: escapeHtml(e?.message||String(e)) });
+    return;
+  }
+
+  if(!urls404.length || !urls200.length){
+    showAlert({
+      title:'Fichiers vides',
+      subtitle:'Aucune URL détectée',
+      html:`<div class="help">Vérifie que les colonnes <b>URL_404</b> et <b>URL_200</b> contiennent des valeurs.</div>`
+    });
+    return;
+  }
+
+  const token = session.access_token;
+  const config = buildConfigFromUI();
+
+  uiProgressShow();
+  startElapsedTimer();
+  startTimeBasedProgress();
+  setRunStatus('info', `Matching en cours… (${urls404.length} URLs 404 / ${urls200.length} URLs 200)`);
+
+  btnRun.disabled = true;
+  btnClear.disabled = true;
+
+  const runId = makeRunId();
+
+  try{
+    const blob = await runMatching({ urls404, urls200, config, token });
+
+    // local download setup
+    lastResultBlob = blob;
+    resultFilename = `result_${runId}.csv`;
+    resultBlobUrl = URL.createObjectURL(blob);
+
+    downloadLabel.textContent = 'Résultat prêt';
+    downloadWrap.classList.remove('hidden');
+
+    // persist in storage
+    setRunStatus('info', 'Sauvegarde dans l’historique…');
+
+    await uploadRunFolder({
+      userId: session.user.id,
+      runId,
+      resultBlob: blob,
+      dicoFile: fileDico.files?.[0] || null,
+      tradFile: fileTrad.files?.[0] || null,
+      parentsFile: fileParents.files?.[0] || null,
+      runName: (runName ?? '') // null => ignore -> empty
+    });
+
+    // stats
+    const elapsedSec = (Date.now() - runStartTs) / 1000;
+    saveRunSeconds(elapsedSec);
+
+    finishProgressOK();
+    setRunStatus('ok', 'Terminé. Résultat enregistré.');
+
+    // recap modal
+    try{
+      const summary = await buildRunSummaryFromBlob(blob);
+      renderRunSummary(summary);
+      openRunSummaryModal();
+    }catch{
+      // si le CSV a un format inattendu, on n'affiche pas de recap
+    }
+
+    // refresh history if open
+    if(panels.history.classList.contains('active')) loadHistory().catch(()=>{});
+  }catch(e){
+    finishProgressError();
+    setRunStatus('err', 'Erreur pendant le matching');
+    showAlert({ title:'Erreur', subtitle:'Matching', html: escapeHtml(e?.message||String(e)) });
+  }finally{
+    stopElapsedTimer();
+    btnRun.disabled = false;
+    btnClear.disabled = false;
+  }
+});
+
+/* ============================================================
+   SUMMARY MODAL close actions
+   ============================================================ */
+btnRunSummaryOk?.addEventListener('click', closeRunSummaryModal);
+btnRunSummaryClose?.addEventListener('click', closeRunSummaryModal);
+runSummaryBackdrop?.addEventListener('click', closeRunSummaryModal);
+
+/* ============================================================
+   INITIAL BOOT
+   ============================================================ */
 (async function boot(){
+  // load local settings for current session (if any)
   const session = await getSessionSafe();
-
-  // important: CURRENT_USER_ID et state existent maintenant
   CURRENT_USER_ID = session?.user?.id || null;
-
   loadLocalForUser(CURRENT_USER_ID);
   hydrateUIFromState();
 
   await applyAuthUI(session || null);
   await route(session || null);
-
-  window.addEventListener('popstate', ()=> route().catch(()=>{}));
 })();
+
 </script>
-</div> <!-- ferme appShell -->
 </body>
 </html>
