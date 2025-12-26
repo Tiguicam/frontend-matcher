@@ -803,7 +803,10 @@ function hardResetUIAndLocal(){
   resetDownloadUI();
   clearRunStatus();
   closeRunSummaryModal();
-  stopFakeProgress();
+
+  /* ✅ MODIF: stop progress time-based (au lieu de fake) */
+  stopTimeBasedProgress();
+
   stopElapsedTimer();
   uiProgressHide();
 
@@ -1223,9 +1226,9 @@ enableFileReimport(fileParents);
 enableFileReimport(file404);
 enableFileReimport(file200);
 
-/* =================== Progress (fake + elapsed + ETA) =================== */
+/* =================== Progress (time-based + elapsed + ETA) =================== */
 let progressTimer = null;
-let fakeProgressTimer = null;
+let timeProgressTimer = null;   // ✅ timer pour progression basée sur le temps
 let runStartTs = 0;
 
 function fmtSeconds(totalSec){
@@ -1299,34 +1302,62 @@ function stopElapsedTimer(){
   if(progressTimer){ clearInterval(progressTimer); progressTimer = null; }
 }
 
-function startFakeProgress(){
-  stopFakeProgress();
-  let p = 0;
+function startTimeBasedProgress(){
+  stopTimeBasedProgress();
   setProgress(0);
 
-  fakeProgressTimer = setInterval(()=>{
-    if(p < 70) p += 2 + Math.random() * 2;
-    else if(p < 88) p += 0.6 + Math.random() * 0.8;
-    else if(p < 90) p += 0.2 + Math.random() * 0.3;
-    else p = 90;
+  // Si on n'a pas encore de moyenne, on part sur une estimation par défaut (ajuste si besoin)
+  const avg = loadAvgRunSeconds() ?? 60;     // 60s par défaut
+  const target = Math.max(10, avg);          // évite les divisions trop petites
 
+  timeProgressTimer = setInterval(() => {
+    const elapsedSec = (Date.now() - runStartTs) / 1000;
+
+    // Monte vers 95% jusqu'à target, puis "rampe" doucement vers 99%
+    let p;
+    if (elapsedSec <= target) {
+      p = (elapsedSec / target) * 95;
+    } else {
+      const extra = elapsedSec - target;
+      p = 95 + (1 - Math.exp(-extra / target)) * 4; // 95 → 99
+    }
+
+    p = Math.min(99, p);
     setProgress(p);
   }, 250);
 }
 
+function stopTimeBasedProgress(){
+  if(timeProgressTimer){
+    clearInterval(timeProgressTimer);
+    timeProgressTimer = null;
+  }
+}
+
+/* ✅ MODIF IMPORTANTE:
+   - On garde startFakeProgress/stopFakeProgress pour compatibilité (si ton code de run les appelle),
+     mais on les "redirige" vers la progression basée sur le temps.
+*/
+function startFakeProgress(){
+  startTimeBasedProgress();
+}
 function stopFakeProgress(){
-  if(fakeProgressTimer){ clearInterval(fakeProgressTimer); fakeProgressTimer = null; }
+  stopTimeBasedProgress();
 }
 
 function finishProgressOK(){
-  stopFakeProgress();
+  /* ✅ MODIF: on stoppe la progression time-based */
+  stopTimeBasedProgress();
+
   setProgress(100);
   if(progressPct){ progressPct.className = 'badge ok'; progressPct.textContent = '100%'; }
   if(progressLabel) progressLabel.textContent = 'Terminé';
 }
 
 function finishProgressError(){
-  stopFakeProgress();
+  /* ✅ MODIF: on stoppe la progression time-based */
+  stopTimeBasedProgress();
+
   if(progressPct){ progressPct.className = 'badge err'; progressPct.textContent = 'Erreur'; }
   if(progressLabel) progressLabel.textContent = 'Erreur';
 }
@@ -2286,275 +2317,6 @@ tblHistoryBody?.addEventListener('click', async (e)=>{
     }
   }
 });
-
-// =================== Option A (V2): score plus réaliste (soft) + blend avec backend ===================
-
-let __synIndex = null;
-
-function buildSynIndex(){
-  const idx = new Map();
-  const dicos = state?.dicos || {};
-  const weights = state?.dicoWeights || {};
-
-  for (const [dicoName, dict] of Object.entries(dicos)) {
-    const active = (weights[dicoName]?.active ?? true);
-    if (!active) continue;
-
-    for (const [key, synSet] of Object.entries(dict || {})) {
-      const canonical = String(key || '').toLowerCase();
-      if (!canonical) continue;
-
-      idx.set(canonical, canonical);
-      for (const s of Array.from(synSet || [])) {
-        const tok = String(s || '').toLowerCase();
-        if (tok) idx.set(tok, canonical);
-      }
-    }
-  }
-  return idx;
-}
-
-function canonicalizeToken(t){
-  const tok = String(t || '').toLowerCase().trim();
-  if (!tok) return '';
-
-  const tr = state?.translations?.[tok];
-  const translated = tr ? String(tr).toLowerCase().trim() : tok;
-
-  if (!__synIndex) __synIndex = buildSynIndex();
-  return __synIndex.get(translated) || translated;
-}
-
-function extractReference(url){
-  try{
-    const re = new RegExp(state?.cfg?.ref || '(?i)ref[:\\- ]?([a-z0-9\\-]+)');
-    const m = String(url || '').match(re);
-    return m && m[1] ? String(m[1]).toLowerCase() : null;
-  }catch{
-    return null;
-  }
-}
-
-function tokenizeUrlForScore(url){
-  try{
-    if(!url) return [];
-    const u = new URL(String(url));
-    const path = decodeURIComponent(u.pathname || '').toLowerCase();
-
-    let tokens = path
-      .split(/[^a-z0-9]+/i)
-      .map(x => x.trim())
-      .filter(Boolean);
-
-    tokens = tokens.filter(t => t.length >= 2);
-
-    const stop = state?.cfg?.stop ? state.cfg.stop : new Set();
-    tokens = tokens.filter(t => !stop.has(t));
-
-    tokens = tokens.map(canonicalizeToken).filter(Boolean);
-
-    return tokens;
-  }catch{
-    const s = String(url || '').toLowerCase();
-    return s
-      .split(/[^a-z0-9]+/i)
-      .map(x => x.trim())
-      .filter(x => x.length >= 2)
-      .map(canonicalizeToken)
-      .filter(Boolean);
-  }
-}
-
-function computeSoftStrictScorePct(url404, url200){
-  const refA = extractReference(url404);
-  const refB = extractReference(url200);
-  if (refA && refB && refA === refB) return 95;
-
-  const a = tokenizeUrlForScore(url404);
-  const b = tokenizeUrlForScore(url200);
-  if(!a.length || !b.length) return null;
-
-  const setA = new Set(a);
-  const setB = new Set(b);
-
-  let common = 0;
-  for (const t of setA) if (setB.has(t)) common++;
-
-  const recall = common / Math.max(1, setA.size);
-  const precision = common / Math.max(1, setB.size);
-
-  let score = (0.7 * recall + 0.3 * precision) * 100;
-
-  const extra = Math.max(0, setB.size - common);
-  const extraRatio = extra / Math.max(1, setB.size);
-  score -= extraRatio * 10;
-
-  score = Math.max(0, Math.min(100, score));
-  return Math.round(score);
-}
-
-async function rewriteScoreTotalPctInCsvBlob(inputBlob){
-  __synIndex = null;
-
-  const text = await inputBlob.text();
-  const wb = XLSX.read(text, { type: 'string', FS: ';' });
-  const sh = wb.Sheets[wb.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json(sh, { defval: "" });
-
-  const scoreKey = "Score_total_%";
-  const url404Key = "URL_404";
-  const url200Key = "URL_200_top1";
-
-  const alpha = 0.30; // 0.30 = plus doux, 0.60 = plus agressif
-
-  for(const r of rows){
-    const u404 = String(r[url404Key] ?? '').trim();
-    const u200 = String(r[url200Key] ?? '').trim();
-    if(!u404 || !u200) continue;
-
-    const backend = toNumberSafe(r[scoreKey]); // ta fonction existante
-    const strict = computeSoftStrictScorePct(u404, u200);
-    if(!Number.isFinite(strict)) continue;
-
-    let finalScore;
-    if (Number.isFinite(backend)) {
-      finalScore = Math.round((1 - alpha) * backend + alpha * strict);
-    } else {
-      finalScore = strict;
-    }
-
-    r[scoreKey] = `${finalScore}%`;
-  }
-
-  const newSh = XLSX.utils.json_to_sheet(rows);
-  const outCsv = XLSX.utils.sheet_to_csv(newSh, { FS: ';' });
-
-  return new Blob([outCsv], { type: resultContentType() });
-}
-
-/* =================== Matching =================== */
-btnClear.addEventListener('click',()=>{
-  file404.value='';
-  file200.value='';
-  f404Status.textContent='';
-  f200Status.textContent='';
-  resetDownloadUI();
-  clearRunStatus();
-  closeRunSummaryModal();
-
-  stopFakeProgress();
-  stopElapsedTimer();
-  uiProgressHide();
-});
-
-btnRun.addEventListener('click', async () => {
-  const session = await requireAuthOrGate('Connecte-toi pour lancer le traitement.');
-  if(!session) return;
-
-  resetDownloadUI();
-  closeRunSummaryModal();
-  clearRunStatus();
-
-  if (!file404.files?.[0] || !file200.files?.[0]) {
-    showAlert({ title:'Fichiers manquants', subtitle:'Traitement', html:'<div>Importe les <b>URLs à corriger</b> et les <b>URLs valides</b> avant de lancer.</div>' });
-    return;
-  }
-
-  try{
-    const ok404 = await validate404File(file404.files[0]);
-    if(!ok404) { file404.value=''; f404Status.textContent=''; return; }
-    const ok200 = await validate200File(file200.files[0]);
-    if(!ok200) { file200.value=''; f200Status.textContent=''; return; }
-  }catch(e){
-    showAlert({ title:'Erreur', subtitle:'Validation des fichiers', html: escapeHtml(e?.message||String(e)) });
-    return;
-  }
-
-  btnRun.disabled = true;
-  btnClear.disabled = true;
-
-  const oldBtnText = btnRun.textContent;
-  btnRun.textContent = 'Traitement…';
-  setRunStatus('info', 'Traitement en cours…');
-
-  uiProgressShow();
-  startElapsedTimer();
-  startFakeProgress();
-
-  try{
-    const form = new FormData();
-    form.append('file404', file404.files[0]);
-    form.append('file200', file200.files[0]);
-    form.append('config', JSON.stringify(buildConfigFromUI()));
-
-    const token = session?.access_token || null;
-    const headers = {};
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-
-    const r = await fetch(buildUrl('/match'), { method: 'POST', headers, body: form });
-    if (!r.ok) throw new Error('Une erreur est survenue pendant le traitement. Réessaie dans quelques instants.');
-
-    const rawBlob = await r.blob();
-    // ✅ Option A : on corrige uniquement Score_total_% côté front (CSV final)
-    const blob = await rewriteScoreTotalPctInCsvBlob(rawBlob);
-
-    
-    const elapsedSec = (Date.now() - runStartTs) / 1000;
-    saveRunSeconds(elapsedSec);
-    finishProgressOK();
-
-    resultBlobUrl = URL.createObjectURL(blob);
-    resultFilename = 'result.csv';
-    downloadWrap.classList.remove('hidden');
-    downloadLabel.textContent = 'Résultat prêt';
-
-    setRunStatus('info', 'Sauvegarde dans l’historique…');
-
-    const runId = makeRunId();
-    await uploadRunFolder({
-      userId: session.user.id,
-      runId,
-      resultBlob: blob,
-      dicoFile: fileDico?.files?.[0] || null,
-      tradFile: fileTrad?.files?.[0] || null,
-      parentsFile: fileParents?.files?.[0] || null
-    });
-
-    const pretty = prettyRunDate(runId);
-    const name = await showPrompt({
-      title:'Nom du run',
-      subtitle:`Run: ${pretty}`,
-      placeholder:'Ex: Décembre - site FR',
-      defaultValue:''
-    });
-
-    if(name !== null){
-      await overwriteJson(`${session.user.id}/runs/${runId}/meta.json`, { name, updated_at: new Date().toISOString() });
-    }
-
-    setRunStatus('ok', 'Terminé (run enregistré)');
-
-    try{
-      const summary = await buildRunSummaryFromBlob(blob);
-      renderRunSummary(summary);
-      openRunSummaryModal();
-    }catch{}
-
-  }catch(e){
-    finishProgressError();
-    clearRunStatus();
-    setRunStatus('err', 'Erreur');
-    showAlert({ title:'Erreur pendant le traitement', subtitle:'Traitement', html: escapeHtml(e?.message || String(e)) });
-    resetDownloadUI();
-  }finally{
-    stopFakeProgress();
-    stopElapsedTimer();
-    btnRun.disabled = false;
-    btnClear.disabled = false;
-    btnRun.textContent = oldBtnText;
-  }
-});
-
 
 /* =================== Misc (render initial status) =================== */
 dicoStatus.textContent = Object.keys(state.dicos||{}).length ? `${Object.keys(state.dicos).length} liste(s) chargée(s).` : '';
