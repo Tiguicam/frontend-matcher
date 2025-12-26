@@ -2544,6 +2544,302 @@ btnRun.addEventListener('click', async ()=>{
   }
 });
 
+
+
+/* =================== Matching run (Lancer) =================== */
+
+/** IMPORTANT
+ *  - Mets ici le vrai endpoint de ton backend.
+ *  - Dans ton diagnostic tu appelles /debug-url => OK.
+ *  - Pour le matching, je mets /match par défaut.
+ *  - Si ton backend expose un autre path (ex: /match-urls), change juste ici.
+ */
+const MATCH_ENDPOINT = '/match';
+
+function normalizeUrl(u){
+  return String(u || '').trim();
+}
+
+async function extractUrls404(file){
+  const wb = await readExcel(file);
+  const sh = findSheet(wb, '404');
+  if(!sh) throw new Error('Onglet "404" introuvable.');
+  const rows = XLSX.utils.sheet_to_json(sh, { defval: "" });
+
+  const urls = rows
+    .map(r => normalizeUrl(r.URL_404))
+    .filter(Boolean);
+
+  // dédoublonnage
+  return Array.from(new Set(urls));
+}
+
+async function extractUrls200(file){
+  const wb = await readExcel(file);
+  const sh = findSheet(wb, '200');
+  if(!sh) throw new Error('Onglet "200" introuvable.');
+  const rows = XLSX.utils.sheet_to_json(sh, { defval: "" });
+
+  const urls = rows
+    .map(r => normalizeUrl(r.URL_200))
+    .filter(Boolean);
+
+  return Array.from(new Set(urls));
+}
+
+async function callMatchApi({ urls404, urls200, config, token, signal }){
+  // Payload “compat” : on envoie plusieurs noms de champs (le backend ignore les extras en général).
+  // Objectif : éviter le 422 si ton modèle attend urls_404/urls_200 OU urls404/urls200.
+  const payload = {
+    config,
+
+    urls_404: urls404,
+    urls404: urls404,
+    url404: urls404,
+    url_404: urls404,
+    list_404: urls404,
+
+    urls_200: urls200,
+    urls200: urls200,
+    url200: urls200,
+    url_200: urls200,
+    list_200: urls200
+  };
+
+  const r = await fetch(buildUrl(MATCH_ENDPOINT), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify(payload),
+    signal
+  });
+
+  if(!r.ok){
+    // On essaye de remonter une erreur lisible (422 => FastAPI/Pydantic détaille souvent)
+    let details = '';
+    const ct = (r.headers.get('content-type') || '').toLowerCase();
+    try{
+      if(ct.includes('application/json')){
+        const j = await r.json();
+        details = JSON.stringify(j, null, 2);
+      }else{
+        details = await r.text();
+      }
+    }catch{
+      details = '';
+    }
+
+    const msg =
+      `API ${MATCH_ENDPOINT} → ${r.status}\n` +
+      (details ? `\nDétails:\n${details}` : '');
+
+    throw new Error(msg);
+  }
+
+  // Réponse: soit CSV direct, soit JSON contenant un CSV
+  const ct = (r.headers.get('content-type') || '').toLowerCase();
+
+  if(ct.includes('application/json')){
+    const j = await r.json();
+    if(typeof j?.csv === 'string' && j.csv.trim()){
+      return new Blob([j.csv], { type: 'text/csv; charset=utf-8' });
+    }
+    // fallback: si JSON sans csv
+    throw new Error('Réponse JSON reçue mais aucun champ "csv" détecté.');
+  }
+
+  // CSV / octet-stream / texte => blob
+  return await r.blob();
+}
+
+function setRunButtonsDisabled(disabled){
+  if(btnRun) btnRun.disabled = !!disabled;
+  if(btnClear) btnClear.disabled = !!disabled;
+}
+
+function clearMatchingUI(){
+  // Fichiers
+  if(file404) file404.value = '';
+  if(file200) file200.value = '';
+  if(f404Status) f404Status.textContent = '';
+  if(f200Status) f200Status.textContent = '';
+
+  // Statuts + progress + download
+  resetDownloadUI();
+  clearRunStatus();
+  closeRunSummaryModal();
+  stopFakeProgress();
+  stopTimeBasedProgress();
+  stopElapsedTimer();
+  uiProgressHide();
+}
+
+/* Bouton Réinitialiser */
+btnClear?.addEventListener('click', () => {
+  clearMatchingUI();
+});
+
+/* Bouton Lancer */
+btnRun?.addEventListener('click', async () => {
+  resetDownloadUI();
+  clearRunStatus();
+  closeRunSummaryModal();
+
+  // Auth obligatoire
+  const session = await requireAuthOrGate('Connecte-toi pour lancer un matching.');
+  if(!session) return;
+  const token = session.access_token;
+
+  // Fichiers obligatoires
+  const f404 = file404?.files?.[0];
+  const f200 = file200?.files?.[0];
+  if(!f404 || !f200){
+    showAlert({
+      title: 'Fichiers manquants',
+      subtitle: 'Traitement',
+      html: `<div>Tu dois importer :</div>
+            <ul>
+              <li>un fichier <b>404</b> (onglet 404, colonne URL_404)</li>
+              <li>un fichier <b>200</b> (onglet 200, colonne URL_200)</li>
+            </ul>`
+    });
+    return;
+  }
+
+  // (Re)validation
+  try{
+    const ok404 = await validate404File(f404);
+    const ok200 = await validate200File(f200);
+    if(!ok404 || !ok200) return;
+  }catch(e){
+    showAlert({ title:'Erreur', subtitle:'Validation des fichiers', html: escapeHtml(e?.message || String(e)) });
+    return;
+  }
+
+  // Nom du run (optionnel)
+  const runName = await showPrompt({
+    title: 'Nom du run',
+    subtitle: 'Optionnel (tu pourras renommer dans l’historique)',
+    placeholder: 'Ex: Décembre - redirections',
+    defaultValue: ''
+  });
+
+  const runId = makeRunId();
+  const cfg = buildConfigFromUI();
+
+  // UI start
+  setRunButtonsDisabled(true);
+  setRunStatus('info', 'Traitement en cours…');
+  uiProgressShow();
+  startElapsedTimer();
+  startTimeBasedProgress();
+
+  // Timeout sécurité
+  const ctrl = new AbortController();
+  const hardTimeout = setTimeout(() => ctrl.abort(), 12 * 60 * 1000); // 12 min
+
+  let blob = null;
+
+  try{
+    // Extraction URLs
+    const [urls404, urls200] = await Promise.all([
+      extractUrls404(f404),
+      extractUrls200(f200)
+    ]);
+
+    if(!urls404.length){
+      throw new Error('Aucune URL_404 détectée dans le fichier 404.');
+    }
+    if(!urls200.length){
+      throw new Error('Aucune URL_200 détectée dans le fichier 200.');
+    }
+
+    // Appel API
+    blob = await callMatchApi({
+      urls404,
+      urls200,
+      config: cfg,
+      token,
+      signal: ctrl.signal
+    });
+
+    // Download local
+    resultFilename = `redirect_match_${runId}.csv`;
+    resultBlobUrl = URL.createObjectURL(blob);
+    downloadLabel.textContent = 'Résultat prêt';
+    downloadWrap.classList.remove('hidden');
+
+    // Progress end
+    finishProgressOK();
+    stopTimeBasedProgress();
+    stopElapsedTimer();
+
+    // Sauvegarde moyenne runtime (pour ETA)
+    const seconds = (Date.now() - runStartTs) / 1000;
+    saveRunSeconds(seconds);
+
+    // Récap (modal)
+    try{
+      const summary = await buildRunSummaryFromBlob(blob);
+      renderRunSummary(summary);
+      openRunSummaryModal();
+    }catch{
+      // Si le CSV n’est pas lisible par XLSX (format différent), on n’empêche pas le download
+    }
+
+    // Upload historique (best-effort)
+    try{
+      const userId = session.user.id;
+
+      const dicoFile = fileDico?.files?.[0] || null;
+      const tradFile = fileTrad?.files?.[0] || null;
+      const parentsFile = fileParents?.files?.[0] || null;
+
+      const base = await uploadRunFolder({
+        userId,
+        runId,
+        resultBlob: blob,
+        dicoFile,
+        tradFile,
+        parentsFile
+      });
+
+      // Écrit le nom (si fourni) dans meta.json
+      await overwriteJson(`${base}/meta.json`, {
+        name: (runName ?? '') || '',
+        created_at: new Date().toISOString()
+      });
+
+    }catch{
+      // Si l’upload échoue, on garde au moins le fichier en download local
+    }
+
+    setRunStatus('ok', 'Terminé');
+
+  }catch(e){
+    finishProgressError();
+    stopTimeBasedProgress();
+    stopElapsedTimer();
+
+    setRunStatus('err', 'Erreur pendant le traitement');
+
+    showAlert({
+      title: 'Erreur pendant le traitement',
+      subtitle: 'Traitement',
+      html: `<div style="white-space:pre-wrap">${escapeHtml(e?.message || String(e))}</div>
+            <div class="help" style="margin-top:10px">
+              Si tu vois un <b>422</b>, c’est que le backend refuse le payload (noms/champs attendus).
+              Dans ce cas, donne-moi la réponse détaillée (le bloc “Détails”) et je l’aligne exactement sur ton modèle backend.
+            </div>`
+    });
+  }finally{
+    clearTimeout(hardTimeout);
+    setRunButtonsDisabled(false);
+  }
+});
+
 /* =================== Misc (render initial status) =================== */
 dicoStatus.textContent = Object.keys(state.dicos||{}).length ? `${Object.keys(state.dicos).length} liste(s) chargée(s).` : '';
 tradStatus.textContent = Object.keys(state.translations||{}).length ? `${Object.keys(state.translations).length} traduction(s).` : '';
