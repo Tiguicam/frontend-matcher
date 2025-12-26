@@ -1020,10 +1020,35 @@ function resetStateOnly(){
   };
 }
 
+function serializeDicos(){
+  const out = {};
+  for (const [name, dict] of Object.entries(state.dicos || {})) {
+    out[name] = {};
+    for (const [k, synSet] of Object.entries(dict || {})) {
+      out[name][k] = Array.from(synSet || []);
+    }
+  }
+  return out;
+}
+
+function deserializeDicos(raw){
+  const out = {};
+  for (const [name, dict] of Object.entries(raw || {})) {
+    out[name] = {};
+    for (const [k, arr] of Object.entries(dict || {})) {
+      out[name][k] = new Set(Array.isArray(arr) ? arr : []);
+    }
+  }
+  return out;
+}
+
+
 function saveLocal(){
   const key = getSettingsKey(CURRENT_USER_ID);
 
   localStorage.setItem(key, JSON.stringify({
+    dicos: serializeDicos(), // ✅ AJOUT ICI
+
     dicoWeights: state.dicoWeights,
     cfg: {
       stop: [...state.cfg.stop],
@@ -1055,6 +1080,8 @@ function loadLocalForUser(userId){
 
   try{
     const obj = JSON.parse(src);
+
+    state.dicos = deserializeDicos(obj.dicos || {}); // ✅ AJOUT ICI
 
     state.dicoWeights = obj.dicoWeights || {};
     state.cfg.stop = new Set(obj?.cfg?.stop || []);
