@@ -349,6 +349,8 @@
             <div class="grow"><label>Expressions multi-mots (virgules)</label><input id="inpMulti" type="text" /></div>
             <div class="grow"><label>Regex référence</label><input id="inpRegex" type="text" value="(?i)ref[:\\- ]?([a-z0-9\\-]+)" /></div>
             <div class="grow"><label>Score minimum</label><input id="inpMin" type="number" step="0.1" value="0.5" /></div>
+            <div class="help" style="margin-top:6px">Informationnel : ce seuil n’est pas utilisé comme filtre dans le moteur.</div>
+
           </div>
 
           <!-- Scoring mots + importance du sens -->
@@ -1175,7 +1177,7 @@ btnDownload.addEventListener('click', () => {
   if (!resultBlobUrl) return;
   const a = document.createElement('a');
   a.href = resultBlobUrl;
-  a.download = resultFilename || 'result.xlsx';
+  a.download = resultFilename || 'result.csv';
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -1784,18 +1786,22 @@ btnRunSummaryOk?.addEventListener('click', closeRunSummaryModal);
 runSummaryBackdrop?.addEventListener('click', closeRunSummaryModal);
 
 function toNumberSafe(v){
-  const n = Number(String(v ?? '').replace(',', '.'));
+  const s = String(v ?? '')
+    .replace('%', '')
+    .replace(/\s+/g, '')
+    .replace(',', '.');
+  const n = Number(s);
   return Number.isFinite(n) ? n : NaN;
 }
 
 async function buildRunSummaryFromBlob(blob){
   const text = await blob.text();
-  const wb = XLSX.read(text, { type: 'string' }); // CSV compatible
+  const wb = XLSX.read(text, { type: 'string', FS: ';' }); // ✅ ton CSV backend est en ';'
   const sh = wb.Sheets[wb.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json(sh, { defval: "" });
 
   const total = rows.length;
-  const scoreKey = "similarity_top1";
+  const scoreKey = "Score_total_%"; // ✅ colonne réellement produite par le backend
   const url404Key = "URL_404";
   const url200Key = "URL_200_top1";
 
@@ -1824,15 +1830,17 @@ async function buildRunSummaryFromBlob(blob){
 function renderRunSummary(summary){
   const { total, nScored, k, threshold, startLineExcel, worst5 } = summary;
 
-  const thrTxt = (threshold == null) ? 'n/a' : (Math.round(threshold * 100) / 100);
-  if(rsSubtitle) rsSubtitle.textContent = `Seuil de vérif (similarity_top1 ≤ ${thrTxt}) · basé sur similarity_top1.`;
+  const thrTxt = (threshold == null) ? 'n/a' : `${Math.round(threshold)}%`;
+  if(rsSubtitle) rsSubtitle.textContent = `Seuil de vérif (Score_total_% ≤ ${thrTxt}) · basé sur Score_total_%.`;
+
+
 
   const tableRows = worst5.map((x, idx) => {
-    const s = Math.round(x.score * 100) / 100;
+    const s = Math.round(x.score);
     return `
       <tr>
         <td>${idx + 1}</td>
-        <td><b>${s}</b></td>
+        <td><b>${s}%</b></td>
         <td class="rs-url">${escapeHtml(x.url404)}</td>
         <td class="rs-url">${escapeHtml(x.url200)}</td>
       </tr>
@@ -1849,7 +1857,7 @@ function renderRunSummary(summary){
       <div class="rs-kpi">
         <div class="label">Scores exploitables</div>
         <div class="value">${Number(nScored).toLocaleString('fr-FR')}</div>
-        <div class="hint">Basé sur “similarity_top1”</div>
+        <div class="hint">Basé sur “match_pct”</div>
       </div>
       <div class="rs-kpi">
         <div class="label">URLs à vérifier</div>
@@ -1860,7 +1868,9 @@ function renderRunSummary(summary){
 
     <div class="rs-callout">
       URLs à vérifier à partir de la ligne ${Number(startLineExcel).toLocaleString('fr-FR')}
-      (dans Excel après tri décroissant de <b>similarity_top1</b>).
+      (dans Excel après tri décroissant de <b>Score_total_%</b>).
+
+
     </div>
 
     <div class="card" style="padding:0;border-radius:12px;box-shadow:none;border:1px solid var(--border)">
@@ -1892,7 +1902,7 @@ btnRunSummaryDownload?.addEventListener('click', () => {
   if (!resultBlobUrl) return;
   const a = document.createElement('a');
   a.href = resultBlobUrl;
-  a.download = resultFilename || 'result.xlsx';
+  a.download = resultFilename || 'result.csv';
   document.body.appendChild(a);
   a.click();
   a.remove();
