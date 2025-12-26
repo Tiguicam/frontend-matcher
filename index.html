@@ -2287,6 +2287,104 @@ tblHistoryBody?.addEventListener('click', async (e)=>{
   }
 });
 
+// =================== Option A: recalcul "strict" de Score_total_% (front) ===================
+
+// Tokenize simple d'une URL (basé sur le chemin) pour éviter des % trop élevés sur des URL qui ne matchent pas vraiment
+function tokenizeUrlForStrictScore(url){
+  try{
+    if(!url) return [];
+    const u = new URL(String(url));
+    // On garde uniquement path (pas host, pas query) => plus stable
+    const path = decodeURIComponent(u.pathname || '').toLowerCase();
+
+    // split sur /, -, _, ., etc.
+    let tokens = path.split(/[^a-z0-9]+/i).map(t=>t.trim()).filter(Boolean);
+
+    // filtre de base: tokens trop courts (tu peux ajuster)
+    tokens = tokens.filter(t => t.length >= 2);
+
+    // optionnel: enlever stopwords configurés (si tu en as)
+    const stop = state?.cfg?.stop ? state.cfg.stop : new Set();
+    tokens = tokens.filter(t => !stop.has(t));
+
+    return tokens;
+  }catch{
+    // si URL invalide, fallback basique
+    const s = String(url || '').toLowerCase();
+    return s.split(/[^a-z0-9]+/i).map(t=>t.trim()).filter(t => t.length >= 2);
+  }
+}
+
+// Score strict : F1 (overlap) + pénalité pour tokens "en trop" dans l'URL proposée
+function computeStrictScorePct(url404, url200){
+  const a = tokenizeUrlForStrictScore(url404);
+  const b = tokenizeUrlForStrictScore(url200);
+
+  if(!a.length || !b.length) return null;
+
+  const setA = new Set(a);
+  const setB = new Set(b);
+
+  let common = 0;
+  for(const t of setA){
+    if(setB.has(t)) common++;
+  }
+
+  const recall = common / Math.max(1, setA.size);     // couverture des tokens de l'URL source
+  const precision = common / Math.max(1, setB.size);  // qualité des tokens de l'URL cible
+
+  const f1 = (precision + recall) > 0 ? (2 * precision * recall) / (precision + recall) : 0;
+
+  // tokens "en trop" dans l'URL proposée (souvent signe de mauvais match)
+  const extra = Math.max(0, setB.size - common);
+  const extraRatio = extra / Math.max(1, setB.size);
+
+  // Pénalité (tunable) : plus c'est “injustifié”, plus tu descends le %
+  // 25 = agressivité de la pénalité. Mets 15 si tu veux moins pénaliser.
+  let score = (f1 * 100) - (extraRatio * 25);
+
+  // Clamp 0..100
+  score = Math.max(0, Math.min(100, score));
+
+  // Arrondi (tu peux garder un decimal si tu veux)
+  return Math.round(score);
+}
+
+// Réécrit le CSV backend en remplaçant uniquement la colonne Score_total_%
+// (aucune colonne ajoutée)
+async function rewriteScoreTotalPctInCsvBlob(inputBlob){
+  const text = await inputBlob.text();
+
+  // Ton CSV est en ';'
+  const wb = XLSX.read(text, { type: 'string', FS: ';' });
+  const sh = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(sh, { defval: "" });
+
+  const scoreKey = "Score_total_%";
+  const url404Key = "URL_404";
+  const url200Key = "URL_200_top1";
+
+  for(const r of rows){
+    const u404 = String(r[url404Key] ?? '').trim();
+    const u200 = String(r[url200Key] ?? '').trim();
+
+    // si pas de suggestion => on laisse tel quel
+    if(!u404 || !u200) continue;
+
+    const strict = computeStrictScorePct(u404, u200);
+    if(strict == null) continue;
+
+    // IMPORTANT: on écrase seulement Score_total_%
+    // Tu peux choisir "85%" ou "85" selon ton usage Excel.
+    r[scoreKey] = `${strict}%`;
+  }
+
+  // Rebuild CSV
+  const newSh = XLSX.utils.json_to_sheet(rows);
+  const outCsv = XLSX.utils.sheet_to_csv(newSh, { FS: ';' });
+
+  return new Blob([outCsv], { type: resultContentType() });
+}
 
 /* =================== Matching =================== */
 btnClear.addEventListener('click',()=>{
@@ -2350,8 +2448,11 @@ btnRun.addEventListener('click', async () => {
     const r = await fetch(buildUrl('/match'), { method: 'POST', headers, body: form });
     if (!r.ok) throw new Error('Une erreur est survenue pendant le traitement. Réessaie dans quelques instants.');
 
-    const blob = await r.blob();
+    const rawBlob = await r.blob();
+    // ✅ Option A : on corrige uniquement Score_total_% côté front (CSV final)
+    const blob = await rewriteScoreTotalPctInCsvBlob(rawBlob);
 
+    
     const elapsedSec = (Date.now() - runStartTs) / 1000;
     saveRunSeconds(elapsedSec);
     finishProgressOK();
