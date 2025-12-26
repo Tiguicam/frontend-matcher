@@ -1148,7 +1148,7 @@ const elapsedTxt = document.getElementById('elapsedTxt');
 const etaTxt = document.getElementById('etaTxt');
 
 let resultBlobUrl = null;
-let resultFilename = 'result.xlsx';
+let resultFilename = 'result.csv';
 
 function setRunStatus(kind, text){
   if(!runStatus) return;
@@ -1166,7 +1166,7 @@ function resetDownloadUI() {
     URL.revokeObjectURL(resultBlobUrl);
     resultBlobUrl = null;
   }
-  resultFilename = 'result.xlsx';
+  resultFilename = 'result.csv';
   downloadWrap.classList.add('hidden');
   downloadLabel.textContent = '';
 }
@@ -1789,8 +1789,8 @@ function toNumberSafe(v){
 }
 
 async function buildRunSummaryFromBlob(blob){
-  const ab = await blob.arrayBuffer();
-  const wb = XLSX.read(ab, { type: 'array' });
+  const text = await blob.text();
+  const wb = XLSX.read(text, { type: 'string' }); // CSV compatible
   const sh = wb.Sheets[wb.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json(sh, { defval: "" });
 
@@ -1825,7 +1825,7 @@ function renderRunSummary(summary){
   const { total, nScored, k, threshold, startLineExcel, worst5 } = summary;
 
   const thrTxt = (threshold == null) ? 'n/a' : (Math.round(threshold * 100) / 100);
-  if(rsSubtitle) rsSubtitle.textContent = `Seuil de vérif (score ≤ ${thrTxt}) · basé sur les scores.`;
+  if(rsSubtitle) rsSubtitle.textContent = `Seuil de vérif (similarity_top1 ≤ ${thrTxt}) · basé sur similarity_top1.`;
 
   const tableRows = worst5.map((x, idx) => {
     const s = Math.round(x.score * 100) / 100;
@@ -1909,9 +1909,10 @@ function tsForRunId(){
 function rand4(){ return Math.random().toString(16).slice(2,6); }
 function makeRunId(){ return `${tsForRunId()}_${rand4()}`; }
 
-function excelContentType(){
-  return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+function resultContentType(){
+  return 'text/csv; charset=utf-8';
 }
+
 function extFromFile(file){
   const n = (file?.name || '').toLowerCase();
   if(n.endsWith('.xlsx')) return 'xlsx';
@@ -1959,19 +1960,40 @@ async function overwriteJson(path, obj){
 async function uploadRunFolder({ userId, runId, resultBlob, dicoFile, tradFile, parentsFile }){
   const base = `${userId}/runs/${runId}`;
 
-  await uploadOne(`${base}/result.xlsx`, resultBlob, excelContentType());
+  await uploadOne(`${base}/result.csv`, resultBlob, resultContentType());
 
   if(dicoFile){
     const ext = extFromFile(dicoFile);
-    await uploadOne(`${base}/dico.${ext}`, dicoFile, dicoFile.type || excelContentType());
+    await uploadOne(
+  `${base}/dico.${ext}`,
+  dicoFile,
+  dicoFile.type || (ext === 'xls'
+    ? 'application/vnd.ms-excel'
+    : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+);
+
   }
   if(tradFile){
     const ext = extFromFile(tradFile);
-    await uploadOne(`${base}/trad.${ext}`, tradFile, tradFile.type || excelContentType());
+    await uploadOne(
+  `${base}/trad.${ext}`,
+  tradFile,
+  tradFile.type || (ext === 'xls'
+    ? 'application/vnd.ms-excel'
+    : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+);
+
   }
   if(parentsFile){
     const ext = extFromFile(parentsFile);
-    await uploadOne(`${base}/parents.${ext}`, parentsFile, parentsFile.type || excelContentType());
+    await uploadOne(
+  `${base}/parents.${ext}`,
+  parentsFile,
+  parentsFile.type || (ext === 'xls'
+    ? 'application/vnd.ms-excel'
+    : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+);
+
   }
 
   await overwriteJson(`${base}/meta.json`, {
@@ -2106,7 +2128,7 @@ async function loadHistory(){
 
     let actions = '';
     if(fileNames.some(n => n.toLowerCase().startsWith('result'))){
-      actions += makeActionBtn('Télécharger résultat', { action:'download', path:`${base}/result.xlsx`, filename:'result.xlsx' });
+      actions += makeActionBtn('Télécharger résultat', { action:'download', path:`${base}/result.csv`, filename:'result.csv' });
     }
 
     const dico = fileNames.find(n => n.toLowerCase().startsWith('dico.'));
@@ -2296,7 +2318,7 @@ btnRun.addEventListener('click', async () => {
     finishProgressOK();
 
     resultBlobUrl = URL.createObjectURL(blob);
-    resultFilename = 'result.xlsx';
+    resultFilename = 'result.csv';
     downloadWrap.classList.remove('hidden');
     downloadLabel.textContent = 'Résultat prêt';
 
