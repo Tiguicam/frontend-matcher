@@ -151,6 +151,8 @@
     #runSummaryModal{position:fixed;inset:0;z-index:85;}
     .rs-backdrop{position:absolute;inset:0;background:rgba(15,23,42,.45);}
 
+    #appShell.hidden { display:none !important; }
+
     /* IMPORTANT: scrollable modal */
     .rs-modal{
       position:relative;
@@ -563,22 +565,18 @@ function closeGate(){
   appShell?.classList.remove('blurred');
 }
 
-/* -------- Hash routing --------
+/* -------- Path routing --------
    Routes:
-   - "#/login" : gate non-closable
-   - "#/" (ou vide) : normal
+   - "/login" : gate non-closable + masque le shell
+   - "/" : normal
 */
-function normRoute(){
-  const h = (location.hash || '').trim();
-  if(!h) return '#/';
-  if(h === '#') return '#/';
-  return h.startsWith('#') ? h : '#/' + h;
+function getPath(){
+  const p = (location.pathname || '/').replace(/\/+$/, '');
+  return p === '' ? '/' : p;
 }
-function isLoginRoute(){
-  return normRoute().toLowerCase() === '#/login';
-}
-function setRoute(hash){
-  location.hash = hash;
+
+function go(path){
+  history.pushState({}, '', path);
 }
 
 function withTimeout(promise, ms = 9000){
@@ -600,21 +598,35 @@ async function route(sessionOverride = null){
   const session = sessionOverride ?? await getSessionSafe();
   const authed = !!session;
 
-  if (isLoginRoute()){
-    if (authed){
-      // si déjà connecté, retour home
-      setRoute('#/');
+  const path = getPath();
+
+  // On n'accepte que "/" et "/login" (mais côté Vercel, les autres seront 404)
+  if(path !== '/' && path !== '/login'){
+    // Si jamais tu arrives ici (ex: env local sans vercel routes), on renvoie home
+    history.replaceState({}, '', '/');
+  }
+
+  const finalPath = getPath();
+
+  if(finalPath === '/login'){
+    if(authed){
+      history.replaceState({}, '', '/');
+      appShell?.classList.remove('hidden');
       closeGate();
       return;
     }
     setGateMsg('');
     openGate({ closable: false });
+    appShell?.classList.add('hidden');     // => "juste" la popup
     return;
   }
 
-  // route normale
+  // "/"
+  appShell?.classList.remove('hidden');
   closeGate();
-  if(!authed) return;
+
+  // si tu veux, tu peux garder un comportement "soft" :
+  // si pas connecté, tu peux laisser le front visible mais bloquer les actions via requireAuthOrGate
 }
 
 async function applyAuthUI(sessionOverride = null){
@@ -651,9 +663,11 @@ async function requireAuthOrGate(message){
     try{ await supabaseClient.auth.setSession({access_token,refresh_token}); }
     catch{}
     finally{
-      // on garde juste la route, on vire les tokens
-      setRoute('#/');
+      // On enlève totalement le hash (tokens + #/)
+      history.replaceState({}, '', '/');
+      route().catch(()=>{});
     }
+
   }
 })();
 
@@ -702,10 +716,12 @@ document.getElementById('btnLogin')?.addEventListener('click', async ()=>{
     setGateMsg('Connecté.');
     await applyAuthUI(data?.session || null);
 
-    setRoute('#/');
+    history.replaceState({}, '', '/');
+    await route(data?.session || null);
     closeGate();
 
     loadHistory().catch(()=>{});
+
   }catch(e){
     setGateMsg('Erreur: '+(e?.message || String(e)));
   }finally{
@@ -725,7 +741,7 @@ document.getElementById('btnSignup')?.addEventListener('click', async ()=>{
       supabaseClient.auth.signUp({
         email,
         password,
-        options:{ emailRedirectTo: `${location.origin}${location.pathname}#/login` }
+        options:{ emailRedirectTo: `${location.origin}/login` }
       }),
       12000
     );
@@ -738,26 +754,27 @@ document.getElementById('btnSignup')?.addEventListener('click', async ()=>{
   }
 });
 
-/* Topbar login => ouvre gate + route #/login */
 elLoginOpen.addEventListener('click', (e)=>{
   e.preventDefault();
   setGateMsg('');
   openGate({ closable: false });
-  if (!isLoginRoute()){
-    setRoute('#/login');
-  }
+  go('/login');
   route().catch(()=>{});
 });
 
+
 document.getElementById('btnGateClose')?.addEventListener('click', ()=>{
-  if (isLoginRoute()){
-    setRoute('#/');
+  // en /login, on retourne à /
+  if(getPath() === '/login'){
+    history.replaceState({}, '', '/');
+    appShell?.classList.remove('hidden');
     route().catch(()=>{});
     return;
   }
   closeGate();
   setGateMsg('');
 });
+
 
 /* Logout non-bloquant */
 elLogout.addEventListener('click', async () => {
@@ -801,7 +818,7 @@ elLogout.addEventListener('click', async () => {
   elHistoryTop.classList.add('hidden');
 
   CURRENT_USER_ID = null;
-  setRoute('#/');
+  history.replaceState({}, '', '/');
   await route(null).catch(()=>{});
 });
 
@@ -826,9 +843,10 @@ elHistoryTop?.addEventListener('click', async ()=>{
   openPanel('history');
 });
 
-window.addEventListener('hashchange', async ()=>{
+window.addEventListener('popstate', async ()=>{
   await route().catch(()=>{});
 });
+
 
 /* ============================================================
    MODALS
@@ -2523,8 +2541,7 @@ btnRun.addEventListener('click', async ()=>{
    INITIAL BOOT
    ============================================================ */
 (async function boot(){
-  // Assure une route par défaut
-  if(!location.hash) setRoute('#/');
+
 
   const session = await getSessionSafe();
   CURRENT_USER_ID = session?.user?.id || null;
