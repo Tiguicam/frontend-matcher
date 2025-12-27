@@ -588,7 +588,6 @@ async function route(sessionOverride = null){
     return;
   }
 
-  // si on n'est pas sur /login, on n'impose pas la gate : on la ferme si elle est ouverte
   closeGate();
   if(!authed) return;
 }
@@ -597,14 +596,12 @@ async function applyAuthUI(sessionOverride = null){
   const session = sessionOverride ?? await getSessionSafe();
   const authed = !!session;
 
-  // demandé : ne rien afficher en haut à droite quand déconnecté
   elUser.textContent = authed ? `Connecté : ${session.user.email}` : '';
 
   elLogout.classList.toggle('hidden', !authed);
   elLoginOpen.classList.toggle('hidden', authed);
   elHistoryTop.classList.toggle('hidden', !authed);
 
-  // si l'onglet Historique est visible, refresh
   if (authed && panels?.history?.classList.contains('active')) {
     loadHistory().catch(()=>{});
   }
@@ -748,13 +745,13 @@ elLogout.addEventListener('click', async () => {
     accessToken = data?.session?.access_token || null;
   } catch {}
 
-  // 1) déconnexion locale immédiate (ne dépend pas du réseau)
+  // 1) déconnexion locale immédiate
   try { await supabaseClient.auth.signOut({ scope: 'local' }); } catch {}
 
   // 2) reset UI/local
   hardResetUIAndLocal();
 
-  // 3) best effort global logout (ne bloque pas)
+  // 3) best effort global logout
   if (accessToken) {
     const ctrl = new AbortController();
     setTimeout(() => ctrl.abort(), 6000);
@@ -865,13 +862,13 @@ function showConfirm({ title='Confirmer', subtitle='', html='', confirmText='Con
   });
 }
 
-function showPrompt({ title='Nom du run', subtitle='Optionnel', placeholder='Ex: Décembre - redirections', defaultValue='' }){
+function showPrompt({ title='Nom', subtitle='Optionnel', placeholder='Ex: Décembre - redirections', defaultValue='' }){
   return new Promise((resolve)=>{
     mTitle.textContent = title;
     mSubtitle.textContent = subtitle || '';
     mBody.innerHTML = `
       <div style="display:grid;gap:10px">
-        <div class="help">Tu peux laisser vide et renommer plus tard dans l’historique.</div>
+        <div class="help">Tu peux laisser vide.</div>
         <input id="mInput" type="text" placeholder="${escapeHtml(placeholder)}" value="${escapeHtml(defaultValue)}">
       </div>
     `;
@@ -977,7 +974,6 @@ function loadLocalForUser(userId){
   const key = getSettingsKey(userId);
   const raw = localStorage.getItem(key);
 
-  // migration legacy
   const legacy = localStorage.getItem('matcherFront');
   const src = raw || legacy;
   if(!src) return;
@@ -995,11 +991,23 @@ function loadLocalForUser(userId){
     state.cfg.min = obj?.cfg?.min ?? 0.5;
 
     state.cfg.semanticWeight = Number(obj?.cfg?.semanticWeight ?? 80);
+    if(!Number.isFinite(state.cfg.semanticWeight)) state.cfg.semanticWeight = 80;
+
     state.cfg.tokenBonus = Number(obj?.cfg?.tokenBonus ?? 5);
+    if(!Number.isFinite(state.cfg.tokenBonus)) state.cfg.tokenBonus = 5;
+
     state.cfg.tokenMalus = Number(obj?.cfg?.tokenMalus ?? -10);
+    if(!Number.isFinite(state.cfg.tokenMalus)) state.cfg.tokenMalus = -10;
 
     state.translations = obj.translations || {};
     state.parents = obj.parents || [];
+
+    // Si dicos présents mais weights absents, on initialise
+    for (const name of Object.keys(state.dicos || {})) {
+      if (!state.dicoWeights[name]) {
+        state.dicoWeights[name] = { bonus: 1, malus: 1, active: true };
+      }
+    }
 
     if(!raw && legacy){
       localStorage.setItem(key, src);
@@ -1075,10 +1083,45 @@ const btnRunSummaryDownload = document.getElementById('btnRunSummaryDownload');
 const runSummaryBackdrop = document.getElementById('runSummaryBackdrop');
 
 function openRunSummaryModal(){ runSummaryModal?.classList.remove('hidden'); }
-function closeRunSummaryModal(){ runSummaryModal?.classList.add('hidden'); }
-btnRunSummaryClose?.addEventListener('click', closeRunSummaryModal);
-btnRunSummaryOk?.addEventListener('click', closeRunSummaryModal);
-runSummaryBackdrop?.addEventListener('click', closeRunSummaryModal);
+
+/* Demande de nom après récap */
+let pendingRunToName = null;         // { userId, runId, createdAt }
+let namingAskedForRunId = null;
+
+async function closeRunSummaryModal(){
+  runSummaryModal?.classList.add('hidden');
+
+  if(pendingRunToName && namingAskedForRunId !== pendingRunToName.runId){
+    namingAskedForRunId = pendingRunToName.runId;
+
+    const newName = await showPrompt({
+      title:'Nom du run',
+      subtitle:'Optionnel (après le récap)',
+      placeholder:'Ex: Redirections - Semaine 52',
+      defaultValue:''
+    });
+
+    if(newName !== null){
+      try{
+        const { userId, runId, createdAt } = pendingRunToName;
+        const metaPath = `${userId}/runs/${runId}/meta.json`;
+        await overwriteJson(metaPath, { name: newName || '', created_at: createdAt || new Date().toISOString() });
+
+        if(panels.history.classList.contains('active')) {
+          await loadHistory();
+        }
+      }catch(err){
+        showAlert({ title:'Erreur', subtitle:'Enregistrement du nom', html: escapeHtml(err?.message || String(err)) });
+      }
+    }
+
+    pendingRunToName = null;
+  }
+}
+
+btnRunSummaryClose?.addEventListener('click', ()=>{ closeRunSummaryModal().catch(()=>{}); });
+btnRunSummaryOk?.addEventListener('click', ()=>{ closeRunSummaryModal().catch(()=>{}); });
+runSummaryBackdrop?.addEventListener('click', ()=>{ closeRunSummaryModal().catch(()=>{}); });
 
 /* ============================================================
    INIT UI FROM STATE + RESET
@@ -1104,7 +1147,7 @@ function hydrateUIFromState(){
 function hardResetUIAndLocal(){
   try{
     localStorage.removeItem(getSettingsKey(CURRENT_USER_ID));
-    localStorage.removeItem('matcherFront'); // legacy
+    localStorage.removeItem('matcherFront');
   }catch{}
 
   resetStateOnly();
@@ -1133,10 +1176,12 @@ function hardResetUIAndLocal(){
 
   resetDownloadUI();
   clearRunStatus();
-  closeRunSummaryModal();
   stopTimeBasedProgress();
   stopElapsedTimer();
   uiProgressHide();
+
+  pendingRunToName = null;
+  namingAskedForRunId = null;
 
   renderDicoTable();
   updatePrefilterBadge();
@@ -1185,6 +1230,7 @@ btnDownload.addEventListener('click', () => {
 
 /* ============================================================
    PROGRESS (elapsed + ETA + time-based progress)
+   - amélioration : estimation basée sur "sec / URL_404"
    ============================================================ */
 let progressTimer = null;
 let timeProgressTimer = null;
@@ -1213,6 +1259,34 @@ function saveRunSeconds(seconds){
   try{ localStorage.setItem('matcherAvgRunSeconds', String(next)); }catch{}
 }
 
+/* NEW: avg sec per 404 */
+function loadAvgSecPer404(){
+  try{
+    const raw = localStorage.getItem('matcherAvgSecPer404');
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }catch{ return null; }
+}
+function saveAvgSecPer404(elapsedSec, nb404){
+  const sec = Number(elapsedSec);
+  const n404 = Number(nb404);
+  if(!Number.isFinite(sec) || sec <= 0) return;
+  if(!Number.isFinite(n404) || n404 <= 0) return;
+
+  const per = sec / n404;
+  const old = loadAvgSecPer404();
+  const next = old == null ? per : (old * 0.7 + per * 0.3);
+  try{ localStorage.setItem('matcherAvgSecPer404', String(next)); }catch{}
+}
+function estimateTargetSeconds(nb404){
+  const per = loadAvgSecPer404();
+  if(per != null){
+    return Math.max(10, Math.min(12 * 60, per * nb404));
+  }
+  const avg = loadAvgRunSeconds();
+  return Math.max(10, Math.min(12 * 60, avg ?? 60));
+}
+
 function uiProgressShow(){
   if(!progressWrap) return;
   progressWrap.classList.remove('hidden');
@@ -1235,30 +1309,31 @@ function setProgress(p){
   if(progressBar) progressBar.style.width = pct + '%';
   if(progressPct) progressPct.textContent = pct + '%';
 }
-function startElapsedTimer(){
+
+function startElapsedTimer(targetSec = null){
   runStartTs = Date.now();
-  const avg = loadAvgRunSeconds();
   stopElapsedTimer();
   progressTimer = setInterval(()=>{
     const elapsedSec = (Date.now() - runStartTs) / 1000;
     if(elapsedTxt) elapsedTxt.textContent = fmtSeconds(elapsedSec);
-    if(avg != null){
-      const remaining = Math.max(0, avg - elapsedSec);
+
+    if(targetSec != null){
+      const remaining = Math.max(0, targetSec - elapsedSec);
       etaTxt.textContent = fmtSeconds(remaining);
     } else {
-      etaTxt.textContent = 'calcul…';
+      etaTxt.textContent = '—';
     }
   }, 250);
 }
 function stopElapsedTimer(){
   if(progressTimer){ clearInterval(progressTimer); progressTimer = null; }
 }
-function startTimeBasedProgress(){
+
+function startTimeBasedProgress(targetSec = 60){
   stopTimeBasedProgress();
   setProgress(0);
 
-  const avg = loadAvgRunSeconds() ?? 60;
-  const target = Math.max(10, avg);
+  const target = Math.max(10, targetSec);
 
   timeProgressTimer = setInterval(() => {
     const elapsedSec = (Date.now() - runStartTs) / 1000;
@@ -1346,8 +1421,7 @@ btnApply.addEventListener('click',()=>{
    ============================================================ */
 const PROD_API_BASE = "https://url-matcher-70649262164.europe-west1.run.app";
 const DEV_API_BASE  = "https://url-matcher-70649262164.europe-west1.run.app";
-// adapte si besoin
-const MATCH_ENDPOINT = "/match"; // ex: "/run" selon ton backend
+const MATCH_ENDPOINT = "/match";
 
 function isLocalHost(){
   const h = location.hostname;
@@ -1506,9 +1580,10 @@ async function extractUrlsFrom200File(file){
 
 /* ============================================================
    DICTIONARY TABLE + PREFILTER BADGE
+   - Correction : weights initialisés si absents (cohérence UI/payload)
    ============================================================ */
 function updatePrefilterBadge(){
-  const active = Object.keys(state.dicoWeights).filter(n => (state.dicoWeights[n] || {}).active);
+  const active = Object.keys(state.dicoWeights || {}).filter(n => (state.dicoWeights[n] || {}).active);
   if(active.length>0){
     prefilterBadge.textContent='Filtrage : activé';
     prefilterBadge.className='badge ok';
@@ -1523,7 +1598,7 @@ function updatePrefilterBadge(){
 function renderDicoTable(){
   if(!tblDico) return;
   tblDico.innerHTML='';
-  const names=Object.keys(state.dicos);
+  const names=Object.keys(state.dicos || {});
   if(names.length===0){
     const tr=document.createElement('tr'); const td=document.createElement('td');
     td.colSpan=5; td.textContent='Aucune liste chargée.'; td.style.color='var(--muted)'; td.style.fontWeight='900';
@@ -1532,9 +1607,16 @@ function renderDicoTable(){
     return;
   }
 
+  // Assure que chaque dico a des weights
+  names.forEach(name=>{
+    if(!state.dicoWeights[name]){
+      state.dicoWeights[name] = { bonus:1, malus:1, active:true };
+    }
+  });
+
   names.forEach(name=>{
     const dict=state.dicos[name];
-    const w=state.dicoWeights[name]||{bonus:1,malus:1,active:true};
+    const w=state.dicoWeights[name] || {bonus:1,malus:1,active:true};
     const entries=Object.keys(dict).length;
 
     const tr=document.createElement('tr');
@@ -1559,6 +1641,7 @@ function renderDicoTable(){
     tblDico.appendChild(tr);
   });
 
+  saveLocal();
   updatePrefilterBadge();
 }
 renderDicoTable();
@@ -1598,6 +1681,13 @@ fileDico.addEventListener('change', async ()=>{
         }
       });
     });
+
+    // IMPORTANT: init weights for each dico if missing (cohérence UI/payload)
+    for (const name of Object.keys(state.dicos || {})) {
+      if (!state.dicoWeights[name]) {
+        state.dicoWeights[name] = { bonus: 1, malus: 1, active: true };
+      }
+    }
 
     saveLocal();
     renderDicoTable();
@@ -1691,6 +1781,7 @@ file200.addEventListener('change', async ()=>{
 
 /* ============================================================
    BUILD CONFIG (payload API)
+   - Correction : weights par défaut si absent, pour cohérence
    ============================================================ */
 function buildConfigFromUI(){
   const dictionaries = Object.entries(state.dicos).map(([name, dict]) => ({
@@ -1699,10 +1790,17 @@ function buildConfigFromUI(){
   }));
 
   const bonus = {}, malus = {}, prefilter = {};
-  Object.entries(state.dicoWeights || {}).forEach(([name, w]) => {
-    bonus[name] = Number(w?.bonus || 0);
-    malus[name] = Number(w?.malus || 0);
-    prefilter[name] = !!w?.active;
+
+  // assure weights pour chaque dico présent
+  for (const name of Object.keys(state.dicos || {})) {
+    if (!state.dicoWeights[name]) state.dicoWeights[name] = { bonus: 1, malus: 1, active: true };
+  }
+
+  Object.keys(state.dicos || {}).forEach((name)=>{
+    const w = state.dicoWeights[name] || { bonus: 1, malus: 1, active: true };
+    bonus[name] = Number.isFinite(Number(w.bonus)) ? Number(w.bonus) : 1;
+    malus[name] = Number.isFinite(Number(w.malus)) ? Number(w.malus) : 1;
+    prefilter[name] = !!w.active;
   });
 
   return {
@@ -1806,7 +1904,9 @@ function toNumberSafe(v){
 
 async function buildRunSummaryFromBlob(blob){
   const text = await blob.text();
-  const wb = XLSX.read(text, { type: 'string', FS: ';' });
+
+  // Tentative parse CSV ; si ça casse, le try/catch côté run gère
+  const wb = XLSX.read(text, { type: 'string' });
   const sh = wb.Sheets[wb.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json(sh, { defval: "" });
 
@@ -1831,9 +1931,6 @@ async function buildRunSummaryFromBlob(blob){
   const bottom = scored.slice(startIndex);
 
   const threshold = (nScored > 0) ? scored[startIndex]?.score : null;
-
-  // Excel line number when sorted desc by score:
-  // header line 1, first row line 2 => startIndex row is line startIndex+2
   const startLineExcel = (startIndex + 2);
 
   const worst5 = bottom.slice().sort((a,b)=> a.score - b.score).slice(0, 5);
@@ -1975,7 +2072,7 @@ async function overwriteJson(path, obj){
   await uploadOne(path, blob, 'application/json');
 }
 
-async function uploadRunFolder({ userId, runId, resultBlob, dicoFile, tradFile, parentsFile, runName }) {
+async function uploadRunFolder({ userId, runId, resultBlob, dicoFile, tradFile, parentsFile, runName, createdAt }) {
   const base = `${userId}/runs/${runId}`;
 
   await uploadOne(`${base}/result.csv`, resultBlob, resultContentType());
@@ -2013,7 +2110,7 @@ async function uploadRunFolder({ userId, runId, resultBlob, dicoFile, tradFile, 
 
   await overwriteJson(`${base}/meta.json`, {
     name: runName || '',
-    created_at: new Date().toISOString()
+    created_at: createdAt || new Date().toISOString()
   });
 
   return base;
@@ -2080,7 +2177,6 @@ async function loadHistory(){
     return;
   }
 
-  // Supabase storage folders: often have id==null
   const folders = (items || []).filter(it => it?.id == null && it?.name);
   const runIds = folders.map(f=>f.name).filter(Boolean);
 
@@ -2099,7 +2195,6 @@ async function loadHistory(){
     return { runId, files, metaName:'', error:null };
   }
 
-  // limited concurrency
   const maxConcurrent = 6;
   const listed = [];
   for(let i=0;i<runIds.length;i+=maxConcurrent){
@@ -2108,7 +2203,6 @@ async function loadHistory(){
     listed.push(...res);
   }
 
-  // fetch meta names
   for(const r of listed){
     const meta = r.files.find(f => String(f.name||'').toLowerCase() === 'meta.json');
     if(meta){
@@ -2152,7 +2246,7 @@ async function loadHistory(){
       <td>
         <div style="display:grid;gap:6px">
           <input type="text" value="${escapeHtml(r.metaName || '')}" data-field="name" data-runid="${escapeHtml(runId)}" placeholder="Sans nom">
-          <div class="help">Modifie et clique sur “Enregistrer” via Renommer.</div>
+          <div class="help">Modifie et clique sur “Renommer”.</div>
         </div>
       </td>
       <td><span class="badge info">${escapeHtml(runId)}</span></td>
@@ -2206,6 +2300,7 @@ tblHistoryBody?.addEventListener('click', async (e)=>{
 
     try{
       const metaPath = `${userId}/runs/${runId}/meta.json`;
+      // On ne peut pas relire created_at facilement ici sans fetch : on garde "maintenant"
       await overwriteJson(metaPath, { name: newName || '', created_at: new Date().toISOString() });
       await loadHistory();
     }catch(err){
@@ -2228,7 +2323,6 @@ tblHistoryBody?.addEventListener('click', async (e)=>{
     if(!ok) return;
 
     try{
-      // list files and delete
       const { data, error } = await supabaseClient.storage
         .from(STORAGE_BUCKET)
         .list(`${userId}/runs/${runId}`, { limit: 200 });
@@ -2239,7 +2333,6 @@ tblHistoryBody?.addEventListener('click', async (e)=>{
         const { error: delErr } = await supabaseClient.storage.from(STORAGE_BUCKET).remove(files);
         if(delErr) throw delErr;
       }
-      // remove folder listing entry is implicit after deleting files
       await loadHistory();
     }catch(err){
       showAlert({ title:'Erreur', subtitle:'Suppression', html: escapeHtml(err?.message || String(err)) });
@@ -2253,7 +2346,6 @@ tblHistoryBody?.addEventListener('click', async (e)=>{
    ============================================================ */
 async function runMatching({ urls404, urls200, config, token }){
   const ctrl = new AbortController();
-  // Timeout large (gros run) : 12 minutes. Ajuste si besoin.
   const timeoutMs = 12 * 60 * 1000;
   const t = setTimeout(()=>ctrl.abort(), timeoutMs);
 
@@ -2273,20 +2365,16 @@ async function runMatching({ urls404, urls200, config, token }){
       try{
         const j = await r.json();
         msg = j?.error || j?.message || msg;
-      }catch{
-        // ignore
-      }
+      }catch{}
       throw new Error(msg);
     }
 
-    // le backend renvoie idéalement du CSV
     const contentType = r.headers.get('content-type') || '';
     if(contentType.includes('text/csv') || contentType.includes('application/octet-stream') || contentType.includes('text/plain')){
       const blob = await r.blob();
       return blob;
     }
 
-    // fallback: JSON => convert to CSV minimal
     const j = await r.json();
     const rows = Array.isArray(j) ? j : (j?.rows || []);
     const ws = XLSX.utils.json_to_sheet(rows);
@@ -2305,6 +2393,8 @@ btnClear.addEventListener('click', ()=>{
   stopElapsedTimer();
   stopTimeBasedProgress();
   resetDownloadUI();
+  pendingRunToName = null;
+  namingAskedForRunId = null;
 });
 
 btnRun.addEventListener('click', async ()=>{
@@ -2326,7 +2416,6 @@ btnRun.addEventListener('click', async ()=>{
     return;
   }
 
-  // Revalidate quickly before run
   try{
     if(!(await validate404File(f404))) return;
     if(!(await validate200File(f200))) return;
@@ -2335,15 +2424,6 @@ btnRun.addEventListener('click', async ()=>{
     return;
   }
 
-  // ask run name (optional)
-  const runName = await showPrompt({
-    title:'Nom du run',
-    subtitle:'Optionnel (tu peux renommer plus tard)',
-    placeholder:'Ex: Redirections - Semaine 52',
-    defaultValue:''
-  });
-
-  // extract urls
   let urls404 = [], urls200 = [];
   try{
     setRunStatus('info', 'Lecture des fichiers…');
@@ -2367,20 +2447,24 @@ btnRun.addEventListener('click', async ()=>{
   const token = session.access_token;
   const config = buildConfigFromUI();
 
+  // NEW: progress/ETA basé sur temps estimé (sec/url404)
+  const targetSec = estimateTargetSeconds(urls404.length);
+
   uiProgressShow();
-  startElapsedTimer();
-  startTimeBasedProgress();
+  startElapsedTimer(targetSec);
+  startTimeBasedProgress(targetSec);
+
   setRunStatus('info', `Matching en cours… (${urls404.length} URLs 404 / ${urls200.length} URLs 200)`);
 
   btnRun.disabled = true;
   btnClear.disabled = true;
 
   const runId = makeRunId();
+  const createdAt = new Date().toISOString();
 
   try{
     const blob = await runMatching({ urls404, urls200, config, token });
 
-    // local download setup
     lastResultBlob = blob;
     resultFilename = `result_${runId}.csv`;
     resultBlobUrl = URL.createObjectURL(blob);
@@ -2388,7 +2472,6 @@ btnRun.addEventListener('click', async ()=>{
     downloadLabel.textContent = 'Résultat prêt';
     downloadWrap.classList.remove('hidden');
 
-    // persist in storage
     setRunStatus('info', 'Sauvegarde dans l’historique…');
 
     await uploadRunFolder({
@@ -2398,15 +2481,21 @@ btnRun.addEventListener('click', async ()=>{
       dicoFile: fileDico.files?.[0] || null,
       tradFile: fileTrad.files?.[0] || null,
       parentsFile: fileParents.files?.[0] || null,
-      runName: (runName ?? '') // null => ignore -> empty
+      runName: '',       // demandé : le nom sera demandé après le récap
+      createdAt
     });
 
-    // stats
+    // stats (moyenne globale + moyenne sec/url404)
     const elapsedSec = (Date.now() - runStartTs) / 1000;
     saveRunSeconds(elapsedSec);
+    saveAvgSecPer404(elapsedSec, urls404.length);
 
     finishProgressOK();
     setRunStatus('ok', 'Terminé. Résultat enregistré.');
+
+    // Prépare la demande de nom après récap
+    pendingRunToName = { userId: session.user.id, runId, createdAt };
+    namingAskedForRunId = null;
 
     // recap modal
     try{
@@ -2414,10 +2503,11 @@ btnRun.addEventListener('click', async ()=>{
       renderRunSummary(summary);
       openRunSummaryModal();
     }catch{
-      // si le CSV a un format inattendu, on n'affiche pas de recap
+      // si le CSV a un format inattendu, pas de recap -> on demande le nom quand même
+      // (on déclenche la demande immédiatement)
+      await closeRunSummaryModal().catch(()=>{});
     }
 
-    // refresh history if open
     if(panels.history.classList.contains('active')) loadHistory().catch(()=>{});
   }catch(e){
     finishProgressError();
@@ -2431,17 +2521,9 @@ btnRun.addEventListener('click', async ()=>{
 });
 
 /* ============================================================
-   SUMMARY MODAL close actions
-   ============================================================ */
-btnRunSummaryOk?.addEventListener('click', closeRunSummaryModal);
-btnRunSummaryClose?.addEventListener('click', closeRunSummaryModal);
-runSummaryBackdrop?.addEventListener('click', closeRunSummaryModal);
-
-/* ============================================================
    INITIAL BOOT
    ============================================================ */
 (async function boot(){
-  // load local settings for current session (if any)
   const session = await getSessionSafe();
   CURRENT_USER_ID = session?.user?.id || null;
   loadLocalForUser(CURRENT_USER_ID);
@@ -2450,7 +2532,6 @@ runSummaryBackdrop?.addEventListener('click', closeRunSummaryModal);
   await applyAuthUI(session || null);
   await route(session || null);
 })();
-
 </script>
 </body>
 </html>
