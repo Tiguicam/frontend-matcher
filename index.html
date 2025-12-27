@@ -521,20 +521,32 @@
 
 <script>
 /* ============================================================
-   SUPABASE + AUTH + ROUTING /login + LOGOUT NON-BLOQUANT
+   DOM REFS + TABS/PANELS INIT EN PREMIER (FIX TDZ)
    ============================================================ */
-const supabaseClient = window.supabase.createClient(
-  window.SUPABASE_URL,
-  window.SUPABASE_PUBLISHABLE_KEY,
-  { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
-);
-
 const elGate = document.getElementById('gate');
 const elLoginOpen = document.getElementById('btnLoginOpen');
 const elLogout = document.getElementById('btnLogout');
 const elUser = document.getElementById('currentUser');
 const elHistoryTop = document.getElementById('btnHistoryTop');
 const appShell = document.getElementById('appShell');
+
+tabs = document.querySelectorAll('.tab');
+panels = {
+  config: document.getElementById('panel-config'),
+  test: document.getElementById('panel-test'),
+  matching: document.getElementById('panel-matching'),
+  history: document.getElementById('panel-history')
+};
+
+
+/* ============================================================
+   SUPABASE + AUTH + HASH ROUTING (#/login) + LOGOUT NON-BLOQUANT
+   ============================================================ */
+const supabaseClient = window.supabase.createClient(
+  window.SUPABASE_URL,
+  window.SUPABASE_PUBLISHABLE_KEY,
+  { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
+);
 
 function setGateMsg(msg){ const el=document.getElementById('authStatus'); if(el) el.textContent=msg||''; }
 function busyAuth(on){ ['btnLogin','btnSignup'].forEach(id=>{const b=document.getElementById(id); if(b) b.disabled=!!on; }); }
@@ -550,12 +562,22 @@ function closeGate(){
   appShell?.classList.remove('blurred');
 }
 
-function normPath(){
-  const p = (location.pathname || '/').replace(/\/+$/, '');
-  return p === '' ? '/' : p;
+/* -------- Hash routing --------
+   Routes:
+   - "#/login" : gate non-closable
+   - "#/" (ou vide) : normal
+*/
+function normRoute(){
+  const h = (location.hash || '').trim();
+  if(!h) return '#/';
+  if(h === '#') return '#/';
+  return h.startsWith('#') ? h : '#/' + h;
 }
 function isLoginRoute(){
-  return normPath().toLowerCase() === '/login';
+  return normRoute().toLowerCase() === '#/login';
+}
+function setRoute(hash){
+  location.hash = hash;
 }
 
 function withTimeout(promise, ms = 9000){
@@ -579,7 +601,8 @@ async function route(sessionOverride = null){
 
   if (isLoginRoute()){
     if (authed){
-      history.replaceState({}, '', '/');
+      // si déjà connecté, retour home
+      setRoute('#/');
       closeGate();
       return;
     }
@@ -588,9 +611,13 @@ async function route(sessionOverride = null){
     return;
   }
 
+  // route normale
   closeGate();
   if(!authed) return;
 }
+
+let panels = {};
+let tabs = [];
 
 async function applyAuthUI(sessionOverride = null){
   const session = sessionOverride ?? await getSessionSafe();
@@ -619,13 +646,16 @@ async function requireAuthOrGate(message){
 
 /* Support tokens éventuels dans l’URL (magic link) */
 (async function bootstrapFromHash(){
-  const hash=new URLSearchParams(location.hash.slice(1));
+  const hash=new URLSearchParams(location.hash.replace('#','').split('?')[1] || '');
   const access_token=hash.get('access_token');
   const refresh_token=hash.get('refresh_token');
   if(access_token && refresh_token){
     try{ await supabaseClient.auth.setSession({access_token,refresh_token}); }
     catch{}
-    finally{ history.replaceState(null,'',location.pathname+location.search); }
+    finally{
+      // on garde juste la route, on vire les tokens
+      setRoute('#/');
+    }
   }
 })();
 
@@ -674,7 +704,7 @@ document.getElementById('btnLogin')?.addEventListener('click', async ()=>{
     setGateMsg('Connecté.');
     await applyAuthUI(data?.session || null);
 
-    history.replaceState({}, '', '/');
+    setRoute('#/');
     closeGate();
 
     loadHistory().catch(()=>{});
@@ -697,7 +727,7 @@ document.getElementById('btnSignup')?.addEventListener('click', async ()=>{
       supabaseClient.auth.signUp({
         email,
         password,
-        options:{ emailRedirectTo: `${location.origin}/login` }
+        options:{ emailRedirectTo: `${location.origin}${location.pathname}#/login` }
       }),
       12000
     );
@@ -710,20 +740,20 @@ document.getElementById('btnSignup')?.addEventListener('click', async ()=>{
   }
 });
 
-/* Clic topbar login => ouvre gate + pousse /login */
+/* Topbar login => ouvre gate + route #/login */
 elLoginOpen.addEventListener('click', (e)=>{
   e.preventDefault();
   setGateMsg('');
   openGate({ closable: false });
   if (!isLoginRoute()){
-    history.pushState({}, '', '/login');
+    setRoute('#/login');
   }
   route().catch(()=>{});
 });
 
 document.getElementById('btnGateClose')?.addEventListener('click', ()=>{
   if (isLoginRoute()){
-    history.pushState({}, '', '/');
+    setRoute('#/');
     route().catch(()=>{});
     return;
   }
@@ -773,21 +803,13 @@ elLogout.addEventListener('click', async () => {
   elHistoryTop.classList.add('hidden');
 
   CURRENT_USER_ID = null;
+  setRoute('#/');
   await route(null).catch(()=>{});
-  location.reload();
 });
 
 /* ============================================================
    UI TABS / PANELS
    ============================================================ */
-const tabs = document.querySelectorAll('.tab');
-const panels = {
-  config: document.getElementById('panel-config'),
-  test: document.getElementById('panel-test'),
-  matching: document.getElementById('panel-matching'),
-  history: document.getElementById('panel-history')
-};
-
 function openPanel(name){
   Object.values(panels).forEach(p=>p.classList.remove('active'));
   if(panels[name]) panels[name].classList.add('active');
@@ -798,7 +820,6 @@ function openPanel(name){
 
   if(name === 'history') loadHistory().catch(()=>{});
 }
-
 tabs.forEach(t=> t.addEventListener('click',()=>openPanel(t.dataset.tab)));
 
 elHistoryTop?.addEventListener('click', async ()=>{
@@ -807,7 +828,7 @@ elHistoryTop?.addEventListener('click', async ()=>{
   openPanel('history');
 });
 
-window.addEventListener('popstate', async ()=>{
+window.addEventListener('hashchange', async ()=>{
   await route().catch(()=>{});
 });
 
@@ -1002,7 +1023,6 @@ function loadLocalForUser(userId){
     state.translations = obj.translations || {};
     state.parents = obj.parents || [];
 
-    // Si dicos présents mais weights absents, on initialise
     for (const name of Object.keys(state.dicos || {})) {
       if (!state.dicoWeights[name]) {
         state.dicoWeights[name] = { bonus: 1, malus: 1, active: true };
@@ -1016,7 +1036,7 @@ function loadLocalForUser(userId){
 }
 
 /* ============================================================
-   DOM REFS
+   DOM REFS (rest)
    ============================================================ */
 const fileDico=document.getElementById('fileDico');
 const fileTrad=document.getElementById('fileTrad');
@@ -1230,7 +1250,6 @@ btnDownload.addEventListener('click', () => {
 
 /* ============================================================
    PROGRESS (elapsed + ETA + time-based progress)
-   - amélioration : estimation basée sur "sec / URL_404"
    ============================================================ */
 let progressTimer = null;
 let timeProgressTimer = null;
@@ -1259,7 +1278,7 @@ function saveRunSeconds(seconds){
   try{ localStorage.setItem('matcherAvgRunSeconds', String(next)); }catch{}
 }
 
-/* NEW: avg sec per 404 */
+/* avg sec per 404 */
 function loadAvgSecPer404(){
   try{
     const raw = localStorage.getItem('matcherAvgSecPer404');
@@ -1580,7 +1599,6 @@ async function extractUrlsFrom200File(file){
 
 /* ============================================================
    DICTIONARY TABLE + PREFILTER BADGE
-   - Correction : weights initialisés si absents (cohérence UI/payload)
    ============================================================ */
 function updatePrefilterBadge(){
   const active = Object.keys(state.dicoWeights || {}).filter(n => (state.dicoWeights[n] || {}).active);
@@ -1607,7 +1625,6 @@ function renderDicoTable(){
     return;
   }
 
-  // Assure que chaque dico a des weights
   names.forEach(name=>{
     if(!state.dicoWeights[name]){
       state.dicoWeights[name] = { bonus:1, malus:1, active:true };
@@ -1682,7 +1699,6 @@ fileDico.addEventListener('change', async ()=>{
       });
     });
 
-    // IMPORTANT: init weights for each dico if missing (cohérence UI/payload)
     for (const name of Object.keys(state.dicos || {})) {
       if (!state.dicoWeights[name]) {
         state.dicoWeights[name] = { bonus: 1, malus: 1, active: true };
@@ -1781,7 +1797,6 @@ file200.addEventListener('change', async ()=>{
 
 /* ============================================================
    BUILD CONFIG (payload API)
-   - Correction : weights par défaut si absent, pour cohérence
    ============================================================ */
 function buildConfigFromUI(){
   const dictionaries = Object.entries(state.dicos).map(([name, dict]) => ({
@@ -1791,7 +1806,6 @@ function buildConfigFromUI(){
 
   const bonus = {}, malus = {}, prefilter = {};
 
-  // assure weights pour chaque dico présent
   for (const name of Object.keys(state.dicos || {})) {
     if (!state.dicoWeights[name]) state.dicoWeights[name] = { bonus: 1, malus: 1, active: true };
   }
@@ -1891,7 +1905,7 @@ btnTest.addEventListener('click', async () => {
 });
 
 /* ============================================================
-   SUMMARY MODAL: compute bottom 10% + line number + top 5 worst
+   SUMMARY MODAL
    ============================================================ */
 function toNumberSafe(v){
   const s = String(v ?? '')
@@ -1904,8 +1918,6 @@ function toNumberSafe(v){
 
 async function buildRunSummaryFromBlob(blob){
   const text = await blob.text();
-
-  // Tentative parse CSV ; si ça casse, le try/catch côté run gère
   const wb = XLSX.read(text, { type: 'string' });
   const sh = wb.Sheets[wb.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json(sh, { defval: "" });
@@ -2005,7 +2017,6 @@ function renderRunSummary(summary){
   `;
 }
 
-/* Summary download uses current local blob url */
 btnRunSummaryDownload?.addEventListener('click', () => {
   if (!resultBlobUrl) return;
   const a = document.createElement('a');
@@ -2300,7 +2311,6 @@ tblHistoryBody?.addEventListener('click', async (e)=>{
 
     try{
       const metaPath = `${userId}/runs/${runId}/meta.json`;
-      // On ne peut pas relire created_at facilement ici sans fetch : on garde "maintenant"
       await overwriteJson(metaPath, { name: newName || '', created_at: new Date().toISOString() });
       await loadHistory();
     }catch(err){
@@ -2344,42 +2354,39 @@ tblHistoryBody?.addEventListener('click', async (e)=>{
 /* ============================================================
    MATCHING: RUN
    ============================================================ */
-async function runMatching({ urls404, urls200, config, token }){
+async function runMatching({ file404, file200, config, token }){
   const ctrl = new AbortController();
   const timeoutMs = 12 * 60 * 1000;
   const t = setTimeout(()=>ctrl.abort(), timeoutMs);
 
   try{
+    const fd = new FormData();
+    fd.append('file404', file404, file404.name);
+    fd.append('file200', file200, file200.name);
+    fd.append('config', JSON.stringify(config));
+
     const r = await fetch(buildUrl(MATCH_ENDPOINT), {
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ urls_404: urls404, urls_200: urls200, config }),
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: fd,
       signal: ctrl.signal
     });
 
     if(!r.ok){
-      let msg = 'Une erreur est survenue pendant le matching.';
+      let msg = `Erreur API (${r.status})`;
       try{
         const j = await r.json();
-        msg = j?.error || j?.message || msg;
+        if (Array.isArray(j?.detail)) {
+          msg = j.detail.map(d => `${(d.loc||[]).join('.')} : ${d.msg}`).join('\n');
+        } else {
+          msg = j?.error || j?.message || msg;
+        }
       }catch{}
       throw new Error(msg);
     }
 
-    const contentType = r.headers.get('content-type') || '';
-    if(contentType.includes('text/csv') || contentType.includes('application/octet-stream') || contentType.includes('text/plain')){
-      const blob = await r.blob();
-      return blob;
-    }
-
-    const j = await r.json();
-    const rows = Array.isArray(j) ? j : (j?.rows || []);
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const csv = XLSX.utils.sheet_to_csv(ws, { FS: ';' });
-    return new Blob([csv], { type: resultContentType() });
+    const blob = await r.blob();
+    return blob;
   } finally {
     clearTimeout(t);
   }
@@ -2447,7 +2454,6 @@ btnRun.addEventListener('click', async ()=>{
   const token = session.access_token;
   const config = buildConfigFromUI();
 
-  // NEW: progress/ETA basé sur temps estimé (sec/url404)
   const targetSec = estimateTargetSeconds(urls404.length);
 
   uiProgressShow();
@@ -2463,7 +2469,7 @@ btnRun.addEventListener('click', async ()=>{
   const createdAt = new Date().toISOString();
 
   try{
-    const blob = await runMatching({ urls404, urls200, config, token });
+    const blob = await runMatching({ file404: f404, file200: f200, config, token });
 
     lastResultBlob = blob;
     resultFilename = `result_${runId}.csv`;
@@ -2481,11 +2487,10 @@ btnRun.addEventListener('click', async ()=>{
       dicoFile: fileDico.files?.[0] || null,
       tradFile: fileTrad.files?.[0] || null,
       parentsFile: fileParents.files?.[0] || null,
-      runName: '',       // demandé : le nom sera demandé après le récap
+      runName: '',
       createdAt
     });
 
-    // stats (moyenne globale + moyenne sec/url404)
     const elapsedSec = (Date.now() - runStartTs) / 1000;
     saveRunSeconds(elapsedSec);
     saveAvgSecPer404(elapsedSec, urls404.length);
@@ -2493,18 +2498,14 @@ btnRun.addEventListener('click', async ()=>{
     finishProgressOK();
     setRunStatus('ok', 'Terminé. Résultat enregistré.');
 
-    // Prépare la demande de nom après récap
     pendingRunToName = { userId: session.user.id, runId, createdAt };
     namingAskedForRunId = null;
 
-    // recap modal
     try{
       const summary = await buildRunSummaryFromBlob(blob);
       renderRunSummary(summary);
       openRunSummaryModal();
     }catch{
-      // si le CSV a un format inattendu, pas de recap -> on demande le nom quand même
-      // (on déclenche la demande immédiatement)
       await closeRunSummaryModal().catch(()=>{});
     }
 
@@ -2524,6 +2525,9 @@ btnRun.addEventListener('click', async ()=>{
    INITIAL BOOT
    ============================================================ */
 (async function boot(){
+  // Assure une route par défaut
+  if(!location.hash) setRoute('#/');
+
   const session = await getSessionSafe();
   CURRENT_USER_ID = session?.user?.id || null;
   loadLocalForUser(CURRENT_USER_ID);

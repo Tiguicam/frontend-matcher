@@ -4,9 +4,8 @@
     { "src": "api/proxy.js", "use": "@vercel/node" },
     { "src": "index.html", "use": "@vercel/static" }
   ],
-  "routes": [
-    { "src": "/api/proxy", "dest": "/api/proxy.js" },
-    { "src": "/api/proxy/(.*)", "dest": "/api/proxy.js" },
-    { "src": "/(.*)", "dest": "/index.html" }
+  "rewrites": [
+    { "source": "/api/proxy/:path*", "destination": "/api/proxy.js" },
+    { "source": "/:path*", "destination": "/index.html" }
   ]
 }
