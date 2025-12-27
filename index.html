@@ -1924,12 +1924,21 @@ btnTest.addEventListener('click', async () => {
    SUMMARY MODAL
    ============================================================ */
 function toNumberSafe(v){
-  const s = String(v ?? '')
+  const raw = String(v ?? '').trim();
+  if(!raw) return NaN;
+
+  const s = raw
     .replace('%', '')
     .replace(/\s+/g, '')
     .replace(',', '.');
-  const n = Number(s);
-  return Number.isFinite(n) ? n : NaN;
+
+  let n = Number(s);
+  if(!Number.isFinite(n)) return NaN;
+
+  // Si le backend renvoie 0..1 (ex: 0.87), on convertit en % (87)
+  if(n <= 1) n = n * 100;
+
+  return n;
 }
 
 async function buildRunSummaryFromBlob(blob){
@@ -1951,28 +1960,40 @@ async function buildRunSummaryFromBlob(blob){
     }))
     .filter(x => Number.isFinite(x.score));
 
+  // Tri décroissant (meilleurs en haut)
   scored.sort((a,b)=> b.score - a.score);
 
   const nScored = scored.length;
+
+  // Zone à vérifier = 10% les plus faibles (sur les lignes avec score)
   const k = Math.max(1, Math.floor(nScored * 0.10));
   const startIndex = Math.max(0, nScored - k);
-  const bottom = scored.slice(startIndex);
 
-  const threshold = (nScored > 0) ? scored[startIndex]?.score : null;
-  const startLineExcel = (startIndex + 2);
+  // Excel: +1 (1-based) +1 (header)
+  const startLineExcel = startIndex + 2;
 
-  const worst5 = bottom.slice().sort((a,b)=> a.score - b.score).slice(0, 5);
+  // Scores les plus bas (range du groupe à vérifier)
+  const bottom = scored.slice(startIndex); // les k plus faibles (car tri desc)
+  const bottomMin = bottom.length ? Math.min(...bottom.map(x=>x.score)) : null;
+  const bottomMax = bottom.length ? Math.max(...bottom.map(x=>x.score)) : null;
 
-  return { total, nScored, k, threshold, startLineExcel, worst5 };
+  // Top 5 meilleurs matchings (scores les plus élevés)
+  const best5 = scored.slice(0, 5);
+
+  return { total, k, startLineExcel, bottomMin, bottomMax, best5 };
 }
 
 function renderRunSummary(summary){
-  const { total, nScored, k, threshold, startLineExcel, worst5 } = summary;
+  const { total, k, startLineExcel, bottomMin, bottomMax, best5 } = summary;
 
-  const thrTxt = (threshold == null) ? 'n/a' : `${Math.round(threshold)}%`;
-  if(rsSubtitle) rsSubtitle.textContent = `Seuil de vérif (Score_total_% ≤ ${thrTxt}) · basé sur Score_total_%.`;
+  const minTxt = (bottomMin == null) ? 'n/a' : `${Math.round(bottomMin)}%`;
+  const maxTxt = (bottomMax == null) ? 'n/a' : `${Math.round(bottomMax)}%`;
 
-  const tableRows = worst5.map((x, idx) => {
+  if(rsSubtitle) {
+    rsSubtitle.textContent = `Top 5 meilleurs matchings + zone de contrôle (10% scores les plus faibles).`;
+  }
+
+  const tableRows = (best5 || []).map((x, idx) => {
     const s = Math.round(x.score);
     return `
       <tr>
@@ -1991,27 +2012,32 @@ function renderRunSummary(summary){
         <div class="value">${Number(total).toLocaleString('fr-FR')}</div>
         <div class="hint">Total lignes (hors en-tête)</div>
       </div>
-      <div class="rs-kpi">
-        <div class="label">Scores exploitables</div>
-        <div class="value">${Number(nScored).toLocaleString('fr-FR')}</div>
-        <div class="hint">Basé sur “Score_total_%”</div>
-      </div>
+
       <div class="rs-kpi">
         <div class="label">URLs à vérifier</div>
         <div class="value">${Number(k).toLocaleString('fr-FR')}</div>
-        <div class="hint">Score ≤ ${thrTxt}</div>
+        <div class="hint">10% des scores les plus faibles</div>
+      </div>
+
+      <div class="rs-kpi">
+        <div class="label">Scores les plus bas</div>
+        <div class="value">${minTxt}</div>
+        <div class="hint">Plage à vérifier : ${minTxt} → ${maxTxt}</div>
       </div>
     </div>
 
     <div class="rs-callout">
-      URLs à vérifier à partir de la ligne ${Number(startLineExcel).toLocaleString('fr-FR')}
-      (dans Excel après tri décroissant de <b>Score_total_%</b>).
+      <div><b>Zone à vérifier</b> (scores les plus bas : ${minTxt} → ${maxTxt})</div>
+      <div style="margin-top:6px">
+        URLs à vérifier à partir de la ligne ${Number(startLineExcel).toLocaleString('fr-FR')}
+        (dans Excel après tri décroissant de <b>Score_total_%</b>).
+      </div>
     </div>
 
     <div class="card" style="padding:0;border-radius:12px;box-shadow:none;border:1px solid var(--border)">
-      <div style="padding:12px 12px 0 12px;font-weight:950">Top 5 à vérifier</div>
+      <div style="padding:12px 12px 0 12px;font-weight:950">Top 5 meilleurs matchings</div>
       <div style="padding:10px 12px 12px 12px;color:var(--muted);font-size:12px">
-        Les plus faibles scores (échantillon pour contrôle rapide).
+        Les scores les plus élevés (échantillon de matchings “bons”).
       </div>
 
       <div style="padding:0 12px 12px 12px">
