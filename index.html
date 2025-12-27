@@ -530,13 +530,14 @@ const elUser = document.getElementById('currentUser');
 const elHistoryTop = document.getElementById('btnHistoryTop');
 const appShell = document.getElementById('appShell');
 
-tabs = document.querySelectorAll('.tab');
-panels = {
+const tabs = document.querySelectorAll('.tab');
+const panels = {
   config: document.getElementById('panel-config'),
   test: document.getElementById('panel-test'),
   matching: document.getElementById('panel-matching'),
   history: document.getElementById('panel-history')
 };
+
 
 
 /* ============================================================
@@ -615,9 +616,6 @@ async function route(sessionOverride = null){
   closeGate();
   if(!authed) return;
 }
-
-let panels = {};
-let tabs = [];
 
 async function applyAuthUI(sessionOverride = null){
   const session = sessionOverride ?? await getSessionSafe();
