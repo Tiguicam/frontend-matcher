@@ -2398,7 +2398,7 @@ tblHistoryBody?.addEventListener('click', async (e)=>{
    ============================================================ */
 async function runMatching({ file404, file200, config, token }){
   const ctrl = new AbortController();
-  const timeoutMs = 12 * 60 * 1000;
+  const timeoutMs = 59 * 60 * 1000;
   const t = setTimeout(()=>ctrl.abort(), timeoutMs);
 
   try{
