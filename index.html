@@ -99,9 +99,16 @@
      .label-row{
   display:flex;
   align-items:center;
-  justify-content:space-between;
-  gap:10px;
+  justify-content:flex-start; /* au lieu de space-between */
+  gap:8px;                    /* espace entre texte et ? */
 }
+
+/* optionnel : évite que le label prenne toute la ligne */
+.label-row label{
+  margin:0;
+  width:auto;
+}
+
 
 .tip{
   display:inline-flex;
@@ -357,26 +364,73 @@
           <div class="sub">Optionnel : listes de mots, traductions, parents. Les fichiers sont validés dès l’import (colonnes/onglets).</div>
 
           <div class="row" style="margin-top:14px">
-            <div class="grow">
-              <label>Listes de mots (Excel) — colonnes = noms des listes, lignes = “clé, syn1, syn2…”</label>
-              <input id="fileDico" type="file" accept=".xlsx,.xls" />
-              <div id="dicoStatus" class="sub"></div>
-            </div>
+            <!-- Paramètres (Imports) -->
+<div class="row" style="margin-top:14px">
+  <div class="grow">
+    <div class="label-row">
+      <label>Listes de mots (Excel) — colonnes = noms des listes, lignes = “clé, syn1, syn2…”</label>
+      <span
+        class="tip"
+        tabindex="0"
+        data-tip="Importe un Excel où chaque colonne = une liste. Chaque cellule contient : clé, syn1, syn2... séparés par des virgules."
+      >
+        ?
+      </span>
+    </div>
 
-            <div class="grow">
-              <label>Traductions Excel (colonnes <code>SOURCE</code> et <code>TRANSLATION</code>)</label>
-              <input id="fileTrad" type="file" accept=".xlsx,.xls" />
-              <div id="tradStatus" class="sub"></div>
-            </div>
-          </div>
+    <input id="fileDico" type="file" accept=".xlsx,.xls" />
 
-          <div class="row" style="margin-top:10px">
-            <div class="grow">
-              <label>Parents (optionnel) – Excel avec colonne <code>URL</code></label>
-              <input id="fileParents" type="file" accept=".xlsx,.xls" />
-              <div id="parentsStatus" class="sub"></div>
-            </div>
-          </div>
+    <div class="sub" style="margin-top:6px">
+      <a href="/templates/listes_de_mots_template.xlsx" download>Télécharger le template</a>
+    </div>
+
+    <div id="dicoStatus" class="sub"></div>
+  </div>
+
+  <div class="grow">
+    <div class="label-row">
+      <label>Traductions Excel (colonnes <code>SOURCE</code> et <code>TRANSLATION</code>)</label>
+      <span
+        class="tip"
+        tabindex="0"
+        data-tip="Importe un Excel avec au moins un onglet contenant les colonnes SOURCE et TRANSLATION. Une ligne = une traduction."
+      >
+        ?
+      </span>
+    </div>
+
+    <input id="fileTrad" type="file" accept=".xlsx,.xls" />
+
+    <div class="sub" style="margin-top:6px">
+      <a href="/templates/traductions_template.xlsx" download>Télécharger le template</a>
+    </div>
+
+    <div id="tradStatus" class="sub"></div>
+  </div>
+</div>
+
+<div class="row" style="margin-top:10px">
+  <div class="grow">
+    <div class="label-row">
+      <label>Parents (optionnel) – Excel avec colonne <code>URL</code></label>
+      <span
+        class="tip"
+        tabindex="0"
+        data-tip="Optionnel. Importe un Excel contenant une colonne URL (dans n’importe quel onglet). Chaque ligne = une URL parent."
+      >
+        ?
+      </span>
+    </div>
+
+    <input id="fileParents" type="file" accept=".xlsx,.xls" />
+
+    <div class="sub" style="margin-top:6px">
+      <a href="/templates/parents_template.xlsx" download>Télécharger le template</a>
+    </div>
+
+    <div id="parentsStatus" class="sub"></div>
+  </div>
+</div>
 
 <details style="margin-top:14px" open>
   <summary>Réglages avancés</summary>
@@ -538,21 +592,24 @@
 
       <!-- Panel: Test URL -->
       <section id="panel-test" class="tab-panel">
-        <div class="card">
-          <div class="section-title">Diagnostic URL</div>
-          <div class="sub">Teste comment l’outil comprend et transforme une URL.</div>
+  <div class="card">
+    <div class="section-title">Diagnostic URL</div>
+    <div class="sub">Teste comment l’outil comprend et transforme une URL.</div>
 
-          <div class="row" style="margin-top:14px">
-            <div class="grow"><label>URL</label><input id="testUrl" type="text" placeholder="https://www.exemple.com/produit/ref-AB1234?color=red"></div>
-            <button class="btn primary" id="btnTest" style="align-self:flex-end">Tester</button>
-          </div>
+    <div class="row" style="margin-top:12px;align-items:flex-end">
+      <div class="grow">
+        <label>URL</label>
+        <input id="testUrl" type="text" placeholder="https://www.exemple.com/produit/ref-AB1234?color=red">
+      </div>
+      <button class="btn primary" id="btnTest">Tester</button>
+    </div>
 
-          <div style="margin-top:12px">
-            <label>Résultat</label>
-            <textarea id="testOut" readonly style="min-height:160px"></textarea>
-          </div>
-        </div>
-      </section>
+    <div style="margin-top:12px">
+      <label>Résultat</label>
+      <textarea id="testOut" readonly style="min-height:160px"></textarea>
+    </div>
+  </div>
+</section>
 
       <!-- Panel: Matching -->
       <section id="panel-matching" class="tab-panel">
@@ -560,7 +617,6 @@
           <div class="section-title">Traitement</div>
           <div class="sub">Importe les URLs à corriger et les URLs valides (validés à l’import), puis lance le traitement. Le résultat est stocké dans ton historique.</div>
 
-          <div class="row" style="margin-top:14px">
             <div class="grow">
               <label>Fichier des URLs à corriger (onglet <code>404</code>, colonne <code>URL_404</code>)</label>
               <input id="file404" type="file" accept=".xlsx,.xls" />
