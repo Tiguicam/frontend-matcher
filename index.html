@@ -96,18 +96,17 @@
     .badge.info{background:#eff6ff;color:#1e3a8a;border-color:#bfdbfe}
     .badge.warn{background:#fffbeb;color:#92400e;border-color:#fde68a}
     
-     .label-row{
+.label-row{
   display:flex;
   align-items:center;
-  justify-content:flex-start; /* au lieu de space-between */
-  gap:8px;                    /* espace entre texte et ? */
+  gap:8px;
 }
 
-/* optionnel : évite que le label prenne toute la ligne */
 .label-row label{
   margin:0;
-  width:auto;
+  line-height:1.2;
 }
+
 
 
 .tip{
@@ -363,9 +362,8 @@
           </div>
           <div class="sub">Optionnel : listes de mots, traductions, parents. Les fichiers sont validés dès l’import (colonnes/onglets).</div>
 
-          <div class="row" style="margin-top:14px">
-            <!-- Paramètres (Imports) -->
 <div class="row" style="margin-top:14px">
+  <!-- Listes de mots -->
   <div class="grow">
     <div class="label-row">
       <label>Listes de mots (Excel) — colonnes = noms des listes, lignes = “clé, syn1, syn2…”</label>
@@ -373,9 +371,7 @@
         class="tip"
         tabindex="0"
         data-tip="Importe un Excel où chaque colonne = une liste. Chaque cellule contient : clé, syn1, syn2... séparés par des virgules."
-      >
-        ?
-      </span>
+      >?</span>
     </div>
 
     <input id="fileDico" type="file" accept=".xlsx,.xls" />
@@ -387,6 +383,7 @@
     <div id="dicoStatus" class="sub"></div>
   </div>
 
+  <!-- Traductions -->
   <div class="grow">
     <div class="label-row">
       <label>Traductions Excel (colonnes <code>SOURCE</code> et <code>TRANSLATION</code>)</label>
@@ -394,9 +391,7 @@
         class="tip"
         tabindex="0"
         data-tip="Importe un Excel avec au moins un onglet contenant les colonnes SOURCE et TRANSLATION. Une ligne = une traduction."
-      >
-        ?
-      </span>
+      >?</span>
     </div>
 
     <input id="fileTrad" type="file" accept=".xlsx,.xls" />
@@ -409,6 +404,7 @@
   </div>
 </div>
 
+<!-- Parents : sur une ligne séparée -->
 <div class="row" style="margin-top:10px">
   <div class="grow">
     <div class="label-row">
@@ -417,9 +413,7 @@
         class="tip"
         tabindex="0"
         data-tip="Optionnel. Importe un Excel contenant une colonne URL (dans n’importe quel onglet). Chaque ligne = une URL parent."
-      >
-        ?
-      </span>
+      >?</span>
     </div>
 
     <input id="fileParents" type="file" accept=".xlsx,.xls" />
@@ -439,13 +433,7 @@
     <div class="grow">
       <div class="label-row">
         <label>Mots à ignorer</label>
-        <span
-          class="tip"
-          tabindex="0"
-          data-tip="Liste séparée par des virgules. Ces mots seront ignorés dans la comparaison."
-        >
-          ?
-        </span>
+        <span class="tip" tabindex="0" data-tip="Liste séparée par des virgules. Ces mots seront ignorés dans la comparaison.">?</span>
       </div>
       <input id="inpStop" type="text" placeholder="ex: le, la, de, pour" />
     </div>
@@ -453,13 +441,7 @@
     <div class="grow">
       <div class="label-row">
         <label>Mots à ne pas modifier</label>
-        <span
-          class="tip"
-          tabindex="0"
-          data-tip="Liste séparée par des virgules. Ces mots ne seront pas traduits / transformés."
-        >
-          ?
-        </span>
+        <span class="tip" tabindex="0" data-tip="Liste séparée par des virgules. Ces mots ne seront pas traduits / transformés.">?</span>
       </div>
       <input id="inpExc" type="text" placeholder="ex: nike, adidas, iphone" />
     </div>
@@ -469,13 +451,7 @@
     <div class="grow">
       <div class="label-row">
         <label>Expressions multi-mots</label>
-        <span
-          class="tip"
-          tabindex="0"
-          data-tip="Liste séparée par des virgules. Permet de garder des expressions comme un seul bloc (ex: 'air max')."
-        >
-          ?
-        </span>
+        <span class="tip" tabindex="0" data-tip="Liste séparée par des virgules. Permet de garder des expressions comme un seul bloc (ex: 'air max').">?</span>
       </div>
       <input id="inpMulti" type="text" placeholder="ex: air max, black friday" />
     </div>
@@ -483,13 +459,7 @@
     <div class="grow">
       <div class="label-row">
         <label>Regex référence</label>
-        <span
-          class="tip"
-          tabindex="0"
-          data-tip="Permet de détecter une référence produit dans l’URL. Exemple : ref-AB1234."
-        >
-          ?
-        </span>
+        <span class="tip" tabindex="0" data-tip="Permet de détecter une référence produit dans l’URL. Exemple : ref-AB1234.">?</span>
       </div>
       <input id="inpRegex" type="text" value="(?i)ref[:\\- ]?([a-z0-9\\-]+)" />
     </div>
@@ -497,13 +467,7 @@
     <div class="grow">
       <div class="label-row">
         <label>Score minimum</label>
-        <span
-          class="tip"
-          tabindex="0"
-          data-tip="Info : ce seuil ne bloque pas les résultats. Il sert uniquement d’indication."
-        >
-          ?
-        </span>
+        <span class="tip" tabindex="0" data-tip="Info : ce seuil ne bloque pas les résultats. Il sert uniquement d’indication.">?</span>
       </div>
       <input id="inpMin" type="number" step="0.1" value="0.5" />
     </div>
@@ -513,13 +477,7 @@
     <div class="grow">
       <div class="label-row">
         <label>Importance du sens dans le résultat</label>
-        <span
-          class="tip"
-          tabindex="0"
-          data-tip="Plus la valeur est élevée, plus l’outil se base sur le sens des mots (plutôt que sur la ressemblance exacte)."
-        >
-          ?
-        </span>
+        <span class="tip" tabindex="0" data-tip="Plus la valeur est élevée, plus l’outil se base sur le sens des mots (plutôt que sur la ressemblance exacte).">?</span>
       </div>
       <input id="inpSemanticWeight" type="number" step="1" value="80" />
     </div>
@@ -527,13 +485,7 @@
     <div class="grow">
       <div class="label-row">
         <label>Bonus si les mêmes mots apparaissent</label>
-        <span
-          class="tip"
-          tabindex="0"
-          data-tip="Ajoute des points pour chaque mot présent à la fois dans l’URL à corriger et l’URL proposée."
-        >
-          ?
-        </span>
+        <span class="tip" tabindex="0" data-tip="Ajoute des points pour chaque mot présent à la fois dans l’URL à corriger et l’URL proposée.">?</span>
       </div>
       <input id="inpTokenBonus" type="number" step="1" value="5" />
     </div>
@@ -541,13 +493,7 @@
     <div class="grow">
       <div class="label-row">
         <label>Pénalité si l’URL proposée ajoute des mots</label>
-        <span
-          class="tip"
-          tabindex="0"
-          data-tip="Retire des points pour chaque mot présent dans l’URL proposée mais absent de l’URL à corriger (valeur négative attendue)."
-        >
-          ?
-        </span>
+        <span class="tip" tabindex="0" data-tip="Retire des points pour chaque mot présent dans l’URL proposée mais absent de l’URL à corriger (valeur négative attendue).">?</span>
       </div>
       <input id="inpTokenMalus" type="number" step="1" value="-10" />
     </div>
@@ -560,9 +506,7 @@
         class="tip"
         tabindex="0"
         data-tip="Ajuste l’importance de chaque liste. 'Utiliser' active le filtrage automatique basé sur cette liste."
-      >
-        ?
-      </span>
+      >?</span>
     </div>
 
     <div class="table-wrap">
@@ -582,11 +526,11 @@
   </div>
 </details>
 
+<div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+  <button class="btn ghost" id="btnApply">Appliquer</button>
+  <span id="cfgStatus" class="badge info hidden"></span>
+</div>
 
-          <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-            <button class="btn ghost" id="btnApply">Appliquer</button>
-            <span id="cfgStatus" class="badge info hidden"></span>
-          </div>
         </div>
       </section>
 
@@ -612,54 +556,63 @@
 </section>
 
       <!-- Panel: Matching -->
-      <section id="panel-matching" class="tab-panel">
-        <div class="card">
-          <div class="section-title">Traitement</div>
-          <div class="sub">Importe les URLs à corriger et les URLs valides (validés à l’import), puis lance le traitement. Le résultat est stocké dans ton historique.</div>
+<section id="panel-matching" class="tab-panel">
+  <div class="card">
+    <div class="section-title">Traitement</div>
+    <div class="sub">
+      Importe les URLs à corriger et les URLs valides (validés à l’import), puis lance le traitement.
+      Le résultat est stocké dans ton historique.
+    </div>
 
-            <div class="grow">
-              <label>Fichier des URLs à corriger (onglet <code>404</code>, colonne <code>URL_404</code>)</label>
-              <input id="file404" type="file" accept=".xlsx,.xls" />
-              <div id="f404Status" class="sub"></div>
-            </div>
+    <div class="row" style="margin-top:14px">
+      <div class="grow">
+        <label>Fichier des URLs à corriger (onglet <code>404</code>, colonne <code>URL_404</code>)</label>
+        <input id="file404" type="file" accept=".xlsx,.xls" />
+        <div id="f404Status" class="sub"></div>
+      </div>
 
-            <div class="grow">
-              <label>Fichier des URLs valides (onglet <code>200</code>, colonne <code>URL_200</code>)</label>
-              <input id="file200" type="file" accept=".xlsx,.xls" />
-              <div id="f200Status" class="sub"></div>
-            </div>
-          </div>
+      <div class="grow">
+        <label>Fichier des URLs valides (onglet <code>200</code>, colonne <code>URL_200</code>)</label>
+        <input id="file200" type="file" accept=".xlsx,.xls" />
+        <div id="f200Status" class="sub"></div>
+      </div>
+    </div>
 
-          <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:flex-end">
-            <span id="runStatus" class="badge info hidden"></span>
-            <button class="btn ghost" id="btnClear">Réinitialiser</button>
-            <button class="btn primary" id="btnRun">Lancer</button>
-          </div>
+    <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:flex-end">
+      <span id="runStatus" class="badge info hidden"></span>
+      <button class="btn ghost" id="btnClear" type="button">Réinitialiser</button>
+      <button class="btn primary" id="btnRun" type="button">Lancer</button>
+    </div>
 
-          <!-- Progress -->
-          <div id="progressWrap" class="hidden" style="margin-top:12px">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px">
-              <span id="progressLabel" class="sub" style="margin:0">Traitement…</span>
-              <span id="progressPct" class="badge info">0%</span>
-            </div>
+    <!-- Progress -->
+    <div id="progressWrap" class="hidden" style="margin-top:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px">
+        <span id="progressLabel" class="sub" style="margin:0">Traitement…</span>
+        <span id="progressPct" class="badge info">0%</span>
+      </div>
 
-            <div style="height:10px;background:#eef2ff;border:1px solid var(--border);border-radius:999px;overflow:hidden">
-              <div id="progressBar" style="height:100%;width:0%"></div>
-            </div>
+      <div style="height:10px;background:#eef2ff;border:1px solid var(--border);border-radius:999px;overflow:hidden">
+        <div id="progressBar" style="height:100%;width:0%"></div>
+      </div>
 
-            <div class="help" style="margin-top:8px;display:flex;gap:12px;flex-wrap:wrap">
-              <span>Temps écoulé : <b id="elapsedTxt">0s</b></span>
-              <span>Estimation : <b id="etaTxt">—</b></span>
-            </div>
-          </div>
+      <div class="help" style="margin-top:8px;display:flex;gap:12px;flex-wrap:wrap">
+        <span>Temps écoulé : <b id="elapsedTxt">0s</b></span>
+        <span>Estimation : <b id="etaTxt">—</b></span>
+      </div>
+    </div>
 
-          <!-- Download immédiat (local) -->
-          <div id="downloadWrap" class="hidden" style="margin-top:14px; display:flex; gap:10px; align-items:center; justify-content:flex-end;flex-wrap:wrap">
-            <span id="downloadLabel" class="badge ok"></span>
-            <button class="btn ghost" id="btnDownload" type="button">Télécharger</button>
-          </div>
-        </div>
-      </section>
+    <!-- Download -->
+    <div
+      id="downloadWrap"
+      class="hidden"
+      style="margin-top:14px;display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap"
+    >
+      <span id="downloadLabel" class="badge ok"></span>
+      <button class="btn ghost" id="btnDownload" type="button">Télécharger</button>
+    </div>
+  </div>
+</section>
+
 
       <!-- Panel: Historique (accessible via bouton topbar) -->
       <section id="panel-history" class="tab-panel">
