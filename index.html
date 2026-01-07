@@ -1935,9 +1935,6 @@ function toNumberSafe(v){
   let n = Number(s);
   if(!Number.isFinite(n)) return NaN;
 
-  // Si le backend renvoie 0..1 (ex: 0.87), on convertit en % (87)
-  if(n <= 1) n = n * 100;
-
   return n;
 }
 
@@ -1948,9 +1945,10 @@ async function buildRunSummaryFromBlob(blob){
   const rows = XLSX.utils.sheet_to_json(sh, { defval: "" });
 
   const total = rows.length;
-  const scoreKey = "Score_total_%";
+  const scoreKey = "SCORE_TOTAL";
   const url404Key = "URL_404";
-  const url200Key = "URL_200_top1";
+  const url200Key = "URL_200_PROPOSEE";
+
 
   const scored = rows
     .map((r) => ({
@@ -1986,19 +1984,20 @@ async function buildRunSummaryFromBlob(blob){
 function renderRunSummary(summary){
   const { total, k, startLineExcel, bottomMin, bottomMax, best5 } = summary;
 
-  const minTxt = (bottomMin == null) ? 'n/a' : `${Math.round(bottomMin)}%`;
-  const maxTxt = (bottomMax == null) ? 'n/a' : `${Math.round(bottomMax)}%`;
+  const minTxt = (bottomMin == null) ? 'n/a' : `${bottomMin.toFixed(2)}`;
+  const maxTxt = (bottomMax == null) ? 'n/a' : `${bottomMax.toFixed(2)}`;
+
 
   if(rsSubtitle) {
     rsSubtitle.textContent = `Top 5 meilleurs matchings + zone de contrôle (10% scores les plus faibles).`;
   }
 
   const tableRows = (best5 || []).map((x, idx) => {
-    const s = Math.round(x.score);
+    const s = x.score.toFixed(2);
     return `
       <tr>
         <td>${idx + 1}</td>
-        <td><b>${s}%</b></td>
+        <td><b>${s}</b></td>
         <td class="rs-url">${escapeHtml(x.url404)}</td>
         <td class="rs-url">${escapeHtml(x.url200)}</td>
       </tr>
@@ -2030,7 +2029,7 @@ function renderRunSummary(summary){
       <div><b>Zone à vérifier</b> (scores les plus bas : ${minTxt} → ${maxTxt})</div>
       <div style="margin-top:6px">
         URLs à vérifier à partir de la ligne ${Number(startLineExcel).toLocaleString('fr-FR')}
-        (dans Excel après tri décroissant de <b>Score_total_%</b>).
+        (in Excel après tri décroissant de <b>SCORE_TOTAL</b>).
       </div>
     </div>
 
