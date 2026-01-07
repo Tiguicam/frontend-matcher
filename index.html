@@ -95,6 +95,49 @@
     .badge.err{background:#fee2e2;color:#991b1b;border-color:#fecaca}
     .badge.info{background:#eff6ff;color:#1e3a8a;border-color:#bfdbfe}
     .badge.warn{background:#fffbeb;color:#92400e;border-color:#fde68a}
+    
+     .label-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+
+.tip{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:20px;
+  height:20px;
+  border-radius:999px;
+  border:1px solid var(--border);
+  background:#fff;
+  color:var(--muted);
+  font-weight:950;
+  font-size:12px;
+  cursor:help;
+  position:relative;
+  user-select:none;
+}
+
+.tip:hover::after,
+.tip:focus::after{
+  content: attr(data-tip);
+  position:absolute;
+  right:0;
+  top:28px;
+  width:min(320px, 70vw);
+  background:#0f172a;
+  color:#fff;
+  padding:10px 12px;
+  border-radius:12px;
+  font-size:12px;
+  line-height:1.35;
+  box-shadow:0 10px 30px #00000033;
+  z-index:999;
+}
+
+
 
     /* Tables */
     table{width:100%;border-collapse:collapse}
@@ -335,59 +378,156 @@
             </div>
           </div>
 
-          <details style="margin-top:14px" open>
-            <summary>Réglages avancés</summary>
+<details style="margin-top:14px" open>
+  <summary>Réglages avancés</summary>
 
-            <div class="row" style="margin-top:12px">
-              <div class="grow"><label>Mots à ignorer (séparés par des virgules)</label><input id="inpStop" type="text" /></div>
-              <div class="grow"><label>Mots à ne pas modifier (séparés par des virgules)</label><input id="inpExc" type="text" /></div>
-            </div>
+  <div class="row" style="margin-top:12px">
+    <div class="grow">
+      <div class="label-row">
+        <label>Mots à ignorer</label>
+        <span
+          class="tip"
+          tabindex="0"
+          data-tip="Liste séparée par des virgules. Ces mots seront ignorés dans la comparaison."
+        >
+          ?
+        </span>
+      </div>
+      <input id="inpStop" type="text" placeholder="ex: le, la, de, pour" />
+    </div>
 
-            <div class="row" style="margin-top:10px">
-              <div class="grow"><label>Expressions multi-mots (virgules)</label><input id="inpMulti" type="text" /></div>
-              <div class="grow"><label>Regex référence</label><input id="inpRegex" type="text" value="(?i)ref[:\\- ]?([a-z0-9\\-]+)" /></div>
-              <div class="grow"><label>Score minimum</label><input id="inpMin" type="number" step="0.1" value="0.5" /></div>
-              <div class="help" style="margin-top:6px">Informationnel : ce seuil n’est pas utilisé comme filtre dans le moteur.</div>
-            </div>
+    <div class="grow">
+      <div class="label-row">
+        <label>Mots à ne pas modifier</label>
+        <span
+          class="tip"
+          tabindex="0"
+          data-tip="Liste séparée par des virgules. Ces mots ne seront pas traduits / transformés."
+        >
+          ?
+        </span>
+      </div>
+      <input id="inpExc" type="text" placeholder="ex: nike, adidas, iphone" />
+    </div>
+  </div>
 
-            <div class="row" style="margin-top:10px">
-              <div class="grow">
-                <label>Importance du sens dans le résultat</label>
-                <input id="inpSemanticWeight" type="number" step="1" value="80" />
-                <div class="help" style="margin-top:6px">Plus la valeur est élevée, plus l’outil se base sur le sens des mots.</div>
-              </div>
-              <div class="grow">
-                <label>Bonus si les mêmes mots apparaissent</label>
-                <input id="inpTokenBonus" type="number" step="1" value="5" />
-                <div class="help" style="margin-top:6px">Ajoute un bonus pour chaque mot présent à la fois dans l’URL à corriger et l’URL proposée.</div>
-              </div>
-              <div class="grow">
-                <label>Pénalité si l’URL proposée ajoute des mots</label>
-                <input id="inpTokenMalus" type="number" step="1" value="-10" />
-                <div class="help" style="margin-top:6px">Retire des points pour chaque mot présent dans l’URL proposée mais absent de l’URL à corriger (valeur négative attendue).</div>
-              </div>
-            </div>
+  <div class="row" style="margin-top:10px">
+    <div class="grow">
+      <div class="label-row">
+        <label>Expressions multi-mots</label>
+        <span
+          class="tip"
+          tabindex="0"
+          data-tip="Liste séparée par des virgules. Permet de garder des expressions comme un seul bloc (ex: 'air max')."
+        >
+          ?
+        </span>
+      </div>
+      <input id="inpMulti" type="text" placeholder="ex: air max, black friday" />
+    </div>
 
-            <div style="margin-top:14px">
-              <div class="section-title" style="margin-bottom:8px">Listes de mots (bonus / pénalité)</div>
-              <div class="help" style="margin-bottom:10px">Ajuste l’importance de chaque liste et active/désactive son utilisation.</div>
+    <div class="grow">
+      <div class="label-row">
+        <label>Regex référence</label>
+        <span
+          class="tip"
+          tabindex="0"
+          data-tip="Permet de détecter une référence produit dans l’URL. Exemple : ref-AB1234."
+        >
+          ?
+        </span>
+      </div>
+      <input id="inpRegex" type="text" value="(?i)ref[:\\- ]?([a-z0-9\\-]+)" />
+    </div>
 
-              <div class="table-wrap">
-                <table id="tblDico">
-                  <thead>
-                    <tr>
-                      <th>Liste</th>
-                      <th style="width:130px">Bonus</th>
-                      <th style="width:130px">Pénalité</th>
-                      <th style="width:120px">Utiliser</th>
-                      <th style="width:140px">Entrées</th>
-                    </tr>
-                  </thead>
-                  <tbody></tbody>
-                </table>
-              </div>
-            </div>
-          </details>
+    <div class="grow">
+      <div class="label-row">
+        <label>Score minimum</label>
+        <span
+          class="tip"
+          tabindex="0"
+          data-tip="Info : ce seuil ne bloque pas les résultats. Il sert uniquement d’indication."
+        >
+          ?
+        </span>
+      </div>
+      <input id="inpMin" type="number" step="0.1" value="0.5" />
+    </div>
+  </div>
+
+  <div class="row" style="margin-top:10px">
+    <div class="grow">
+      <div class="label-row">
+        <label>Importance du sens dans le résultat</label>
+        <span
+          class="tip"
+          tabindex="0"
+          data-tip="Plus la valeur est élevée, plus l’outil se base sur le sens des mots (plutôt que sur la ressemblance exacte)."
+        >
+          ?
+        </span>
+      </div>
+      <input id="inpSemanticWeight" type="number" step="1" value="80" />
+    </div>
+
+    <div class="grow">
+      <div class="label-row">
+        <label>Bonus si les mêmes mots apparaissent</label>
+        <span
+          class="tip"
+          tabindex="0"
+          data-tip="Ajoute des points pour chaque mot présent à la fois dans l’URL à corriger et l’URL proposée."
+        >
+          ?
+        </span>
+      </div>
+      <input id="inpTokenBonus" type="number" step="1" value="5" />
+    </div>
+
+    <div class="grow">
+      <div class="label-row">
+        <label>Pénalité si l’URL proposée ajoute des mots</label>
+        <span
+          class="tip"
+          tabindex="0"
+          data-tip="Retire des points pour chaque mot présent dans l’URL proposée mais absent de l’URL à corriger (valeur négative attendue)."
+        >
+          ?
+        </span>
+      </div>
+      <input id="inpTokenMalus" type="number" step="1" value="-10" />
+    </div>
+  </div>
+
+  <div style="margin-top:14px">
+    <div class="section-title" style="margin-bottom:8px">
+      Listes de mots (bonus / pénalité)
+      <span
+        class="tip"
+        tabindex="0"
+        data-tip="Ajuste l’importance de chaque liste. 'Utiliser' active le filtrage automatique basé sur cette liste."
+      >
+        ?
+      </span>
+    </div>
+
+    <div class="table-wrap">
+      <table id="tblDico">
+        <thead>
+          <tr>
+            <th>Liste</th>
+            <th style="width:130px">Bonus</th>
+            <th style="width:130px">Pénalité</th>
+            <th style="width:120px">Utiliser</th>
+            <th style="width:140px">Entrées</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</details>
+
 
           <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
             <button class="btn ghost" id="btnApply">Appliquer</button>
@@ -2015,7 +2155,7 @@ function renderRunSummary(summary){
       <div class="rs-kpi">
         <div class="label">URLs à vérifier</div>
         <div class="value">${Number(k).toLocaleString('fr-FR')}</div>
-        <div class="hint">10% des scores les plus faibles</div>
+        <div class="hint">scores les plus faibles</div>
       </div>
 
       <div class="rs-kpi">
