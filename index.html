@@ -393,7 +393,7 @@
     <input id="fileDico" type="file" accept=".xlsx,.xls" />
 
     <div class="sub" style="margin-top:6px">
-      <a href="/templates/listes_de_mots_template.xlsx" download>Télécharger le template</a>
+      <a href="#" id="dlDicoTpl">Télécharger le template</a>
     </div>
 
     <div id="dicoStatus" class="sub"></div>
@@ -413,7 +413,7 @@
     <input id="fileTrad" type="file" accept=".xlsx,.xls" />
 
     <div class="sub" style="margin-top:6px">
-      <a href="/templates/traductions_template.xlsx" download>Télécharger le template</a>
+      <a href="#" id="dlTradTpl">Télécharger le template</a>
     </div>
 
     <div id="tradStatus" class="sub"></div>
@@ -435,7 +435,7 @@
     <input id="fileParents" type="file" accept=".xlsx,.xls" />
 
     <div class="sub" style="margin-top:6px">
-      <a href="/templates/parents_template.xlsx" download>Télécharger le template</a>
+      <a href="#" id="dlParentsTpl">Télécharger le template</a>
     </div>
 
     <div id="parentsStatus" class="sub"></div>
@@ -1309,6 +1309,55 @@ document.getElementById('dl200Tpl')?.addEventListener('click', (e)=>{
   downloadUrlTemplate('200');
 });
 
+function downloadTranslationsTemplate(){
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['SOURCE', 'TRANSLATION'],
+    ['shoe', 'chaussure'],
+    ['pants', 'pantalon']
+  ]);
+  XLSX.utils.book_append_sheet(wb, ws, 'Traductions');
+  XLSX.writeFile(wb, 'traductions_template.xlsx');
+}
+
+function downloadParentsTemplate(){
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['URL'],
+    ['https://www.exemple.com/categorie/'],
+    ['https://www.exemple.com/robes/'],
+    ['https://www.exemple.com/chemises-et-tops/']
+  ]);
+  XLSX.utils.book_append_sheet(wb, ws, 'Parents');
+  XLSX.writeFile(wb, 'parents_template.xlsx');
+}
+
+function downloadDicoTemplate(){
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['Genre', 'Couleur', 'Type'],
+    ['femme, madame', 'bleu-marine, navy', 'robe'],
+    ['homme, monsieur', 'rouge', 'pantalon'],
+    ['enfant, fille, garcon', 'noir, black', 'maillot-de-bain']
+  ]);
+  XLSX.utils.book_append_sheet(wb, ws, 'Dico');
+  XLSX.writeFile(wb, 'listes_de_mots_template.xlsx');
+}
+
+document.getElementById('dlTradTpl')?.addEventListener('click', (e)=>{
+  e.preventDefault();
+  downloadTranslationsTemplate();
+});
+
+document.getElementById('dlParentsTpl')?.addEventListener('click', (e)=>{
+  e.preventDefault();
+  downloadParentsTemplate();
+});
+
+document.getElementById('dlDicoTpl')?.addEventListener('click', (e)=>{
+  e.preventDefault();
+  downloadDicoTemplate();
+});
 
 const btnRun=document.getElementById('btnRun');
 const btnClear=document.getElementById('btnClear');
