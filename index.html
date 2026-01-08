@@ -2572,24 +2572,27 @@ tr.innerHTML = `
   <td>${escapeHtml(prettyRunDate(runId))}</td>
 
   <td>
-    <div style="display:grid;gap:6px">
-      <div>
-        <span class="badge info nowrap ellipsis" title="${escapeHtml(r.metaName || 'Sans nom')}">
-          ${escapeHtml(r.metaName || 'Sans nom')}
-        </span>
-      </div>
+  <div style="display:grid;gap:6px">
+    <div>
+      <span class="badge ${r.metaName ? 'ok' : 'info'} nowrap ellipsis"
+            title="${escapeHtml(r.metaName || 'Sans nom')}">
+        ${escapeHtml(r.metaName || 'Sans nom')}
+      </span>
+    </div>
 
+    ${r.metaName ? '' : `
       <input
         type="text"
-        value="${escapeHtml(r.metaName || '')}"
+        value=""
         data-field="name"
         data-runid="${escapeHtml(runId)}"
-        placeholder="Sans nom"
+        placeholder="Ex: Semaine 2 - redirections"
       >
-
       <div class="help">Modifie et clique sur “Renommer”.</div>
-    </div>
-  </td>
+    `}
+  </div>
+</td>
+
 
   <td>
     <span class="badge info nowrap mono ellipsis" title="${escapeHtml(runId)}">
