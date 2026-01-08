@@ -95,6 +95,23 @@
     .badge.err{background:#fee2e2;color:#991b1b;border-color:#fecaca}
     .badge.info{background:#eff6ff;color:#1e3a8a;border-color:#bfdbfe}
     .badge.warn{background:#fffbeb;color:#92400e;border-color:#fde68a}
+
+    .badge.nowrap{
+  display:inline-flex;
+  align-items:center;
+  white-space:nowrap;
+}
+
+    .badge.mono{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+    .badge.ellipsis{
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
     
 .label-row{
   display:flex;
@@ -660,7 +677,7 @@
                 <tr>
                   <th style="width:220px">Date</th>
                   <th style="width:320px">Nom</th>
-                  <th>Run</th>
+                  <th style="width:260px">Run</th>
                   <th style="width:260px">Fichiers</th>
                   <th style="width:340px">Actions</th>
                 </tr>
@@ -2502,19 +2519,40 @@ async function loadHistory(){
     actions += makeActionBtn('Supprimer', { action:'deleteRun', runid: runId }, 'danger');
 
     const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${escapeHtml(prettyRunDate(runId))}</td>
-      <td>
-        <div style="display:grid;gap:6px">
-          <input type="text" value="${escapeHtml(r.metaName || '')}" data-field="name" data-runid="${escapeHtml(runId)}" placeholder="Sans nom">
-          <div class="help">Modifie et clique sur “Renommer”.</div>
-        </div>
-      </td>
-      <td><span class="badge info">${escapeHtml(runId)}</span></td>
-      <td>${filesBadges}</td>
-      <td>${actions}</td>
-    `;
-    tblHistoryBody.appendChild(tr);
+tr.innerHTML = `
+  <td>${escapeHtml(prettyRunDate(runId))}</td>
+
+  <td>
+    <div style="display:grid;gap:6px">
+      <div>
+        <span class="badge info nowrap ellipsis" title="${escapeHtml(r.metaName || 'Sans nom')}">
+          ${escapeHtml(r.metaName || 'Sans nom')}
+        </span>
+      </div>
+
+      <input
+        type="text"
+        value="${escapeHtml(r.metaName || '')}"
+        data-field="name"
+        data-runid="${escapeHtml(runId)}"
+        placeholder="Sans nom"
+      >
+
+      <div class="help">Modifie et clique sur “Renommer”.</div>
+    </div>
+  </td>
+
+  <td>
+    <span class="badge info nowrap mono ellipsis" title="${escapeHtml(runId)}">
+      ${escapeHtml(runId)}
+    </span>
+  </td>
+
+  <td>${filesBadges}</td>
+  <td>${actions}</td>
+`;
+tblHistoryBody.appendChild(tr);
+
   });
 
   if(historyStatus) historyStatus.textContent = `${listed.length} run(s).`;
