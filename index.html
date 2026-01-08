@@ -360,13 +360,12 @@
             Paramètres
             <span id="prefilterBadge" class="badge info" title="Le filtrage automatique est activé si au moins une liste de mots est cochée.">Filtrage : désactivé</span>
           </div>
-          <div class="sub">Optionnel : listes de mots, traductions, parents. Les fichiers sont validés dès l’import (colonnes/onglets).</div>
 
 <div class="row" style="margin-top:14px">
   <!-- Listes de mots -->
   <div class="grow">
     <div class="label-row">
-      <label>Listes de mots (Excel) — colonnes = noms des listes, lignes = “clé, syn1, syn2…”</label>
+      <label>Listes de mots (Excel)</label>
       <span
         class="tip"
         tabindex="0"
@@ -386,7 +385,7 @@
   <!-- Traductions -->
   <div class="grow">
     <div class="label-row">
-      <label>Traductions Excel (colonnes <code>SOURCE</code> et <code>TRANSLATION</code>)</label>
+      <label>Traductions Excel</label>
       <span
         class="tip"
         tabindex="0"
@@ -408,7 +407,7 @@
 <div class="row" style="margin-top:10px">
   <div class="grow">
     <div class="label-row">
-      <label>Parents (optionnel) – Excel avec colonne <code>URL</code></label>
+      <label>Parents (optionnel)</label>
       <span
         class="tip"
         tabindex="0"
@@ -443,7 +442,7 @@
         <label>Mots à ne pas modifier</label>
         <span class="tip" tabindex="0" data-tip="Liste séparée par des virgules. Ces mots ne seront pas traduits / transformés.">?</span>
       </div>
-      <input id="inpExc" type="text" placeholder="ex: nike, adidas, iphone" />
+      <input id="inpExc" type="text" placeholder="ex: curus, en-us..." />
     </div>
   </div>
 
@@ -453,7 +452,7 @@
         <label>Expressions multi-mots</label>
         <span class="tip" tabindex="0" data-tip="Liste séparée par des virgules. Permet de garder des expressions comme un seul bloc (ex: 'air max').">?</span>
       </div>
-      <input id="inpMulti" type="text" placeholder="ex: air max, black friday" />
+      <input id="inpMulti" type="text" placeholder="ex: bleu-marine, maillot-de-bain" />
     </div>
 
     <div class="grow">
@@ -565,18 +564,48 @@
     </div>
 
     <div class="row" style="margin-top:14px">
-      <div class="grow">
-        <label>Fichier des URLs à corriger (onglet <code>404</code>, colonne <code>URL_404</code>)</label>
-        <input id="file404" type="file" accept=".xlsx,.xls" />
-        <div id="f404Status" class="sub"></div>
-      </div>
-
-      <div class="grow">
-        <label>Fichier des URLs valides (onglet <code>200</code>, colonne <code>URL_200</code>)</label>
-        <input id="file200" type="file" accept=".xlsx,.xls" />
-        <div id="f200Status" class="sub"></div>
-      </div>
+  <div class="grow">
+    <div class="label-row">
+      <label>
+        Fichier des URLs à corriger (onglet <code>404</code>, colonne <code>URL_404</code>)
+      </label>
+      <span
+        class="tip"
+        tabindex="0"
+        data-tip="Format attendu : un fichier Excel (.xlsx/.xls) avec un onglet nommé 404. La ligne 1 doit contenir l’en-tête URL_404. Ensuite, 1 URL par ligne (sans cellules fusionnées)."
+      >?</span>
     </div>
+
+    <input id="file404" type="file" accept=".xlsx,.xls" />
+
+    <div class="sub" style="margin-top:6px">
+      <a href="#" id="dl404Tpl">Télécharger le template 404</a>
+    </div>
+
+    <div id="f404Status" class="sub"></div>
+  </div>
+
+  <div class="grow">
+    <div class="label-row">
+      <label>
+        Fichier des URLs valides (onglet <code>200</code>, colonne <code>URL_200</code>)
+      </label>
+      <span
+        class="tip"
+        tabindex="0"
+        data-tip="Format attendu : un fichier Excel (.xlsx/.xls) avec un onglet nommé 200. La ligne 1 doit contenir l’en-tête URL_200. Ensuite, 1 URL par ligne (sans cellules fusionnées)."
+      >?</span>
+    </div>
+
+    <input id="file200" type="file" accept=".xlsx,.xls" />
+
+    <div class="sub" style="margin-top:6px">
+      <a href="#" id="dl200Tpl">Télécharger le template 200</a>
+    </div>
+
+    <div id="f200Status" class="sub"></div>
+  </div>
+</div>
 
     <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:flex-end">
       <span id="runStatus" class="badge info hidden"></span>
@@ -1232,6 +1261,37 @@ const file404=document.getElementById('file404');
 const file200=document.getElementById('file200');
 const f404Status=document.getElementById('f404Status');
 const f200Status=document.getElementById('f200Status');
+
+function downloadUrlTemplate(kind){
+  // kind: '404' ou '200'
+  const sheetName = kind;
+  const col = (kind === '404') ? 'URL_404' : 'URL_200';
+
+  const example =
+    (kind === '404')
+      ? 'https://www.exemple.com/ancienne-url'
+      : 'https://www.exemple.com/nouvelle-url';
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([
+    [col],
+    [example]
+  ]);
+
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  XLSX.writeFile(wb, `template_${kind}.xlsx`);
+}
+
+document.getElementById('dl404Tpl')?.addEventListener('click', (e)=>{
+  e.preventDefault();
+  downloadUrlTemplate('404');
+});
+
+document.getElementById('dl200Tpl')?.addEventListener('click', (e)=>{
+  e.preventDefault();
+  downloadUrlTemplate('200');
+});
+
 
 const btnRun=document.getElementById('btnRun');
 const btnClear=document.getElementById('btnClear');
