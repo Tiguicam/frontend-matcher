@@ -2213,6 +2213,14 @@ function toNumberSafe(v){
   return n;
 }
 
+function fmtScore(n){
+  if(n == null || !Number.isFinite(n)) return 'n/a';
+  // si c'est un entier (ou très proche), on affiche sans décimales
+  if (Math.abs(n - Math.round(n)) < 1e-9) return String(Math.round(n));
+  return n.toFixed(2);
+}
+
+
 async function buildRunSummaryFromBlob(blob){
   let text = await blob.text();
 
@@ -2265,8 +2273,9 @@ async function buildRunSummaryFromBlob(blob){
 function renderRunSummary(summary){
   const { total, k, startLineExcel, bottomMin, bottomMax, best5 } = summary;
 
-  const minTxt = (bottomMin == null) ? 'n/a' : `${bottomMin.toFixed(2)}`;
-  const maxTxt = (bottomMax == null) ? 'n/a' : `${bottomMax.toFixed(2)}`;
+  const minTxt = fmtScore(bottomMin);
+  const maxTxt = fmtScore(bottomMax);
+
 
 
   if(rsSubtitle) {
@@ -2274,7 +2283,7 @@ function renderRunSummary(summary){
   }
 
   const tableRows = (best5 || []).map((x, idx) => {
-    const s = x.score.toFixed(2);
+    const s = fmtScore(x.score);
     return `
       <tr>
         <td>${idx + 1}</td>
