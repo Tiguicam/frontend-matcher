@@ -2220,6 +2220,73 @@ function fmtScore(n){
   return n.toFixed(2);
 }
 
+function parseCsvSemicolon(text){
+  // retire BOM éventuel
+  text = String(text || '').replace(/^\uFEFF/, '');
+
+  const rows = [];
+  let row = [];
+  let cell = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++){
+    const ch = text[i];
+    const next = text[i + 1];
+
+    if (ch === '"'){
+      // double quote -> quote escaped
+      if (inQuotes && next === '"'){
+        cell += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (!inQuotes && ch === ';'){
+      row.push(cell);
+      cell = '';
+      continue;
+    }
+
+    if (!inQuotes && (ch === '\n' || ch === '\r')){
+      // gérer CRLF
+      if (ch === '\r' && next === '\n') i++;
+      row.push(cell);
+      rows.push(row);
+      row = [];
+      cell = '';
+      continue;
+    }
+
+    cell += ch;
+  }
+
+  // dernière cellule
+  if (cell.length > 0 || row.length > 0){
+    row.push(cell);
+    rows.push(row);
+  }
+
+  if (!rows.length) return [];
+
+  const headers = rows[0].map(h => String(h || '').trim());
+  const data = [];
+
+  for (let r = 1; r < rows.length; r++){
+    const obj = {};
+    const line = rows[r];
+    if (!line || line.every(x => String(x || '').trim() === '')) continue;
+
+    for (let c = 0; c < headers.length; c++){
+      obj[headers[c]] = (line[c] ?? '');
+    }
+    data.push(obj);
+  }
+  return data;
+}
+
 
 async function buildRunSummaryFromBlob(blob){
   let text = await blob.text();
@@ -2228,10 +2295,8 @@ async function buildRunSummaryFromBlob(blob){
   text = text.replace(/^\uFEFF/, '');
 
   // Force le séparateur CSV à ";" (ton moteur exporte en sep=";")
-  const wb = XLSX.read(text, { type: 'string', FS: ';' });
+  const rows = parseCsvSemicolon(text);
 
-  const sh = wb.Sheets[wb.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json(sh, { defval: "" });
 
   const total = rows.length;
   const scoreKey = "SCORE_TOTAL";
