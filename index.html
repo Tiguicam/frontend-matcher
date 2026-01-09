@@ -1236,7 +1236,7 @@ function loadLocalForUser(userId){
 
     for (const name of Object.keys(state.dicos || {})) {
       if (!state.dicoWeights[name]) {
-        state.dicoWeights[name] = { bonus: 1, malus: 1, active: true };
+        state.dicoWeights[name] = { bonus: 1, malus: 1, active: false };
       }
     }
 
@@ -1992,7 +1992,7 @@ fileDico.addEventListener('change', async ()=>{
 
     for (const name of Object.keys(state.dicos || {})) {
       if (!state.dicoWeights[name]) {
-        state.dicoWeights[name] = { bonus: 1, malus: 1, active: true };
+        state.dicoWeights[name] = { bonus: 1, malus: 1, active: false };
       }
     }
 
@@ -2098,11 +2098,11 @@ function buildConfigFromUI(){
   const bonus = {}, malus = {}, prefilter = {};
 
   for (const name of Object.keys(state.dicos || {})) {
-    if (!state.dicoWeights[name]) state.dicoWeights[name] = { bonus: 1, malus: 1, active: true };
+    if (!state.dicoWeights[name]) state.dicoWeights[name] = { bonus: 1, malus: 1, active: false };
   }
 
   Object.keys(state.dicos || {}).forEach((name)=>{
-    const w = state.dicoWeights[name] || { bonus: 1, malus: 1, active: true };
+    const w = state.dicoWeights[name] || { bonus: 1, malus: 1, active: false };
     bonus[name] = Number.isFinite(Number(w.bonus)) ? Number(w.bonus) : 1;
     malus[name] = Number.isFinite(Number(w.malus)) ? Number(w.malus) : 1;
     prefilter[name] = !!w.active;
@@ -2214,8 +2214,14 @@ function toNumberSafe(v){
 }
 
 async function buildRunSummaryFromBlob(blob){
-  const text = await blob.text();
-  const wb = XLSX.read(text, { type: 'string' });
+  let text = await blob.text();
+
+  // Retire le BOM UTF-8 (utf-8-sig) si présent, sinon les headers peuvent être cassés
+  text = text.replace(/^\uFEFF/, '');
+
+  // Force le séparateur CSV à ";" (ton moteur exporte en sep=";")
+  const wb = XLSX.read(text, { type: 'string', FS: ';' });
+
   const sh = wb.Sheets[wb.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json(sh, { defval: "" });
 
