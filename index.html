@@ -47,6 +47,18 @@
     .btn{cursor:pointer;border:none;border-radius:10px;font-weight:800;padding:10px 14px}
     .btn.primary{background:var(--accent);color:#fff}
     .btn.primary:hover{background:var(--accent-600)}
+    .btn{
+      transition: transform .08s ease, filter .12s ease;
+    }
+    .btn:active{
+      transform: translateY(1px);
+    }
+    .btn:disabled{
+      opacity:.7;
+      cursor:not-allowed;
+    }
+
+
     .btn.ghost{background:#fff;border:1px solid var(--border);color:var(--text)}
     .btn.ghost:hover{background:#fafafa}
     .btn.danger{background:#fff;border:1px solid #fecaca;color:#991b1b}
@@ -311,6 +323,7 @@
 
       <div class="actions">
         <span id="currentUser" class="user"></span>
+        <span id="engineWarmBadge" class="badge info hidden"></span>
         <button id="btnLoginOpen" class="btn primary">Se connecter</button>
         <button id="btnHistoryTop" class="btn ghost hidden">Historique</button>
         <button id="btnLogout" class="btn ghost hidden">Se déconnecter</button>
@@ -725,6 +738,8 @@ const elLoginOpen = document.getElementById('btnLoginOpen');
 const elLogout = document.getElementById('btnLogout');
 const elUser = document.getElementById('currentUser');
 const elHistoryTop = document.getElementById('btnHistoryTop');
+const elWarmBadge = document.getElementById('engineWarmBadge');
+
 const appShell = document.getElementById('appShell');
 
 const tabs = document.querySelectorAll('.tab');
@@ -789,6 +804,80 @@ async function getSessionSafe(){
   }
 }
 
+
+let WARMUP_IN_FLIGHT = false;
+let LAST_WARMUP_AT = 0;
+
+function setWarmBadge(state, text){
+  if(!elWarmBadge) return;
+
+  elWarmBadge.classList.remove('hidden', 'ok', 'warn', 'err', 'info');
+  // style
+  if(state === 'ok') elWarmBadge.classList.add('ok');
+  else if(state === 'warn') elWarmBadge.classList.add('warn');
+  else if(state === 'err') elWarmBadge.classList.add('err');
+  else elWarmBadge.classList.add('info');
+
+  elWarmBadge.innerHTML = text || '';
+}
+
+function hideWarmBadge(){
+  if(!elWarmBadge) return;
+  elWarmBadge.classList.add('hidden');
+  elWarmBadge.textContent = '';
+}
+
+async function warmUpEngine(session){
+  // Non bloquant, anti-spam (toutes les 10 min max)
+  if(!session?.access_token) return;
+  if(WARMUP_IN_FLIGHT) return;
+
+  const now = Date.now();
+  if(now - LAST_WARMUP_AT < 10 * 60 * 1000) return; // 10 minutes
+  LAST_WARMUP_AT = now;
+
+  WARMUP_IN_FLIGHT = true;
+
+  // Affichage immédiat
+  setWarmBadge('info', `<span class="spinner"></span>Initialisation du moteur…`);
+
+  try{
+    const token = session.access_token;
+
+    // Ping "léger" : /debug-url avec config minimale
+    const ctrl = new AbortController();
+    setTimeout(()=>ctrl.abort(), 20000); // timeout raisonnable, mais NON bloquant pour l'utilisateur
+
+    const payload = {
+      url: "https://warmup.local/ref-warmup",
+      config: {} // minimal
+    };
+
+    const r = await fetch(buildUrl('/debug-url'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify(payload),
+      signal: ctrl.signal
+    });
+
+    // Même si ce n’est pas OK, le simple fait d’avoir réveillé le conteneur est déjà utile
+    if(r.ok){
+      setWarmBadge('ok', `Moteur prêt`);
+      setTimeout(hideWarmBadge, 1500);
+    } else {
+      // On ne bloque pas : on peut soit cacher, soit afficher un message neutre
+      setWarmBadge('warn', `Moteur en cours…`);
+      setTimeout(hideWarmBadge, 2500);
+    }
+  } catch {
+    // Pas de bruit : on masque, l’utilisateur pourra quand même cliquer, et ça chauffera au premier appel réel
+    hideWarmBadge();
+  } finally {
+    WARMUP_IN_FLIGHT = false;
+  }
+}
+
+
 async function route(sessionOverride = null){
   const session = sessionOverride ?? await getSessionSafe();
   const authed = !!session;
@@ -851,7 +940,7 @@ async function requireAuthOrGate(message){
 
 /* Support tokens éventuels dans l’URL (magic link) */
 (async function bootstrapFromHash(){
-  const hash=new URLSearchParams(location.hash.replace('#','').split('?')[1] || '');
+  const hashParams = new URLSearchParams(location.hash.replace(/^#/, ''));
   const access_token=hash.get('access_token');
   const refresh_token=hash.get('refresh_token');
   if(access_token && refresh_token){
@@ -891,6 +980,7 @@ supabaseClient.auth.onAuthStateChange(async (event, session)=> {
   }
 
   await applyAuthUI(session || null);
+  if(session) warmUpEngine(session);
   await route(session || null);
 });
 
@@ -1117,6 +1207,21 @@ function showPrompt({ title='Nom', subtitle='Optionnel', placeholder='Ex: Décem
     document.getElementById('mSave')?.addEventListener('click', ()=>done(input()), { once:true });
   });
 }
+
+function setBtnLoading(btn, on, loadingText){
+  if(!btn) return;
+
+  if(on){
+    if(!btn.dataset._origHtml) btn.dataset._origHtml = btn.innerHTML;
+    btn.innerHTML = `<span class="spinner"></span>${loadingText || 'Chargement…'}`;
+  } else {
+    if(btn.dataset._origHtml){
+      btn.innerHTML = btn.dataset._origHtml;
+      delete btn.dataset._origHtml;
+    }
+  }
+}
+
 
 /* ============================================================
    STATE + LOCAL STORAGE PER USER
@@ -2151,6 +2256,9 @@ btnTest.addEventListener('click', async () => {
   const url = testUrl.value.trim();
   if (!url) { testOut.value = 'Veuillez saisir une URL.'; return; }
 
+  btnTest.disabled = true;
+  setBtnLoading(btnTest, true, 'Test en cours…');
+
   try {
     const payload = { url, config: buildConfigFromUI() };
 
@@ -2192,8 +2300,12 @@ btnTest.addEventListener('click', async () => {
     testOut.value = out.join('\n');
   } catch (e) {
     testOut.value = 'Erreur : ' + (e?.message || String(e));
+  } finally {
+    btnTest.disabled = false;
+    setBtnLoading(btnTest, false);
   }
 });
+
 
 /* ============================================================
    SUMMARY MODAL
@@ -2884,6 +2996,8 @@ btnRun.addEventListener('click', async ()=>{
 
   btnRun.disabled = true;
   btnClear.disabled = true;
+  setBtnLoading(btnRun, true, 'Matching…');
+
 
   const runId = makeRunId();
   const createdAt = new Date().toISOString();
@@ -2938,6 +3052,8 @@ btnRun.addEventListener('click', async ()=>{
     stopElapsedTimer();
     btnRun.disabled = false;
     btnClear.disabled = false;
+    setBtnLoading(btnRun, false);
+
   }
 });
 
@@ -2953,6 +3069,8 @@ btnRun.addEventListener('click', async ()=>{
   hydrateUIFromState();
 
   await applyAuthUI(session || null);
+  if(session) warmUpEngine(session);
+
   await route(session || null);
 })();
 </script>
