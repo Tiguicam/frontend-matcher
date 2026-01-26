@@ -4,10 +4,55 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Guide – Redirect Match</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  window.SUPABASE_URL="https://srvvdrhiaygklqjijdtq.supabase.co";
+  window.SUPABASE_PUBLISHABLE_KEY="sb_publishable_Tm5K5o-Fq_UBHP9Qp6JBog_rtKQjpDi";
+</script>
+
+
 </head>
 <body>
+
+<!-- Topbar (same as app) -->
+<div class="topbar">
+  <div class="container nav">
+    <div class="brand">
+      <div class="logo"></div><span>Redirect Match</span>
+    </div>
+
+    <div class="actions">
+      <span id="currentUser" class="user"></span>
+
+      <a class="btn ghost" href="/guide">Guide</a>
+      <a class="btn ghost" href="/">Application</a>
+      <button id="btnHistoryTop" class="btn ghost">Historique</button>
+      <button id="btnLogout" class="btn ghost">Se déconnecter</button>
+    </div>
+  </div>
+</div>
+
+
+
   <!-- Redirect Match – Documentation (FULL WIDTH, Elementor compatible) -->
 <style>
+
+/* Shared app header styles */
+.container{max-width:1100px;margin:0 auto;padding:0 20px}
+.topbar{
+  position:sticky;top:0;z-index:40;
+  background:rgba(255,255,255,.85);
+  backdrop-filter:saturate(180%) blur(10px);
+  border-bottom:1px solid var(--rm-border);
+}
+.nav{display:flex;align-items:center;justify-content:space-between;height:60px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:900;letter-spacing:.2px}
+.brand .logo{width:10px;height:24px;background:var(--rm-accent);border-radius:4px}
+.actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.user{font-size:13px;color:var(--rm-muted)}
+.btn{cursor:pointer;border:none;border-radius:10px;font-weight:800;padding:10px 14px; background:#fff; border:1px solid var(--rm-border); color:var(--rm-text); text-decoration:none}
+.btn:hover{background:#fafafa}
+
   :root{
     --rm-bg:#f6f7fb;
     --rm-card:#ffffff;
@@ -816,6 +861,50 @@
     </div>
   </div>
 </div>
+
+
+<script>
+  const supabaseClient = window.supabase.createClient(
+    window.SUPABASE_URL,
+    window.SUPABASE_PUBLISHABLE_KEY,
+    { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
+  );
+
+  const elUser = document.getElementById('currentUser');
+  const btnLogout = document.getElementById('btnLogout');
+  const btnHistory = document.getElementById('btnHistoryTop');
+
+  async function refreshHeader(){
+    const { data } = await supabaseClient.auth.getSession();
+    const session = data?.session || null;
+
+    if(session?.user?.email){
+      elUser.textContent = `Connecté : ${session.user.email}`;
+    } else {
+      elUser.textContent = '';
+    }
+  }
+
+  btnHistory?.addEventListener('click', async ()=>{
+    // si pas connecté, renvoie vers /login
+    const { data } = await supabaseClient.auth.getSession();
+    const session = data?.session || null;
+    if(!session) {
+      location.href = '/login';
+      return;
+    }
+    // sinon on renvoie vers l'app et l'utilisateur clique sur Historique
+    location.href = '/';
+  });
+
+  btnLogout?.addEventListener('click', async ()=>{
+    try { await supabaseClient.auth.signOut({ scope: 'local' }); } catch {}
+    location.href = '/';
+  });
+
+  supabaseClient.auth.onAuthStateChange(()=> refreshHeader().catch(()=>{}));
+  refreshHeader().catch(()=>{});
+</script>
 
 </body>
 </html>
