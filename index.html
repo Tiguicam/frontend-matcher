@@ -325,6 +325,7 @@
         <span id="currentUser" class="user"></span>
         <span id="engineWarmBadge" class="badge info hidden"></span>
         <button id="btnLoginOpen" class="btn primary">Se connecter</button>
+        <a class="btn ghost" href="/guide">Guide</a>
         <button id="btnHistoryTop" class="btn ghost hidden">Historique</button>
         <button id="btnLogout" class="btn ghost hidden">Se déconnecter</button>
       </div>
@@ -941,8 +942,9 @@ async function requireAuthOrGate(message){
 /* Support tokens éventuels dans l’URL (magic link) */
 (async function bootstrapFromHash(){
   const hashParams = new URLSearchParams(location.hash.replace(/^#/, ''));
-  const access_token=hash.get('access_token');
-  const refresh_token=hash.get('refresh_token');
+  const access_token = hashParams.get('access_token');
+  const refresh_token = hashParams.get('refresh_token');
+
   if(access_token && refresh_token){
     try{ await supabaseClient.auth.setSession({access_token,refresh_token}); }
     catch{}

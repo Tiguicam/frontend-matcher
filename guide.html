@@ -1,0 +1,821 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Guide – Redirect Match</title>
+</head>
+<body>
+  <!-- Redirect Match – Documentation (FULL WIDTH, Elementor compatible) -->
+<style>
+  :root{
+    --rm-bg:#f6f7fb;
+    --rm-card:#ffffff;
+    --rm-text:#0f172a;
+    --rm-muted:#64748b;
+    --rm-border:#e5e7eb;
+
+    --rm-accent:#2563eb;
+    --rm-accent-600:#1d4ed8;
+
+    --rm-ok:#16a34a;
+    --rm-warn:#f59e0b;
+
+    --rm-shadow:0 10px 30px #0000000a;
+  }
+
+  /* === FULL WIDTH HACK (Elementor) === */
+  .rm-fullbleed{
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    background: var(--rm-bg);
+    overflow-x: clip;
+  }
+  .rm-fullbleed *{ box-sizing:border-box; }
+
+  /* Layout */
+  .rm-doc{
+    width: 100%;
+    max-width: 1220px;
+    margin: 0 auto;
+    padding: 26px 18px 44px;
+    color: var(--rm-text);
+    font-family: Inter, system-ui, Segoe UI, Roboto, Arial, sans-serif;
+  }
+
+  .rm-hero{
+    background: #fff;
+    border: 1px solid var(--rm-border);
+    border-radius: 18px;
+    padding: 22px;
+    box-shadow: var(--rm-shadow);
+  }
+
+  .rm-title{
+    font-size: 34px;
+    line-height: 1.15;
+    margin: 0 0 10px 0;
+    font-weight: 950;
+    letter-spacing: .2px;
+  }
+  .rm-lead{
+    margin: 0;
+    color: var(--rm-muted);
+    line-height: 1.65;
+    font-size: 14px;
+    max-width: 78ch;
+  }
+
+  /* Inline chips (404/200 etc.) */
+  .rm-code{
+    display:inline-block;
+    padding:2px 8px;
+    border-radius: 10px;
+    border:1px solid var(--rm-border);
+    background:#ffffff;
+    font-weight:900;
+    font-size:12px;
+    color: var(--rm-text);
+    white-space: nowrap;
+  }
+
+  /* Top callout */
+  .rm-callout{
+    margin-top: 14px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 14px;
+    padding: 14px 16px;
+    font-weight: 900;
+    color: #1e3a8a;
+    line-height: 1.35;
+  }
+
+  /* CTA */
+  .rm-cta{
+    margin-top: 14px;
+    border: 1px solid #c7d2fe;
+    background: linear-gradient(180deg, #eef2ff, #ffffff);
+    border-radius: 16px;
+    padding: 14px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 12px;
+    box-shadow: var(--rm-shadow);
+    flex-wrap: wrap;
+  }
+  .rm-cta .txt{
+    display:grid;
+    gap: 2px;
+  }
+  .rm-cta .txt b{
+    font-weight:950;
+  }
+  .rm-cta .txt span{
+    color: var(--rm-muted);
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  .rm-cta a{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap: 8px;
+    text-decoration:none;
+    padding: 10px 14px;
+    border-radius: 999px;
+    background: var(--rm-accent);
+    color:#fff;
+    font-weight: 950;
+    font-size: 13px;
+    border: 1px solid #1d4ed8;
+    white-space: nowrap;
+  }
+  .rm-cta a:hover{ background: var(--rm-accent-600); }
+  .rm-cta .sub{
+    display:inline-flex;
+    align-items:center;
+    gap: 8px;
+    color: var(--rm-muted);
+    font-size: 12px;
+    font-weight: 900;
+    white-space: nowrap;
+  }
+  .rm-dot{
+    width:8px;height:8px;border-radius:999px;background: var(--rm-ok);
+    box-shadow: 0 0 0 4px #16a34a1a;
+  }
+
+  /* Process steps */
+  .rm-steps{
+    margin-top: 14px;
+    display:grid;
+    gap: 10px;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 980px){
+    .rm-steps{ grid-template-columns: repeat(5, minmax(0,1fr)); gap: 14px; }
+  }
+
+  .rm-step{
+    background: #fff;
+    border: 1px solid var(--rm-border);
+    border-radius: 16px;
+    padding: 12px;
+    box-shadow: var(--rm-shadow);
+    position: relative;
+    overflow:hidden;
+  }
+  .rm-step:before{
+    content:"";
+    position:absolute;left:0;top:0;bottom:0;width:4px;
+    background: var(--rm-accent);
+    opacity:.9;
+  }
+  .rm-step .n{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:26px;height:26px;border-radius:999px;
+    background:#eef2ff;border:1px solid #c7d2fe;
+    color:#1e3a8a;font-weight:950;font-size:12px;
+    margin-bottom:8px;
+  }
+  .rm-step .t{
+    font-weight:950;font-size:13px;margin:0 0 6px 0;
+  }
+  .rm-step .d{
+    margin:0;color:var(--rm-muted);font-size:12px;line-height:1.45;
+  }
+
+  /* Arrows between steps (desktop only) */
+  @media (min-width: 980px){
+    .rm-step{ padding-right: 18px; }
+    .rm-step:not(:last-child)::after{
+      content:"";
+      position:absolute;
+      top:50%;
+      right:-10px;
+      width:18px;
+      height:18px;
+      transform: translateY(-50%) rotate(45deg);
+      border-top: 2px solid #c7d2fe;
+      border-right: 2px solid #c7d2fe;
+      background: transparent;
+      opacity:.95;
+    }
+  }
+
+  /* Main grid: sticky toc + content */
+  .rm-layout{
+    display:grid;
+    gap: 14px;
+    margin-top: 14px;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 980px){
+    .rm-layout{ grid-template-columns: 320px 1fr; align-items:start; }
+  }
+
+  /* Sticky TOC */
+  .rm-tocWrap{
+    background: #fff;
+    border: 1px solid var(--rm-border);
+    border-radius: 18px;
+    box-shadow: var(--rm-shadow);
+    padding: 14px;
+  }
+  @media (min-width: 980px){
+    .rm-tocWrap{ position: sticky; top: 18px; }
+  }
+  .rm-chip{
+    display: inline-block;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--rm-border);
+    background: #fff;
+    font-size: 12px;
+    font-weight: 900;
+    color: var(--rm-muted);
+  }
+  .rm-toc{
+    margin: 12px 0 0 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 8px;
+  }
+  .rm-toc a{
+    display:block;
+    padding: 10px 10px;
+    border-radius: 12px;
+    border: 1px solid var(--rm-border);
+    background:#fafafa;
+    color: var(--rm-text);
+    text-decoration: none;
+    font-weight: 900;
+    font-size: 13px;
+  }
+  .rm-toc a:hover{
+    border-color:#c7d2fe;
+    background:#eef2ff;
+  }
+  .rm-toc small{
+    display:block;
+    margin-top:4px;
+    color:var(--rm-muted);
+    font-weight:800;
+    font-size:11px;
+    line-height:1.35;
+  }
+
+  /* Cards/sections */
+  .rm-content{ display:grid; gap: 14px; }
+  .rm-card{
+    background: var(--rm-card);
+    border: 1px solid var(--rm-border);
+    border-radius: 18px;
+    padding: 18px;
+    box-shadow: var(--rm-shadow);
+  }
+  .rm-h2{
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    font-weight: 950;
+  }
+  .rm-h3{
+    margin: 16px 0 8px 0;
+    font-size: 14px;
+    font-weight: 950;
+  }
+  .rm-muted{ color: var(--rm-muted); }
+
+  .rm-list{
+    margin: 10px 0 0 0;
+    padding-left: 18px;
+    color: var(--rm-text);
+    line-height: 1.6;
+    font-size: 14px;
+  }
+
+  /* Compact highlights */
+  .rm-highlights{
+    margin-top: 12px;
+    display:grid;
+    gap:10px;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 980px){
+    .rm-highlights{ grid-template-columns: 1fr 1fr; }
+  }
+  .rm-hl{
+    border:1px solid var(--rm-border);
+    border-radius: 14px;
+    background:#fafafa;
+    padding: 12px;
+  }
+  .rm-hl b{ font-weight:950; }
+  .rm-hl p{ margin:6px 0 0 0; color:var(--rm-muted); font-size:13px; line-height:1.45; }
+
+  /* Notes */
+  .rm-note{
+    margin-top: 12px;
+    border-left: 4px solid var(--rm-accent);
+    background: #ffffff;
+    border: 1px solid var(--rm-border);
+    border-left-width: 4px;
+    border-radius: 14px;
+    padding: 12px 14px;
+    color: var(--rm-text);
+    line-height: 1.55;
+    font-size: 13px;
+  }
+  .rm-note.ok{ border-left-color: var(--rm-ok); }
+  .rm-note.warn{ border-left-color: var(--rm-warn); }
+
+  /* “Advanced settings” mini cards */
+  .rm-miniGrid{
+    margin-top: 12px;
+    display:grid;
+    gap:10px;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 980px){
+    .rm-miniGrid{ grid-template-columns: 1fr 1fr; }
+  }
+  .rm-mini{
+    border: 1px solid var(--rm-border);
+    border-radius: 14px;
+    background:#fff;
+    padding: 12px;
+  }
+  .rm-mini .k{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    font-weight:950;font-size:13px;margin-bottom:6px;
+  }
+  .rm-mini .v{
+    color: var(--rm-muted);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .rm-pill{
+    display:inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border:1px solid var(--rm-border);
+    background:#fafafa;
+    color: var(--rm-muted);
+    font-weight: 900;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  /* Accordions (native details) */
+  .rm-acc{ margin-top: 12px; display:grid; gap:10px; }
+  details.rm-details{
+    border:1px solid var(--rm-border);
+    border-radius: 14px;
+    background:#fff;
+    box-shadow: var(--rm-shadow);
+    overflow:hidden;
+  }
+  details.rm-details > summary{
+    list-style:none;
+    cursor:pointer;
+    padding: 12px 12px;
+    font-weight:950;
+    font-size: 13px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
+  details.rm-details > summary::-webkit-details-marker{ display:none; }
+  .rm-chev{
+    width: 10px;
+    height: 10px;
+    border-right: 2px solid #94a3b8;
+    border-bottom: 2px solid #94a3b8;
+    transform: rotate(-45deg);
+    transition: transform .18s ease;
+    margin-left: 8px;
+    flex: 0 0 auto;
+  }
+  details[open].rm-details .rm-chev{ transform: rotate(45deg); }
+  .rm-details .rm-inner{
+    border-top:1px solid var(--rm-border);
+    padding: 12px;
+    background:#fafafa;
+  }
+
+  /* Optional Images */
+  .rm-shot{
+    margin-top: 12px;
+    border: 1px solid var(--rm-border);
+    border-radius: 16px;
+    overflow: hidden;
+    background: #fff;
+  }
+  .rm-shot img{ display:block; width:100%; height:auto; }
+  .rm-shot .cap{
+    padding: 10px 12px;
+    font-size: 12px;
+    color: var(--rm-muted);
+    background: #fafafa;
+    border-top: 1px solid var(--rm-border);
+  }
+
+  /* Footer */
+  .rm-foot{
+    margin-top: 14px;
+    font-size: 12px;
+    color: var(--rm-muted);
+    text-align: left;
+  }
+
+  /* Reduce anchor jump under sticky elements */
+  .rm-anchor{ scroll-margin-top: 14px; }
+
+
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--rm-bg); }
+
+
+</style>
+
+<div class="rm-fullbleed">
+  <div class="rm-doc">
+
+    <!-- HERO -->
+    <section class="rm-hero">
+      <h1 class="rm-title">Documentation – Redirect Match</h1>
+      <p class="rm-lead">
+        Redirect Match te permet de créer un plan de redirections en quelques minutes :
+        tu donnes la liste des pages qui renvoient une erreur (<span class="rm-code">404</span>) et la liste des pages valides (<span class="rm-code">200</span>),
+        et l’outil propose la meilleure correspondance pour chaque page cassée.
+      </p>
+
+      <div class="rm-callout">
+        Objectif : accélérer la création de redirections, tout en conservant une validation humaine avant mise en production.
+      </div>
+
+      <!-- CTA to app -->
+      <div class="rm-cta" role="region" aria-label="Accès à l'application Redirect Match">
+        <div class="txt">
+          <b>Pour tester l’outil</b>
+          <span>Accède directement à l’application Redirect Match et lance un premier run sur un petit échantillon.</span>
+        </div>
+        <div class="sub"><span class="rm-dot" aria-hidden="true"></span>Application en ligne</div>
+        <a href="https://app.redirectmatch.com/" target="_blank" rel="noopener">Ouvrir l’application</a>
+      </div>
+
+      <!-- Process / chronologie -->
+      <div class="rm-steps" aria-label="Chronologie">
+        <div class="rm-step">
+          <div class="n">1</div>
+          <p class="t">Préparer tes listes</p>
+          <p class="d">Pages en erreur (<span class="rm-code">404</span>) + pages valides (<span class="rm-code">200</span>).</p>
+        </div>
+        <div class="rm-step">
+          <div class="n">2</div>
+          <p class="t">Renseigner le dictionnaire</p>
+          <p class="d">Plus il est complet, plus le matching est pertinent.</p>
+        </div>
+        <div class="rm-step">
+          <div class="n">3</div>
+          <p class="t">Ajuster les réglages</p>
+          <p class="d">Traductions, parents, bonus/malus, poids sémantique.</p>
+        </div>
+        <div class="rm-step">
+          <div class="n">4</div>
+          <p class="t">Lancer le matching</p>
+          <p class="d">Proposition de correspondance + fichier final.</p>
+        </div>
+        <div class="rm-step">
+          <div class="n">5</div>
+          <p class="t">Contrôler &amp; livrer</p>
+          <p class="d">Validation humaine avant mise en production.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- LAYOUT: TOC + CONTENT -->
+    <div class="rm-layout">
+
+      <!-- TOC (sticky) -->
+      <aside class="rm-tocWrap">
+        <span class="rm-chip">Navigation</span>
+        <ul class="rm-toc">
+          <li><a href="#rm-quoi">1. À quoi ça sert ?<small>Le problème, le résultat attendu.</small></a></li>
+          <li><a href="#rm-quick">2. Démarrage rapide<small>À faire avant un gros run.</small></a></li>
+          <li><a href="#rm-config">3. Configuration<small>Dictionnaire + réglages.</small></a></li>
+          <li><a href="#rm-test">4. Tester une URL<small>Comprendre ce que l’outil lit.</small></a></li>
+          <li><a href="#rm-match">5. Matching<small>Lancer et récupérer le fichier.</small></a></li>
+          <li><a href="#rm-bonnes">6. Bonnes pratiques<small>Checklist rapide.</small></a></li>
+          <li><a href="#rm-limites">7. Limites<small>À connaître avant livraison.</small></a></li>
+        </ul>
+      </aside>
+
+      <!-- CONTENT -->
+      <main class="rm-content">
+
+        <!-- 1 -->
+        <section id="rm-quoi" class="rm-card rm-anchor">
+          <h2 class="rm-h2">1. À quoi sert l’outil ?</h2>
+          <p class="rm-lead">
+            L’outil transforme un travail manuel long (retrouver “la bonne page” pour chaque page cassée) en un process rapide :
+            il compare tes pages en erreur (<span class="rm-code">404</span>) avec tes pages valides (<span class="rm-code">200</span>)
+            et propose la meilleure correspondance.
+          </p>
+
+          <div class="rm-highlights">
+            <div class="rm-hl">
+              <b>Gain de temps</b>
+              <p>Particulièrement utile sur des volumes importants (centaines / milliers de pages).</p>
+            </div>
+            <div class="rm-hl">
+              <b>Validation priorisée</b>
+              <p>Le score aide à concentrer la relecture là où c’est nécessaire.</p>
+            </div>
+          </div>
+
+          <div class="rm-note warn">
+            Le résultat doit toujours être relu avant mise en production : l’outil accélère la décision, il ne remplace pas la validation.
+          </div>
+        </section>
+
+        <!-- 2 -->
+        <section id="rm-quick" class="rm-card rm-anchor">
+          <h2 class="rm-h2">2. Démarrage rapide (3 minutes)</h2>
+
+          <h3 class="rm-h3">A. Préparer les fichiers</h3>
+          <ul class="rm-list">
+            <li><b>Liste des pages en erreur</b> (<span class="rm-code">404</span>) : onglet <span class="rm-code">404</span> + colonne <span class="rm-code">URL_404</span>.</li>
+            <li><b>Liste des pages valides</b> (<span class="rm-code">200</span>) : onglet <span class="rm-code">200</span> + colonne <span class="rm-code">URL_200</span>.</li>
+          </ul>
+
+          <h3 class="rm-h3">B. Importer la configuration (recommandé)</h3>
+          <ul class="rm-list">
+            <li><b>Dictionnaire</b> (fortement recommandé)</li>
+            <li><b>Traductions</b> (si le site est multilingue)</li>
+            <li><b>Parents</b> (si tu veux des parents “propres” basés sur tes vraies catégories)</li>
+          </ul>
+
+          <h3 class="rm-h3">C. Tester avant un gros run</h3>
+          <ul class="rm-list">
+            <li>Teste 1 page en erreur (<span class="rm-code">404</span>)</li>
+            <li>Teste 1 page valide (<span class="rm-code">200</span>)</li>
+          </ul>
+
+          <div class="rm-note ok">
+            Objectif : vérifier rapidement que le dictionnaire, les traductions et la détection de référence fonctionnent avant de lancer un matching massif.
+          </div>
+        </section>
+
+        <!-- 3 -->
+        <section id="rm-config" class="rm-card rm-anchor">
+          <h2 class="rm-h2">3. Configuration (ce qui fait la précision)</h2>
+          <p class="rm-lead">
+            La configuration sert à “apprendre” à l’outil ton vocabulaire métier et à orienter les résultats.
+            <b>Plus ta configuration est propre, plus les correspondances seront fiables.</b>
+          </p>
+
+          <div class="rm-note warn">
+            Après import, clique sur <b>Mettre à jour la configuration</b> : sans ce clic, les réglages ne sont pas appliqués.
+          </div>
+
+          <div class="rm-acc">
+            <!-- 3.1 DICO -->
+            <details class="rm-details">
+              <summary>
+                3.1 Dictionnaire : la clé d’un matching pertinent
+                <span class="rm-chev" aria-hidden="true"></span>
+              </summary>
+              <div class="rm-inner">
+                <p class="rm-lead">
+                  Le dictionnaire est un Excel qui contient ton vocabulaire métier (catégories, couleurs, matières, coupes, etc.).
+                  <b>Plus il est complet, plus le matching sera pertinent</b>, car l’outil “comprend” mieux les variations de termes.
+                </p>
+
+                <h3 class="rm-h3">Comment le remplir (simple)</h3>
+                <ul class="rm-list">
+                  <li><b>1 colonne = 1 type de caractéristique</b> (ex : Couleur, Matière, Catégorie, Coupe…)</li>
+                  <li><b>1 ligne = 1 “clé” + ses synonymes</b> au format : <b>clé, syn1, syn2, syn3…</b></li>
+                </ul>
+
+                <div class="rm-note">
+                  <b>Exemples</b><br><br>
+                  <b>Colonne Couleur</b><br>
+                  <span class="rm-code">bleu, blue, navy, marine, bleu-marine</span><br>
+                  <span class="rm-code">noir, black, noir-charbon</span><br><br>
+                  <b>Colonne Catégorie</b><br>
+                  <span class="rm-code">pantalon, pants, trouser</span><br>
+                  <span class="rm-code">robe, dress</span>
+                </div>
+
+                <h3 class="rm-h3">Réutilisation (très important)</h3>
+                <ul class="rm-list">
+                  <li>Le dictionnaire peut être utilisé <b>plusieurs fois</b> : si dans 2 mois tu refais un plan de redirection pour le même site, tu repars avec une base déjà fiable.</li>
+                  <li>Dans <b>Historique</b>, tu peux <b>re-télécharger</b> le dictionnaire d’un run précédent, l’enrichir, puis relancer.</li>
+                </ul>
+
+                <div class="rm-note ok">
+                  Bon réflexe : après chaque projet, ajoute au dico les termes qui ont posé problème → ton prochain run sera nettement plus précis.
+                </div>
+              </div>
+            </details>
+
+            <!-- 3.2 BONUS/MALUS LISTES -->
+            <details class="rm-details">
+              <summary>
+                3.2 Dico dynamique : Bonus / Malus par liste (pondération)
+                <span class="rm-chev" aria-hidden="true"></span>
+              </summary>
+              <div class="rm-inner">
+                <p class="rm-lead">
+                  Bonus / Malus servent à dire à l’outil ce qui compte vraiment sur ton site.
+                  Tu peux donner <b>plus de poids</b> à certains critères (bonus) et <b>pénaliser</b> ceux qui créent des confusions (malus).
+                </p>
+
+                <div class="rm-miniGrid">
+                  <div class="rm-mini">
+                    <div class="k">Bonus (liste) <span class="rm-pill">augmente le score</span></div>
+                    <div class="v">Si ce critère matche, tu veux que ça pèse fort (ex : Catégorie / Type de produit).</div>
+                  </div>
+                  <div class="rm-mini">
+                    <div class="k">Malus (liste) <span class="rm-pill">réduit le score</span></div>
+                    <div class="v">Si ce critère est incohérent ou manquant d’un côté, tu veux limiter les faux matchings.</div>
+                  </div>
+                </div>
+
+                <div class="rm-note">
+                  <b>Exemple concret</b><br>
+                  Page en erreur : <span class="rm-code">/pantalon-coupe-cigarette-bleu/...</span><br><br>
+                  Tu peux décider :<br>
+                  • Bonus Catégorie : <b>80</b> (très important)<br>
+                  • Bonus Coupe : <b>40</b> (important)<br>
+                  • Bonus Couleur : <b>10</b> (moins important)<br><br>
+                  Résultat : l’outil comprend que <b>Catégorie &gt; Coupe &gt; Couleur</b>.
+                </div>
+
+                <div class="rm-note ok">
+                  Recommandation : commence avec les valeurs par défaut, puis ajuste <b>liste par liste</b> en fonction des erreurs observées dans tes runs.
+                </div>
+              </div>
+            </details>
+
+            <!-- 3.3 CHECKBOX PREFILTER -->
+            <details class="rm-details">
+              <summary>
+                3.3 Case “cocher une liste” : ce que ça fait vraiment (préfiltre)
+                <span class="rm-chev" aria-hidden="true"></span>
+              </summary>
+              <div class="rm-inner">
+                <p class="rm-lead">
+                  Point important : <b>toutes les listes importées sont utilisées</b> dans le matching.
+                </p>
+
+                <div class="rm-note">
+                  La case sert à <b>préfiltrer / enrichir les candidates</b> :
+                  pour chaque page en erreur (<span class="rm-code">404</span>),
+                  l’outil ajoute d’office dans la liste des candidates les pages valides (<span class="rm-code">200</span>) qui partagent ce critère
+                  (ex : même langue, même catégorie, etc.), puis calcule les scores normalement par-dessus.
+                </div>
+
+                <div class="rm-note ok">
+                  Utilité : accélérer et sécuriser les résultats quand certains critères structurants doivent matcher en priorité.
+                </div>
+              </div>
+            </details>
+
+            <!-- 3.4 TRAD -->
+            <details class="rm-details">
+              <summary>
+                3.4 Traductions (si multilingue)
+                <span class="rm-chev" aria-hidden="true"></span>
+              </summary>
+              <div class="rm-inner">
+                <p class="rm-lead">Les traductions servent à harmoniser les mots entre langues.</p>
+                <div class="rm-note">
+                  Exemples :<br>
+                  <span class="rm-code">blue → bleu</span><br>
+                  <span class="rm-code">dress → robe</span><br>
+                  <span class="rm-code">women → femme</span>
+                </div>
+                <p class="rm-lead">Après import, elles sont appliquées automatiquement.</p>
+              </div>
+            </details>
+
+            <!-- 3.5 PARENTS -->
+            <details class="rm-details">
+              <summary>
+                3.5 Parents (URLs “pilotes” pour des parents propres)
+                <span class="rm-chev" aria-hidden="true"></span>
+              </summary>
+              <div class="rm-inner">
+                <p class="rm-lead">
+                  Le fichier Parents sert à fournir une liste de pages “catégories/collections” de référence, pour obtenir une colonne parent plus logique.
+                </p>
+
+                <div class="rm-note">
+                  Exemples :<br>
+                  <span class="rm-code">/femme/robes/</span><br>
+                  <span class="rm-code">/homme/pulls/</span><br>
+                  <span class="rm-code">/collections/ete-2024/</span>
+                </div>
+
+                <p class="rm-lead">
+                  Sans fichier Parents, le parent est déduit “techniquement” (on retire le dernier segment de l’URL).
+                  Avec Parents, le parent est basé sur tes vraies catégories.
+                </p>
+              </div>
+            </details>
+
+            <!-- 3.6 TOKENS + SEM -->
+            <details class="rm-details">
+              <summary>
+                3.6 Bonus/Malus tokens + poids sémantique
+                <span class="rm-chev" aria-hidden="true"></span>
+              </summary>
+              <div class="rm-inner">
+                <p class="rm-lead">Ces réglages influencent la façon dont l’outil note les correspondances :</p>
+                <ul class="rm-list">
+                  <li><b>Bonus tokens</b> : ajoute des points quand des mots identiques apparaissent des deux côtés.</li>
+                  <li><b>Malus tokens</b> : retire des points quand la candidate ajoute des mots “hors sujet”.</li>
+                  <li><b>Poids sémantique</b> : augmente ou diminue l’importance du “sens global”.</li>
+                </ul>
+
+                <div class="rm-note ok">
+                  Recommandation : garde les valeurs par défaut au début, puis ajuste après observation sur 20–50 lignes.
+                </div>
+              </div>
+            </details>
+          </div>
+        </section>
+
+        <!-- 4 -->
+        <section id="rm-test" class="rm-card rm-anchor">
+          <h2 class="rm-h2">4. Tester une URL</h2>
+          <p class="rm-lead">
+            Cet écran sert à comprendre comment l’outil “lit” une URL avant un gros matching.
+            C’est utile pour valider que le dictionnaire, les traductions et la détection de référence fonctionnent.
+          </p>
+
+          <div class="rm-note">
+            <b>Exemple</b><br>
+            URL test : <span class="rm-code">https://www.maboutique.com/femme/robes/robe-longue-bleue-123456-01.html</span><br><br>
+            Tu vérifies : version nettoyée, mots détectés (tokens), caractéristiques reconnues via dictionnaire,
+            référence trouvée, et la version “texte” utilisée pour la sémantique.
+          </div>
+        </section>
+
+        <!-- 5 -->
+        <section id="rm-match" class="rm-card rm-anchor">
+          <h2 class="rm-h2">5. Matching (lancer le traitement)</h2>
+          <p class="rm-lead">
+            Tu charges tes deux listes, tu lances le matching, puis tu récupères le fichier final.
+          </p>
+
+          <ul class="rm-list">
+            <li>Charger la liste des pages en erreur (<span class="rm-code">404</span>)</li>
+            <li>Charger la liste des pages valides (<span class="rm-code">200</span>)</li>
+            <li>Cliquer sur <b>Lancer le matching</b></li>
+            <li>Télécharger le fichier résultat</li>
+          </ul>
+
+          <div class="rm-note ok">
+            Besoin de tester maintenant ? <a href="https://app.redirectmatch.com/" target="_blank" rel="noopener" style="font-weight:950;color:var(--rm-accent);text-decoration:none;">Ouvrir l’application</a>.
+          </div>
+        </section>
+
+        <!-- 6 -->
+        <section id="rm-bonnes" class="rm-card rm-anchor">
+          <h2 class="rm-h2">6. Bonnes pratiques (checklist)</h2>
+          <ul class="rm-list">
+            <li>Faire un mini test avant un gros run.</li>
+            <li>Enrichir le dictionnaire après chaque projet (plus tu l’enrichis, plus l’outil devient précis).</li>
+            <li>Mettre un bonus fort sur les critères structurants (catégorie/type).</li>
+            <li>Ne jamais mettre en production sans validation humaine.</li>
+          </ul>
+        </section>
+
+        <!-- 7 -->
+        <section id="rm-limites" class="rm-card rm-anchor">
+          <h2 class="rm-h2">7. Limites</h2>
+          <ul class="rm-list">
+            <li>L’outil ne peut pas proposer une page valide si elle n’existe pas dans ta liste (<span class="rm-code">200</span>).</li>
+            <li>Les pages très génériques peuvent produire des scores plus faibles.</li>
+            <li>Sans dictionnaire, la précision est généralement inférieure sur un site à vocabulaire spécifique.</li>
+            <li>Sur de gros volumes, certains calculs (notamment sémantiques) peuvent prendre plus de temps.</li>
+          </ul>
+
+          <div class="rm-foot">© Tigui Camara – Redirect Match</div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
