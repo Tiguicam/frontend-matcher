@@ -973,6 +973,16 @@ function setLogoutPending(on){
 let CURRENT_USER_ID = null;
 
 supabaseClient.auth.onAuthStateChange(async (event, session)=> {
+  // ✅ Si Supabase envoie un event sans session (ça arrive), on relit.
+  if (!session) {
+    try{
+      const { data } = await supabaseClient.auth.getSession();
+      session = data?.session || null;
+    }catch{
+      session = null;
+    }
+  }
+
   if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
     CURRENT_USER_ID = session?.user?.id || null;
     loadLocalForUser(CURRENT_USER_ID);
@@ -981,9 +991,9 @@ supabaseClient.auth.onAuthStateChange(async (event, session)=> {
     CURRENT_USER_ID = session?.user?.id || CURRENT_USER_ID;
   }
 
-  await applyAuthUI(session || null);
+  await applyAuthUI(session);
   if(session) warmUpEngine(session);
-  await route(session || null);
+  await route(session);
 });
 
 /* Login */
@@ -1000,11 +1010,15 @@ document.getElementById('btnLogin')?.addEventListener('click', async ()=>{
     );
     if(error) return setGateMsg('Erreur: '+error.message);
 
+    // ✅ IMPORTANT : relire la session comme source de vérité (évite le besoin de refresh)
+    const { data: sdata } = await supabaseClient.auth.getSession();
+    const session = sdata?.session || data?.session || null;
+
     setGateMsg('Connecté.');
-    await applyAuthUI(data?.session || null);
+    await applyAuthUI(session);
 
     history.replaceState({}, '', '/');
-    await route(data?.session || null);
+    await route(session);
     closeGate();
 
     loadHistory().catch(()=>{});
