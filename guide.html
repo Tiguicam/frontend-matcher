@@ -26,8 +26,8 @@
 
       <a class="btn ghost" href="/guide">Guide</a>
       <a class="btn ghost" href="/">Application</a>
-      <button id="btnHistoryTop" class="btn ghost">Historique</button>
-      <button id="btnLogout" class="btn ghost">Se déconnecter</button>
+      <button id="btnHistoryTop" class="btn ghost hidden">Historique</button>
+      <button id="btnLogout" class="btn ghost hidden">Se déconnecter</button>
     </div>
   </div>
 </div>
@@ -36,6 +36,8 @@
 
   <!-- Redirect Match – Documentation (FULL WIDTH, Elementor compatible) -->
 <style>
+
+.hidden{display:none !important}
 
 /* Shared app header styles */
 .container{max-width:1100px;margin:0 auto;padding:0 20px}
@@ -875,15 +877,17 @@
   const btnHistory = document.getElementById('btnHistoryTop');
 
   async function refreshHeader(){
-    const { data } = await supabaseClient.auth.getSession();
-    const session = data?.session || null;
+  const { data } = await supabaseClient.auth.getSession();
+  const session = data?.session || null;
+  const authed = !!session?.user;
 
-    if(session?.user?.email){
-      elUser.textContent = `Connecté : ${session.user.email}`;
-    } else {
-      elUser.textContent = '';
-    }
-  }
+  // Email (optionnel)
+  elUser.textContent = authed ? `Connecté : ${session.user.email}` : '';
+
+  // Affichage des boutons uniquement si connecté
+  btnHistory?.classList.toggle('hidden', !authed);
+  btnLogout?.classList.toggle('hidden', !authed);
+}
 
   btnHistory?.addEventListener('click', async ()=>{
     // si pas connecté, renvoie vers /login
