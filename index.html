@@ -1077,52 +1077,66 @@ document.getElementById('btnGateClose')?.addEventListener('click', ()=>{
 });
 
 
-/* Logout non-bloquant */
-elLogout.addEventListener('click', async () => {
-  // ✅ UI instantanée : on “considère” l’utilisateur déconnecté tout de suite
+/* Logout non-bloquant (spinner max 500ms puis reset propre) */
+elLogout?.addEventListener('click', async () => {
+  // 1) Spinner immédiat
+  setLogoutPending(true);
+  if (elUser) elUser.textContent = 'Déconnexion…';
+
+  const MAX_SPINNER_MS = 500;
+
+  // 2) Timer max 500ms (on ne dépassera jamais)
+  const waitMax = new Promise(res => setTimeout(res, MAX_SPINNER_MS));
+
+  // 3) Best-effort logout Supabase (ne doit jamais bloquer l’UI)
+  const bestEffortLogout = (async () => {
+    let accessToken = null;
+
+    // Lire la session (si déjà déconnectée => null, c’est OK)
+    try {
+      const { data } = await supabaseClient.auth.getSession();
+      accessToken = data?.session?.access_token || null;
+    } catch {}
+
+    // Local signout (fire & forget)
+    supabaseClient.auth.signOut({ scope: 'local' }).catch(() => {});
+
+    // Global logout (fire & forget)
+    if (accessToken) {
+      const ctrl = new AbortController();
+      setTimeout(() => ctrl.abort(), 3000);
+
+      fetch(`${window.SUPABASE_URL}/auth/v1/logout?scope=global`, {
+        method: 'POST',
+        headers: {
+          apikey: window.SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json;charset=UTF-8'
+        },
+        signal: ctrl.signal
+      }).catch(() => {});
+    }
+  })();
+
+  // 4) On attend au MAX 500ms (pas plus)
+  await Promise.race([bestEffortLogout, waitMax]);
+
+  // 5) Reset UI + navigation (propre)
   closeGate();
   setGateMsg('');
 
-  // Stoppe l’état "chargement" tout de suite si tu veux zéro friction
   setLogoutPending(false);
 
-  // Reset UI/local immédiatement
-  elUser.textContent = '';
-  elLogout.classList.add('hidden');
-  elLoginOpen.classList.remove('hidden');
-  elHistoryTop.classList.add('hidden');
+  if (elUser) elUser.textContent = '';
+  elLogout?.classList.add('hidden');
+  elLoginOpen?.classList.remove('hidden');
+  elHistoryTop?.classList.add('hidden');
+
   hardResetUIAndLocal();
 
-  // Navigation immédiate
   CURRENT_USER_ID = null;
   history.replaceState({}, '', '/');
-  route(null).catch(()=>{});
-
-  // ✅ Ensuite seulement : best effort de déconnexion Supabase (sans bloquer l’UI)
-  let accessToken = null;
-  try {
-    const { data } = await supabaseClient.auth.getSession();
-    accessToken = data?.session?.access_token || null;
-  } catch {}
-
-  // Local signout (best effort)
-  supabaseClient.auth.signOut({ scope: 'local' }).catch(() => {});
-
-  // Global logout (best effort, non bloquant)
-  if (accessToken) {
-    const ctrl = new AbortController();
-    setTimeout(() => ctrl.abort(), 3000);
-
-    fetch(`${window.SUPABASE_URL}/auth/v1/logout?scope=global`, {
-      method: 'POST',
-      headers: {
-        apikey: window.SUPABASE_PUBLISHABLE_KEY,
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json;charset=UTF-8'
-      },
-      signal: ctrl.signal
-    }).catch(() => {});
-  }
+  route(null).catch(() => {});
 });
 
 
