@@ -2623,9 +2623,21 @@ function extFromFile(file){
 function prettyRunDate(runId){
   const parts = String(runId || '').split('_');
   if(parts.length < 2) return runId;
-  const d = parts[0];
-  const t = parts[1].replace(/-/g,':');
-  return `${d} ${t}`;
+
+  const d = parts[0];                // YYYY-MM-DD
+  const t = parts[1];                // HH-mm-ss
+  const time = t.replace(/-/g, ':'); // HH:mm:ss
+
+  // On reconstruit un ISO UTC propre
+  const isoUtc = `${d}T${time}Z`;
+  const dt = new Date(isoUtc);
+
+  // Affichage en heure de Paris
+  return new Intl.DateTimeFormat('fr-FR', {
+    timeZone: 'Europe/Paris',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit'
+  }).format(dt);
 }
 
 async function storageSignedDownload(path, suggestedName){
