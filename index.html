@@ -751,6 +751,7 @@ const panels = {
   history: document.getElementById('panel-history')
 };
 
+
 function openPanel(name){
   // tabs
   tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === name));
@@ -1110,6 +1111,15 @@ elLoginOpen.addEventListener('click', (e)=>{
   route().catch(()=>{});
 });
 
+elHistoryTop?.addEventListener('click', async (e) => {
+  e.preventDefault();
+
+  const session = await requireAuthOrGate('Connecte-toi pour accéder à ton historique.');
+  if (!session) return;
+
+  openPanel('history');
+  loadHistory().catch(() => {});
+});
 
 document.getElementById('btnGateClose')?.addEventListener('click', ()=>{
   // en /login, on retourne à /
