@@ -1079,28 +1079,40 @@ document.getElementById('btnGateClose')?.addEventListener('click', ()=>{
 
 /* Logout non-bloquant */
 elLogout.addEventListener('click', async () => {
-  setLogoutPending(true);
-
+  // ✅ UI instantanée : on “considère” l’utilisateur déconnecté tout de suite
   closeGate();
   setGateMsg('');
-  elUser.textContent = 'Déconnexion…';
 
+  // Stoppe l’état "chargement" tout de suite si tu veux zéro friction
+  setLogoutPending(false);
+
+  // Reset UI/local immédiatement
+  elUser.textContent = '';
+  elLogout.classList.add('hidden');
+  elLoginOpen.classList.remove('hidden');
+  elHistoryTop.classList.add('hidden');
+  hardResetUIAndLocal();
+
+  // Navigation immédiate
+  CURRENT_USER_ID = null;
+  history.replaceState({}, '', '/');
+  route(null).catch(()=>{});
+
+  // ✅ Ensuite seulement : best effort de déconnexion Supabase (sans bloquer l’UI)
   let accessToken = null;
   try {
     const { data } = await supabaseClient.auth.getSession();
     accessToken = data?.session?.access_token || null;
   } catch {}
 
-  // 1) déconnexion locale immédiate
-  try { await supabaseClient.auth.signOut({ scope: 'local' }); } catch {}
+  // Local signout (best effort)
+  supabaseClient.auth.signOut({ scope: 'local' }).catch(() => {});
 
-  // 2) reset UI/local
-  hardResetUIAndLocal();
-
-  // 3) best effort global logout
+  // Global logout (best effort, non bloquant)
   if (accessToken) {
     const ctrl = new AbortController();
-    setTimeout(() => ctrl.abort(), 6000);
+    setTimeout(() => ctrl.abort(), 3000);
+
     fetch(`${window.SUPABASE_URL}/auth/v1/logout?scope=global`, {
       method: 'POST',
       headers: {
@@ -1111,41 +1123,6 @@ elLogout.addEventListener('click', async () => {
       signal: ctrl.signal
     }).catch(() => {});
   }
-
-  setLogoutPending(false);
-  elUser.textContent = '';
-  elLogout.classList.add('hidden');
-  elLoginOpen.classList.remove('hidden');
-  elHistoryTop.classList.add('hidden');
-
-  CURRENT_USER_ID = null;
-  history.replaceState({}, '', '/');
-  await route(null).catch(()=>{});
-});
-
-/* ============================================================
-   UI TABS / PANELS
-   ============================================================ */
-function openPanel(name){
-  Object.values(panels).forEach(p=>p.classList.remove('active'));
-  if(panels[name]) panels[name].classList.add('active');
-
-  tabs.forEach(x=>x.classList.remove('active'));
-  const btn = document.querySelector(`.tab[data-tab="${name}"]`);
-  if(btn) btn.classList.add('active');
-
-  if(name === 'history') loadHistory().catch(()=>{});
-}
-tabs.forEach(t=> t.addEventListener('click',()=>openPanel(t.dataset.tab)));
-
-elHistoryTop?.addEventListener('click', async ()=>{
-  const session = await requireAuthOrGate('Connecte-toi pour accéder à ton historique.');
-  if(!session) return;
-  openPanel('history');
-});
-
-window.addEventListener('popstate', async ()=>{
-  await route().catch(()=>{});
 });
 
 
