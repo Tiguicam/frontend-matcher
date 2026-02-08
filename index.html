@@ -751,7 +751,32 @@ const panels = {
   history: document.getElementById('panel-history')
 };
 
+function openPanel(name){
+  // tabs
+  tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === name));
 
+  // panels
+  Object.entries(panels).forEach(([k, el]) => {
+    if (!el) return;
+    el.classList.toggle('active', k === name);
+  });
+}
+
+tabs.forEach(t => {
+  t.addEventListener('click', async () => {
+    const target = t.dataset.tab;
+
+    // Optionnel : si tu veux bloquer test/matching sans login
+    if ((target === 'test' || target === 'matching') && !(await getSessionSafe())) {
+      setGateMsg('Connecte-toi pour accéder à cette section.');
+      openGate({ closable: true });
+      openPanel('config'); // on reste sur paramètres
+      return;
+    }
+
+    openPanel(target);
+  });
+});
 
 /* ============================================================
    SUPABASE + AUTH + HASH ROUTING (#/login) + LOGOUT NON-BLOQUANT
@@ -796,7 +821,29 @@ function withTimeout(promise, ms = 9000){
     new Promise((_, reject)=> setTimeout(()=> reject(new Error('Timeout')), ms))
   ]);
 }
+let __sessionCache = null;
+let __sessionReady = false;
+
+supabaseClient.auth.onAuthStateChange((event, session) => {
+  // INITIAL_SESSION = on sait que Supabase a fini d’hydrater depuis le storage
+  if (event === 'INITIAL_SESSION') __sessionReady = true;
+
+  // On garde la DERNIÈRE session connue (important après SIGNED_IN / TOKEN_REFRESHED)
+  if (event === 'SIGNED_OUT') __sessionCache = null;
+  else if (session) __sessionCache = session;
+});
+
 async function getSessionSafe(){
+  // 1) attendre l’hydratation storage (INITIAL_SESSION)
+  const start = Date.now();
+  while (!__sessionReady && Date.now() - start < 1500) {
+    await new Promise(r => setTimeout(r, 30));
+  }
+
+  // 2) si ready, renvoie la DERNIÈRE session cache
+  if (__sessionReady) return __sessionCache;
+
+  // 3) fallback
   try{
     const { data } = await withTimeout(supabaseClient.auth.getSession(), 9000);
     return data?.session || null;
@@ -983,12 +1030,12 @@ supabaseClient.auth.onAuthStateChange(async (event, session)=> {
     }
   }
 
-  if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
-    CURRENT_USER_ID = session?.user?.id || null;
-    loadLocalForUser(CURRENT_USER_ID);
-    hydrateUIFromState();
+  if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+  CURRENT_USER_ID = session?.user?.id || null;
+  loadLocalForUser(CURRENT_USER_ID);
+  hydrateUIFromState();
   } else if (event === 'TOKEN_REFRESHED') {
-    CURRENT_USER_ID = session?.user?.id || CURRENT_USER_ID;
+  CURRENT_USER_ID = session?.user?.id || CURRENT_USER_ID;
   }
 
   await applyAuthUI(session);
