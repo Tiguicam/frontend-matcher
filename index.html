@@ -3059,43 +3059,55 @@ btnRun.addEventListener('click', async ()=>{
   try{
     const blob = await runMatching({ file404: f404, file200: f200, config, token });
 
-    lastResultBlob = blob;
-    resultFilename = `result_${runId}.csv`;
-    resultBlobUrl = URL.createObjectURL(blob);
+lastResultBlob = blob;
+resultFilename = `result_${runId}.csv`;
+resultBlobUrl = URL.createObjectURL(blob);
 
-    downloadLabel.textContent = 'Résultat prêt';
-    downloadWrap.classList.remove('hidden');
+downloadLabel.textContent = 'Résultat prêt';
+downloadWrap.classList.remove('hidden');
 
-    setRunStatus('info', 'Sauvegarde dans l’historique…');
+// ✅ 1) Afficher le récap tout de suite (avant la sauvegarde)
+try{
+  const summary = await buildRunSummaryFromBlob(blob);
+  renderRunSummary(summary);
+  openRunSummaryModal();
+}catch(e){
+  if(rsSubtitle) rsSubtitle.textContent = 'Récap indisponible (format de résultat inattendu).';
+  runSummaryContent.innerHTML = `
+    <div class="rs-callout">
+      Le fichier résultat est prêt, mais le récap n’a pas pu être généré automatiquement.
+      <div style="margin-top:6px" class="help">
+        Détail : ${escapeHtml(e?.message || String(e))}
+      </div>
+    </div>
+  `;
+  openRunSummaryModal();
+}
 
-    await uploadRunFolder({
-      userId: session.user.id,
-      runId,
-      resultBlob: blob,
-      dicoFile: fileDico.files?.[0] || null,
-      tradFile: fileTrad.files?.[0] || null,
-      parentsFile: fileParents.files?.[0] || null,
-      runName: '',
-      createdAt
-    });
+// ✅ 2) Le matching est fini → on passe en étape "Sauvegarde…"
+setBtnLoading(btnRun, true, 'Sauvegarde…');
+setRunStatus('info', 'Sauvegarde dans l’historique…');
 
-    const elapsedSec = (Date.now() - runStartTs) / 1000;
-    saveRunSeconds(elapsedSec);
-    saveAvgSecPer404(elapsedSec, urls404.length);
+await uploadRunFolder({
+  userId: session.user.id,
+  runId,
+  resultBlob: blob,
+  dicoFile: fileDico.files?.[0] || null,
+  tradFile: fileTrad.files?.[0] || null,
+  parentsFile: fileParents.files?.[0] || null,
+  runName: '',
+  createdAt
+});
 
-    finishProgressOK();
-    setRunStatus('ok', 'Terminé. Résultat enregistré.');
+const elapsedSec = (Date.now() - runStartTs) / 1000;
+saveRunSeconds(elapsedSec);
+saveAvgSecPer404(elapsedSec, urls404.length);
 
-    pendingRunToName = { userId: session.user.id, runId, createdAt };
-    namingAskedForRunId = null;
+finishProgressOK();
+setRunStatus('ok', 'Terminé. Résultat enregistré.');
 
-    try{
-      const summary = await buildRunSummaryFromBlob(blob);
-      renderRunSummary(summary);
-      openRunSummaryModal();
-    }catch{
-      await closeRunSummaryModal().catch(()=>{});
-    }
+pendingRunToName = { userId: session.user.id, runId, createdAt };
+namingAskedForRunId = null;
 
     if(panels.history.classList.contains('active')) loadHistory().catch(()=>{});
   }catch(e){
